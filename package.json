@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:profile-store": "npx --yes tsx scripts/profile-store.smoke.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
