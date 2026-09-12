@@ -5,7 +5,7 @@ import { UNKNOWN, type HazardState, type Unknownable } from "@/lib/stormready";
  * Callers must treat `status: "unavailable"` as unknown - never invent
  * coordinates, alerts, or an all-clear.
  */
-export type IntegrationService = "geocode" | "nws";
+export type IntegrationService = "geocode" | "nws" | "osm";
 
 export type IntegrationUnavailableReason =
   | "invalid_input"
