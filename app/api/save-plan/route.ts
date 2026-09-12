@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: "invalid_request",
-        message: "Body must be a StormReady snapshot with home and/or household.",
+        message: "Body must be a FaultLine snapshot with home and/or household.",
       },
       { status: 400 },
     );

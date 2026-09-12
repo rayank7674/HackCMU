@@ -9,7 +9,7 @@ type HeaderProps = {
 
 export function Header({ title, backHref, emphatic = false }: HeaderProps) {
   return (
-    <header className="sr-page-header sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-gradient-to-b from-white to-blue-wash/80 px-4 py-3.5 pt-[max(0.85rem,env(safe-area-inset-top))] backdrop-blur">
+    <header className="sr-page-header sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background px-4 py-3.5 pt-[max(0.85rem,env(safe-area-inset-top))]">
       {backHref ? (
         <Link
           href={backHref}
@@ -24,7 +24,7 @@ export function Header({ title, backHref, emphatic = false }: HeaderProps) {
       <h1
         className={
           emphatic
-            ? "flex-1 text-center text-[13px] font-bold uppercase tracking-[0.28em] text-navy"
+            ? "flex-1 text-center text-[13px] font-bold uppercase tracking-[0.28em] text-foreground"
             : "flex-1 text-center text-sm font-semibold tracking-wide text-foreground"
         }
       >

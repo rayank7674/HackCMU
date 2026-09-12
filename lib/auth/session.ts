@@ -33,7 +33,7 @@ const idle: AuthSession = {
   logoutHref: AUTH0_LOGOUT_PATH,
 };
 
-export function useAuthSession(returnTo = "/plan"): AuthSession {
+export function useAuthSession(returnTo = "/home"): AuthSession {
   const [session, setSession] = useState<AuthSession>({
     ...idle,
     loginHref: loginHref(returnTo),

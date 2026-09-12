@@ -85,7 +85,7 @@ export function OnboardingFlow() {
     persistHome(home);
     persistHousehold(household);
     clear();
-    router.push("/plan");
+    router.push("/home");
   };
 
   const hasConfirmedCoords =
@@ -243,7 +243,7 @@ export function OnboardingFlow() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col">
-        <Header title="Set up your home" backHref="/plan" />
+        <Header title="Set up your home" backHref="/" />
         <div className="px-5 py-8">
           <LoadingCard
             title="Set up your home"
@@ -257,7 +257,7 @@ export function OnboardingFlow() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Set up your home" backHref="/plan" />
+      <Header title="Set up your home" backHref="/" />
       <div className="flex flex-1 flex-col px-5 pb-8 pt-4">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
           Step {step + 1} of {STEPS.length}
@@ -433,7 +433,7 @@ function LocationStep({
           {gpsStatus === "loading" ? "Finding this device…" : "Use this device’s location (optional)"}
         </Button>
         <p className="text-xs leading-relaxed text-muted">
-          StormReady will not read your location until you tap this. You can type
+          FaultLine will not read your location until you tap this. You can type
           an address instead.
         </p>
       </div>
@@ -530,8 +530,8 @@ function LocationStep({
         status={geocodeStatus}
         title="Location lookup"
         loadingLabel="Checking this address…"
-        errorMessage="Location lookup failed. Your address is saved as you entered it. StormReady will not invent coordinates."
-        unavailableMessage="Location lookup is not connected yet. Your address is saved as you entered it. StormReady will not invent coordinates."
+        errorMessage="Location lookup failed. Your address is saved as you entered it. FaultLine will not invent coordinates."
+        unavailableMessage="Location lookup is not connected yet. Your address is saved as you entered it. FaultLine will not invent coordinates."
       />
     </>
   );

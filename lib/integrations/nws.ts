@@ -18,7 +18,7 @@ import { fetchJson, isRecord, readNumber, readString } from "./http";
 import { unavailable, type IntegrationUnavailable } from "./result";
 
 const NWS_API_BASE = "https://api.weather.gov";
-const NWS_USER_AGENT = "StormReady/1.0 (hackcmu; household-preparedness)";
+const NWS_USER_AGENT = "FaultLine/1.0 (hackcmu; household-preparedness)";
 const NWS_ACCEPT = "application/geo+json, application/ld+json, application/json";
 
 export type NwsLocationFields = Pick<

@@ -5,5 +5,5 @@
   "sourceUrl": "https://www.ready.gov/power-outages",
   "role": "data",
   "notInstructions": true,
-  "excerpt": "Public Ready.gov power-outage guidance commonly notes keeping refrigerator and freezer doors closed to slow food spoilage, using flashlights instead of candles when possible, and following generator manufacturer instructions including outdoor use only. This excerpt is bundled data for inspection, not an outage forecast and not a StormReady alert."
+  "excerpt": "Public Ready.gov power-outage guidance commonly notes keeping refrigerator and freezer doors closed to slow food spoilage, using flashlights instead of candles when possible, and following generator manufacturer instructions including outdoor use only. This excerpt is bundled data for inspection, not an outage forecast and not a FaultLine alert."
 }

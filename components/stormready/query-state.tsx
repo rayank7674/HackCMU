@@ -24,7 +24,7 @@ export function SkeletonLines({ lines = 3 }: { lines?: number }) {
       {Array.from({ length: lines }, (_, index) => (
         <div
           key={index}
-          className="h-3 animate-pulse rounded-full bg-surface-elevated"
+          className="sr-skeleton h-3 rounded-full"
           style={{ width: `${92 - index * 14}%` }}
         />
       ))}

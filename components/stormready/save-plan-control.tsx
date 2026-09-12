@@ -15,7 +15,7 @@ type SavePlanControlProps = {
 
 export function SavePlanControl({
   snapshot,
-  returnTo = "/plan",
+  returnTo = "/home",
 }: SavePlanControlProps) {
   const session = useAuthSession(returnTo);
   const [busy, setBusy] = useState(false);
@@ -54,7 +54,7 @@ export function SavePlanControl({
           Save My Plan
         </Button>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          You&apos;ll sign in, then StormReady will save this household plan
+          You&apos;ll sign in, then FaultLine will save this household plan
           to your account.
         </p>
       </section>

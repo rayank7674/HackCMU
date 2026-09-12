@@ -64,13 +64,13 @@ import {
 } from "@/lib/optimization";
 
 const ALERT_UNAVAILABLE =
-  "We could not reach the alert service yet. StormReady will not invent a warning or say the area is clear.";
+  "We could not reach the alert service yet. FaultLine will not invent a warning or say the area is clear.";
 const ALERT_ERROR =
-  "Official alerts could not be loaded. StormReady will not invent a warning or say the area is clear.";
+  "Official alerts could not be loaded. FaultLine will not invent a warning or say the area is clear.";
 const ACTION_UNAVAILABLE =
-  "Your checklist is not available yet, often because alerts could not be confirmed. StormReady will not invent steps.";
+  "Your checklist is not available yet, often because alerts could not be confirmed. FaultLine will not invent steps.";
 const ACTION_ERROR =
-  "Your checklist could not be loaded. StormReady will not invent steps.";
+  "Your checklist could not be loaded. FaultLine will not invent steps.";
 
 const DEMO_SCENARIOS: { value: DemoScenario; label: string }[] = [
   { value: "quiet", label: "Quiet" },
@@ -189,7 +189,7 @@ export function PlanView() {
             No plan on this device yet
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
-            Answer a few questions about your home. StormReady stays anonymous
+            Answer a few questions about your home. FaultLine stays anonymous
             and will not invent alerts.
           </p>
           <div className="mt-8">
@@ -281,23 +281,28 @@ export function PlanView() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 flex-col bg-blue-wash">
-      <section className="sr-hero-banner bg-blue-deep px-5 pb-6 pt-6 text-white">
-        <div className="flex items-start justify-between gap-3">
+    <main className="flex min-h-full flex-1 flex-col bg-background">
+      <section className="border-b border-border bg-surface px-5 py-6">
+        <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-3xl font-semibold tracking-tight">{homeTitle}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+              Your home
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              {homeTitle}
+            </h2>
             {homeMeta ? (
-              <p className="mt-1 text-sm text-blue-pale">{homeMeta}</p>
+              <p className="mt-1 text-sm text-muted">{homeMeta}</p>
             ) : null}
             {season.applicable ? (
-              <p className="mt-2.5 inline-flex w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+              <p className="mt-2.5 inline-flex w-fit rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-strong">
                 {season.label}
               </p>
             ) : null}
-            <p className="mt-2 text-xs leading-relaxed text-blue-pale">
+            <p className="mt-2 text-xs leading-relaxed text-muted">
               {season.sourceNote}
             </p>
-            <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-pale">
+            <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
               {recsStatus === "ready" && checklistActions.length > 0
                 ? `Checklist ${checklistPercent}% · ${formatRelativeTime(lastUpdated)}`
                 : `Updated ${formatRelativeTime(lastUpdated)}`}
@@ -305,14 +310,14 @@ export function PlanView() {
           </div>
           <Link
             href="/onboarding"
-            className="shrink-0 rounded-xl bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25"
+            className="shrink-0 rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-accent-strong hover:bg-surface-elevated"
           >
             Update home details
           </Link>
         </div>
       </section>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-4 bg-blue-wash px-5 pb-8 pt-4">
+      <div className="mx-auto flex min-w-0 w-full max-w-3xl flex-1 flex-col gap-4 px-5 pb-8 pt-6">
         {isDemo ? (
           <p
             role="status"
@@ -335,15 +340,15 @@ export function PlanView() {
         />
 
         {/* Completion bar + checklist (screenshot 1) */}
-        <section className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
+        <section className="sr-card-motion rounded-2xl border border-border bg-surface p-4">
           {recsStatus === "ready" && checklistActions.length > 0 ? (
             <div className="mb-4">
               <div className="flex items-end justify-between gap-3">
-                <p className="text-sm font-semibold text-navy">Plan progress</p>
-                <p className="text-sm font-semibold text-navy">{checklistPercent}%</p>
+                <p className="text-sm font-semibold text-foreground">Plan progress</p>
+                <p className="text-sm font-semibold text-foreground">{checklistPercent}%</p>
               </div>
               <div
-                className="mt-2 h-3 w-full overflow-hidden rounded-full bg-blue-pale"
+                className="mt-2 h-3 w-full overflow-hidden rounded-full bg-surface-elevated"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -351,7 +356,7 @@ export function PlanView() {
                 aria-label="Checklist completion"
               >
                 <div
-                  className="h-full rounded-full bg-blue-deep transition-[width] duration-300 ease-out"
+                  className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
                   style={{ width: `${checklistPercent}%` }}
                 />
               </div>
@@ -362,11 +367,11 @@ export function PlanView() {
           ) : null}
 
           <div className="mb-3 flex items-center gap-3" role="separator" aria-label="Your checklist">
-            <div className="h-px flex-1 bg-blue-pale" />
-            <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-deep">
+            <div className="h-px flex-1 bg-border" />
+            <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
               Your checklist
             </p>
-            <div className="h-px flex-1 bg-blue-pale" />
+            <div className="h-px flex-1 bg-border" />
           </div>
 
           {recsStatus === "ready" && checklistActions.length > 0 ? (
@@ -422,7 +427,7 @@ export function PlanView() {
                 status={recsStatus}
                 title={isDemo ? "Demo unavailable" : "Checklist unavailable"}
                 loadingLabel="Loading…"
-                errorMessage="Your checklist could not be loaded. StormReady will not invent steps."
+                errorMessage="Your checklist could not be loaded. FaultLine will not invent steps."
                 unavailableMessage={
                   isDemo
                     ? "The Tampa demo is not available on this deployment yet."
@@ -435,7 +440,7 @@ export function PlanView() {
               Nothing came back for this checklist. That is not a made-up plan.
             </Card>
           ) : (
-            <ol className="mt-4 space-y-3">
+            <ol className="sr-stagger mt-4 space-y-3">
               {checklistActions.map((action, index) => (
                 <li key={action.id}>
                   <ActionCard
@@ -453,18 +458,18 @@ export function PlanView() {
           )}
 
           {supplies.needs.length > 0 ? (
-            <div className="mt-4 overflow-hidden rounded-2xl border border-blue-sky/70 bg-blue-pale/50">
-              <div className="border-l-4 border-l-blue-deep px-3.5 py-3">
-                <p className="text-sm font-semibold text-blue-deep">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-surface-elevated/60">
+              <div className="border-l-4 border-l-accent px-3.5 py-3">
+                <p className="text-sm font-semibold text-accent-strong">
                   Supplies for this house
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-navy">
+                <p className="mt-1 text-sm leading-relaxed text-foreground">
                   {supplies.needs.map((need) => need.label).join(", ")} may be
                   needed here. These are nearby stores that sell the materials,
-                  not a StormReady ranking or a hired contractor.
+                  not a FaultLine ranking or a hired contractor.
                 </p>
                 <Button
-                  className="mt-3 bg-blue-deep text-white hover:bg-blue-mid"
+                  className="mt-3"
                   onClick={() => setPlacesOpen(true)}
                 >
                   Where can I get these
@@ -524,7 +529,7 @@ export function PlanView() {
         open={why !== null}
         title={why ? `Why: ${why.title}` : "Why this step"}
         hideTitle
-        panelClassName="bg-blue-wash"
+        panelClassName="bg-background"
         onClose={() => setWhy(null)}
       >
         {why ? (
@@ -538,7 +543,7 @@ export function PlanView() {
         onClose={() => setPlacesOpen(false)}
       >
         <p className="text-sm leading-relaxed text-foreground">
-          Public listings with customer ratings. StormReady does not verify
+          Public listings with customer ratings. FaultLine does not verify
           shops, prices, or workmanship.
         </p>
         {supplies.areaLabel ? (
@@ -558,16 +563,16 @@ export function PlanView() {
               return (
                 <li
                   key={place.id}
-                  className="rounded-2xl border border-blue-pale bg-blue-wash px-3 py-3"
+                  className="rounded-2xl border border-border bg-surface px-3 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-blue-deep">{place.name}</p>
-                      <p className="text-xs text-blue-mid">{place.kind}</p>
+                      <p className="text-sm font-semibold text-foreground">{place.name}</p>
+                      <p className="text-xs text-muted">{place.kind}</p>
                     </div>
-                    <p className="shrink-0 rounded-full bg-blue-deep px-2.5 py-1 text-sm font-semibold text-white">
+                    <p className="shrink-0 rounded-full bg-accent-strong px-2.5 py-1 text-sm font-semibold text-background">
                       {place.rating.toFixed(1)}
-                      <span className="ml-1 text-xs font-medium text-blue-pale">
+                      <span className="ml-1 text-xs font-medium opacity-80">
                         / 5
                       </span>
                     </p>
@@ -575,7 +580,7 @@ export function PlanView() {
                   <p className="mt-2 text-sm leading-relaxed text-foreground">
                     {place.sells}
                   </p>
-                  <p className="mt-1 text-xs text-blue-mid">
+                  <p className="mt-1 text-xs text-muted">
                     {place.reviewCount.toLocaleString()} public ratings
                     {miles !== null ? ` · about ${miles.toFixed(1)} mi` : ""}
                     {` · ${place.address}`}
@@ -735,7 +740,7 @@ function SituationStrip({
 
   return (
     <section
-      className={`w-full min-w-0 rounded-3xl border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)] ${tone.border}`}
+      className={`sr-card-motion w-full min-w-0 rounded-2xl border bg-surface p-4 ${tone.border}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -795,7 +800,7 @@ function SituationDetails({
   if (status !== "ready") {
     return (
       <p>
-        Details appear when official alerts load. StormReady will not invent
+        Details appear when official alerts load. FaultLine will not invent
         warnings.
       </p>
     );
@@ -823,7 +828,7 @@ function SituationDetails({
       ) : (
         <p>
           No alerts are listed right now, and this is not an all-clear.
-          StormReady will not guess.
+          FaultLine will not guess.
         </p>
       )}
 
@@ -922,17 +927,17 @@ function WhyActionPanel({ action }: { action: RecommendationView }) {
 
   return (
     <div className="-mx-1 space-y-3">
-      <div className="overflow-hidden rounded-3xl bg-blue-deep px-4 py-3 text-white shadow-[0_12px_28px_rgba(13,31,60,0.2)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
           Why this step
         </p>
-        <h3 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight">
+        <h3 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight text-foreground">
           {action.title}
         </h3>
       </div>
 
-      <div className="rounded-3xl border border-border bg-white p-3.5 shadow-[0_8px_20px_rgba(13,31,60,0.06)]">
-        <p className="text-sm leading-relaxed text-navy">{explanation}</p>
+      <div className="rounded-2xl border border-border bg-surface p-3.5">
+        <p className="text-sm leading-relaxed text-foreground">{explanation}</p>
       </div>
     </div>
   );
@@ -1026,12 +1031,12 @@ function FuturePrepSection({
   if (risks.length === 0) return null;
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
-      <div className="bg-navy px-4 py-4 text-white">
-        <h3 className="text-2xl font-semibold tracking-tight">
+    <section className="sr-card-motion overflow-hidden rounded-2xl border border-border bg-surface">
+      <div className="border-b border-border px-4 py-4">
+        <h3 className="text-xl font-semibold tracking-tight text-foreground">
           Future preparedness
         </h3>
-        <p className="mt-1.5 text-sm text-blue-pale">
+        <p className="mt-1.5 text-sm text-muted">
           Your area is still prone to these risks. Work these on a calm week so
           you are ready before the next event.
         </p>
@@ -1039,7 +1044,7 @@ function FuturePrepSection({
           type="button"
           onClick={() => setOpen((prev) => !prev)}
           aria-expanded={open}
-          className="mt-3 rounded-xl bg-white/15 px-3 py-1.5 text-sm font-semibold text-white"
+          className="mt-3 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold text-accent-strong"
         >
           {open ? "Hide" : "Show checklist"}
         </button>
@@ -1054,18 +1059,18 @@ function FuturePrepSection({
               <div key={risk.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-navy">
+                    <p className="text-sm font-semibold text-foreground">
                       Prone to {risk.label.toLowerCase()}
                     </p>
                     <p className="mt-0.5 text-xs text-muted">{risk.summary}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-blue-pale px-2.5 py-0.5 text-[11px] font-semibold text-blue-deep">
+                  <span className="shrink-0 rounded-full bg-surface-elevated px-2.5 py-0.5 text-[11px] font-semibold text-accent-strong">
                     {pct}%
                   </span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-pale">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-elevated">
                   <div
-                    className="h-full rounded-full bg-blue-deep transition-[width] duration-300"
+                    className="h-full rounded-full bg-accent transition-[width] duration-300"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -1079,8 +1084,8 @@ function FuturePrepSection({
                           htmlFor={id}
                           className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3 py-3 transition ${
                             checked
-                              ? "border-blue-deep/30 bg-blue-pale/50"
-                              : "border-border bg-blue-wash/60"
+                              ? "border-accent/30 bg-accent/10"
+                              : "border-border bg-background"
                           }`}
                         >
                           <input
@@ -1093,8 +1098,8 @@ function FuturePrepSection({
                           <span
                             className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${
                               checked
-                                ? "border-blue-deep bg-blue-deep text-white"
-                                : "border-[#c5cdd6] bg-white text-transparent"
+                                ? "border-accent bg-accent text-background"
+                                : "border-border bg-surface text-transparent"
                             }`}
                             aria-hidden
                           >
@@ -1111,12 +1116,12 @@ function FuturePrepSection({
                           <span className="min-w-0">
                             <span
                               className={`block text-sm font-semibold ${
-                                checked ? "text-muted line-through" : "text-navy"
+                                checked ? "text-muted line-through" : "text-foreground"
                               }`}
                             >
                               {item.title}
                             </span>
-                            <span className="mt-0.5 block text-xs font-medium text-blue-deep">
+                            <span className="mt-0.5 block text-xs font-medium text-accent-strong">
                               {item.dueBy}
                             </span>
                             <span className="mt-1 block text-xs leading-relaxed text-muted">
@@ -1209,7 +1214,7 @@ function ActionCard({
 
   return (
     <article
-      className={`rounded-3xl border border-border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.06)] ${chip.bar} ${
+      className={`sr-card-motion rounded-2xl border border-border bg-surface p-4 ${chip.bar} ${
         checked ? "bg-surface-elevated/60 opacity-80" : ""
       }`}
     >
@@ -1230,7 +1235,7 @@ function ActionCard({
             className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition ${
               checked
                 ? "border-success bg-success text-white"
-                : "border-[#c5cdd6] bg-white text-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+                : "border-border bg-surface text-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
             }`}
             aria-hidden
           >
@@ -1259,7 +1264,7 @@ function ActionCard({
               >
                 {action.title}
               </p>
-              <p className="mt-1.5 text-sm font-medium text-blue-deep">
+              <p className="mt-1.5 text-sm font-medium text-accent-strong">
                 {dueBy}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1308,9 +1313,9 @@ function importanceChip(tone: ImportanceTone) {
     default:
       return {
         label: "Prep",
-        chip: "bg-blue-deep/10 text-blue-deep",
-        step: "bg-blue-deep",
-        bar: "border-l-4 border-l-blue-deep",
+        chip: "bg-accent/10 text-accent-strong",
+        step: "bg-accent",
+        bar: "border-l-4 border-l-accent",
       };
   }
 }

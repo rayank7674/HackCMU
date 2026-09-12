@@ -46,7 +46,7 @@ export function ReadPlan({
           "message" in body &&
           typeof body.message === "string"
             ? body.message
-            : "Read My Plan is unavailable. StormReady will not invent audio.";
+            : "Read My Plan is unavailable. FaultLine will not invent audio.";
         setState({ status: "unavailable", message });
         return;
       }
@@ -60,14 +60,14 @@ export function ReadPlan({
       audio.onerror = () =>
         setState({
           status: "unavailable",
-          message: "Audio playback failed. StormReady will not invent narration.",
+          message: "Audio playback failed. FaultLine will not invent narration.",
         });
       await audio.play();
     } catch {
       setState({
         status: "unavailable",
         message:
-          "Read My Plan could not be reached. StormReady will not invent audio.",
+          "Read My Plan could not be reached. FaultLine will not invent audio.",
       });
     }
   }

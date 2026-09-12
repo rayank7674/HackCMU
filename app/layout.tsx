@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StormReady",
+  title: "FaultLine",
   description:
     "Your home. Your risk. Your plan. Anonymous household preparedness that stays on this device until you choose to save it.",
 };
@@ -24,7 +24,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f2f6fa",
+  themeColor: "#f4f5f7",
 };
 
 export default function RootLayout({
@@ -37,8 +37,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Script id="stormready-demo-viewport" strategy="beforeInteractive">
-          {`try{var m=localStorage.getItem("stormready.demoViewport");document.documentElement.setAttribute("data-demo-viewport",window.innerWidth>=1024&&m==="mobile"?"mobile":"laptop")}catch(e){document.documentElement.setAttribute("data-demo-viewport","laptop")}`}
+        <Script id="stormready-theme" strategy="beforeInteractive">
+          {`try{var t=localStorage.getItem("stormready.theme");if(t!=="light"&&t!=="dark"&&t!=="system")t="system";document.documentElement.dataset.theme=t}catch(e){}`}
         </Script>
         <AppShell>{children}</AppShell>
       </body>

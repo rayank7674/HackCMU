@@ -46,8 +46,8 @@ export function ChoiceGroup<T extends string>({
               onClick={() => onChange(option.value)}
               className={`min-h-11 rounded-2xl border px-3 py-2 text-sm font-medium transition ${
                 selected
-                  ? "border-accent-strong bg-accent-strong text-white"
-                  : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                  ? "border-accent-strong bg-accent-strong text-background"
+                  : "border-border bg-surface text-foreground hover:bg-surface-elevated"
               }`}
             >
               {option.label}
@@ -93,8 +93,8 @@ export function MultiChoiceGroup<T extends string>({
               }}
               className={`min-h-11 rounded-2xl border px-3 py-2 text-sm font-medium transition ${
                 selected
-                  ? "border-accent-strong bg-accent-strong text-white"
-                  : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                  ? "border-accent-strong bg-accent-strong text-background"
+                  : "border-border bg-surface text-foreground hover:bg-surface-elevated"
               }`}
             >
               {option.label}

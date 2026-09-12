@@ -60,10 +60,10 @@ export const STRESS_MODELED_COPY =
   "Simulated planning scenario. Modeled under your home details - not a forecast, not official alerts, and not a safety score.";
 
 export const STRESS_FORTIFY_UNAVAILABLE =
-  "Fortify needs an official hazard state. StormReady will not invent alerts or an all-clear.";
+  "Fortify needs an official hazard state. FaultLine will not invent alerts or an all-clear.";
 
 export const STRESS_ONBOARDING_COPY =
-  "Stress Test needs a home profile. Finish setup first - StormReady will not invent one.";
+  "Stress Test needs a home profile. Finish setup first - FaultLine will not invent one.";
 
 type SimulatePayload = {
   graph: DependencyGraph;
@@ -399,12 +399,16 @@ export function StressView() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-          {STRESS_FLOW_COPY}
-        </p>
-        <h2 className="text-lg font-semibold text-foreground">{STRESS_HEADLINE}</h2>
-        <p className="text-sm leading-relaxed text-muted">{STRESS_MODELED_COPY}</p>
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-5 pb-8 pt-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+            {STRESS_FLOW_COPY}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+            {STRESS_HEADLINE}
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{STRESS_MODELED_COPY}</p>
+        </div>
 
         <Card eyebrow="What hits this house" title="Pick a modeled impact">
           <p className="text-sm leading-relaxed">
@@ -430,12 +434,12 @@ export function StressView() {
                   }}
                   className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-sm font-medium transition ${
                     selected
-                      ? "border-accent-strong bg-accent-strong text-white"
-                      : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                      ? "border-accent-strong bg-accent-strong text-background"
+                      : "border-border bg-surface text-foreground hover:bg-surface-elevated"
                   }`}
                 >
                   <span className="block">{item.label}</span>
-                  <span className={`mt-0.5 block text-xs font-normal ${selected ? "text-white/80" : "text-muted"}`}>
+                  <span className={`mt-0.5 block text-xs font-normal ${selected ? "text-background/80" : "text-muted"}`}>
                     {item.body}
                   </span>
                 </button>
@@ -466,8 +470,8 @@ export function StressView() {
                         onClick={() => setPresetOverride(item.id)}
                         className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
                           selected
-                            ? "border-accent-strong bg-accent-strong text-white"
-                            : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                            ? "border-accent-strong bg-accent-strong text-background"
+                            : "border-border bg-surface text-foreground hover:bg-surface-elevated"
                         }`}
                       >
                         {item.label}
@@ -499,7 +503,7 @@ export function StressView() {
           ) : null}
           {hit ? null : (
             <p className="mt-3 text-xs leading-relaxed text-muted">
-              Choose what hits this house before the cascade loads. StormReady
+              Choose what hits this house before the cascade loads. FaultLine
               will not invent a result.
             </p>
           )}
@@ -515,7 +519,7 @@ export function StressView() {
         ) : null}
 
         {simulateStatus === "ready" && result ? (
-          <>
+          <div className="sr-stagger">
             <Card
               eyebrow={STRESS_WEAKEST_LINK}
               title={result.firstBreak?.label ?? "No weakest link in this model"}
@@ -562,13 +566,13 @@ export function StressView() {
                 </p>
               )}
             </Card>
-          </>
+          </div>
         ) : null}
 
         <Card eyebrow={STRESS_NEXT_STEPS} title="Fortify the weak spot">
           <p className="mb-3 text-xs leading-relaxed">
             Suggested actions use official hazard state when it is available.
-            StormReady will not invent an all-clear.
+            FaultLine will not invent an all-clear.
           </p>
           {hazardsStatus === "loading" || hazardsStatus === "idle" ? (
             <Spinner label="Checking official hazard state…" />
@@ -594,7 +598,7 @@ export function StressView() {
               {fortifyStatus === "error" ? (
                 <div className="mt-3">
                   <ErrorNote title="Next steps could not run">
-                    The request failed. StormReady will not invent a list
+                    The request failed. FaultLine will not invent a list
                     or an all-clear.
                   </ErrorNote>
                 </div>
@@ -610,7 +614,7 @@ export function StressView() {
                     fortify.selected.map((action) => (
                       <li
                         key={action.id}
-                        className="rounded-2xl border border-border bg-white px-3 py-2"
+                        className="rounded-2xl border border-border bg-surface px-3 py-2"
                       >
                         <p className="text-sm font-semibold text-foreground">{action.title}</p>
                         {action.body ? (
@@ -628,13 +632,13 @@ export function StressView() {
             </>
           )}
           <div className="mt-3">
-            <Button href="/plan" variant="secondary">
+            <Button href="/home" variant="secondary">
               {STRESS_UPDATE_PLAN}
             </Button>
           </div>
         </Card>
 
-        <details className="rounded-3xl border border-border bg-surface p-4 shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
+        <details className="rounded-2xl border border-border bg-surface p-4">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
             {STRESS_ADVANCED_SUMMARY}
           </summary>
@@ -649,6 +653,7 @@ export function StressView() {
                 nodes={result.nodes}
                 edges={graph?.edges ?? []}
                 cascadePath={result.cascadePath}
+                weakestId={result.firstBreak?.id}
               />
               <p className="mt-2 text-xs text-muted">
                 Path:{" "}
@@ -712,7 +717,7 @@ export function StressView() {
 
         <p className="text-xs leading-relaxed text-muted">
           Optional mode. Open your{" "}
-          <Link href="/plan" className="font-semibold text-accent-strong">
+          <Link href="/home" className="font-semibold text-accent-strong">
             plan
           </Link>{" "}
           for live official alerts. Stress Test never replaces them.

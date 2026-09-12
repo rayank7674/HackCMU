@@ -35,7 +35,7 @@ export async function GET() {
       status: "unavailable",
       reason: "invalid_input",
       message:
-        "POST already-approved text to /api/tts. StormReady will not invent narration.",
+        "POST already-approved text to /api/tts. FaultLine will not invent narration.",
       service: "elevenlabs",
       inventedPolicy: false,
     },

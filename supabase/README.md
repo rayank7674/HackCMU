@@ -1,4 +1,4 @@
-# StormReady database (Supabase)
+# FaultLine database (Supabase)
 
 Phase 2 schema for **Save My Plan**. Auth0 is not required to apply this SQL.
 

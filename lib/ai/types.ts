@@ -105,7 +105,7 @@ export type PreparednessDocument = {
 };
 
 export const EXPLANATION_DISCLAIMER =
-  "This restates structured StormReady optimizer or stress-test JSON. It is not official safety policy, not an NWS product, and not a new preparedness rule.";
+  "This restates structured FaultLine optimizer or stress-test JSON. It is not official safety policy, not an NWS product, and not a new preparedness rule.";
 
 export const INSPECT_DISCLAIMER =
-  "These claims are ai_inferred from bundled public-guidance paraphrases. They are not official alerts, not an all-clear, and not StormReady rules.";
+  "These claims are ai_inferred from bundled public-guidance paraphrases. They are not official alerts, not an all-clear, and not FaultLine rules.";

@@ -36,7 +36,8 @@ describe("Home now vs Plan sequence", () => {
   it("makes the plan the only home surface and keeps the season note on it", () => {
     const home = readUi("components/stormready/home-view.tsx");
     const plan = readUi("components/stormready/plan-view.tsx");
-    expect(home).toContain('router.replace("/plan")');
+    expect(home).toContain('router.replace("/home")');
+    expect(home).toContain("<PlanView />");
     expect(home).toContain("Get Started");
     expect(plan).toContain("seasonFromHome");
     expect(plan).toContain("season.sourceNote");
@@ -56,16 +57,18 @@ describe("Stress Test nav and plan CTA", () => {
   it("adds a Stress Test tab at /stress-test without dropping Help or Profile", () => {
     expect(STRESS_TEST_HREF).toBe("/stress-test");
     const hrefs = MAIN_NAV_TABS.map((tab) => tab.href);
+    expect(hrefs).toContain("/home");
     expect(hrefs).not.toContain("/");
-    expect(hrefs).toContain("/plan");
+    expect(hrefs).not.toContain("/plan");
     expect(hrefs).toContain("/map");
     expect(hrefs).toContain("/stress-test");
     expect(hrefs).toContain("/help");
     expect(hrefs).toContain("/profile");
     expect(hrefs).toHaveLength(5);
-    const planTab = MAIN_NAV_TABS.find((tab) => tab.href === "/plan");
-    expect(planTab?.label).toBe("Home");
-    expect(planTab?.match("/")).toBe(true);
+    const homeTab = MAIN_NAV_TABS.find((tab) => tab.href === "/home");
+    expect(homeTab?.label).toBe("Home");
+    expect(homeTab?.match("/home")).toBe(true);
+    expect(homeTab?.match("/plan")).toBe(true);
   });
 
   it("keeps five compact tabs so the bar can fit a phone-width shell", () => {
@@ -76,6 +79,7 @@ describe("Stress Test nav and plan CTA", () => {
     expect(css).toContain("repeat(5, minmax(0, 1fr))");
     expect(css).toMatch(/\.sr-nav-link[\s\S]*font-size:\s*10px/);
     expect(nav).toMatch(/aria-label=\{tab\.href === STRESS_TEST_HREF \? "Stress Test"/);
+    expect(nav).toContain("if (!inApp)");
   });
 
   it("links Plan to Stress Test with a house-hit deep link", () => {

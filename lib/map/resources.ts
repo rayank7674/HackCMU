@@ -88,7 +88,7 @@ export const MAP_LOCATOR_LINKS: MapLocatorLink[] = [
     title: "National Weather Service alerts",
     href: "https://www.weather.gov/",
     source: "National Weather Service",
-    description: "Official watches and warnings. StormReady will not invent an all-clear.",
+    description: "Official watches and warnings. FaultLine will not invent an all-clear.",
   },
   {
     id: "disaster-assistance-map",

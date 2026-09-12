@@ -34,7 +34,7 @@ export async function GET() {
       ok: false,
       status: "unavailable",
       reason: "invalid_input",
-      message: "POST structured JSON to /api/explain. StormReady will not invent an explanation.",
+      message: "POST structured JSON to /api/explain. FaultLine will not invent an explanation.",
       service: "grok",
       inventedPolicy: false,
     },

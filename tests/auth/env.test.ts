@@ -81,9 +81,9 @@ describe("returnTo helpers", () => {
   it("keeps in-app paths and rejects absolute URLs", () => {
     stash();
     expect(safeReturnTo("/profile")).toBe("/profile");
-    expect(safeReturnTo("//evil.example")).toBe("/plan");
-    expect(safeReturnTo("https://evil.example")).toBe("/plan");
-    expect(loginHref("/plan")).toBe("/api/auth/login?returnTo=%2Fplan");
+    expect(safeReturnTo("//evil.example")).toBe("/home");
+    expect(safeReturnTo("https://evil.example")).toBe("/home");
+    expect(loginHref("/home")).toBe("/api/auth/login?returnTo=%2Fhome");
     expect(logoutHref("/")).toBe("/api/auth/logout?returnTo=%2F");
   });
 
@@ -91,8 +91,8 @@ describe("returnTo helpers", () => {
     stash();
     process.env.AUTH0_BASE_URL = "https://hack-cmu.vercel.app";
     expect(toAbsoluteReturnTo("/")).toBe("https://hack-cmu.vercel.app");
-    expect(toAbsoluteReturnTo("/plan")).toBe(
-      "https://hack-cmu.vercel.app/plan",
+    expect(toAbsoluteReturnTo("/home")).toBe(
+      "https://hack-cmu.vercel.app/home",
     );
     expect(logoutHref("/")).toBe(
       "/api/auth/logout?returnTo=https%3A%2F%2Fhack-cmu.vercel.app",

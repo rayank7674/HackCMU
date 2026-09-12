@@ -33,7 +33,7 @@ export function auth0ClientOptions(env: Auth0Env) {
     },
     enableAccessTokenEndpoint: false,
     noContentProfileResponseWhenUnauthenticated: true,
-    signInReturnToPath: "/plan",
+    signInReturnToPath: "/home",
     routes: {
       login: AUTH0_LOGIN_PATH,
       logout: AUTH0_LOGOUT_PATH,

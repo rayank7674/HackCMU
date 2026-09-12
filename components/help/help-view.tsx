@@ -8,7 +8,7 @@ import {
   DATA_AND_TRUST,
   FINANCIAL_ASSISTANCE_INTRO,
   FINANCIAL_LINKS,
-  HOW_STORMREADY_WORKS,
+  HOW_FAULTLINE_WORKS,
   LOCAL_HELP_EXAMPLE_NOTE,
   LOCAL_HELP_INTRO,
   LOCAL_HELP_LINKS,
@@ -42,12 +42,12 @@ export function HelpView() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         <section>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
             For this address
           </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
             {formatLocation(home)}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -87,12 +87,12 @@ export function HelpView() {
           <OfficialLinkList links={FINANCIAL_LINKS} />
         </Card>
 
-        <details className="rounded-3xl border border-border bg-surface p-4">
+        <details className="rounded-2xl border border-border bg-surface p-4">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
-            How StormReady works
+            How FaultLine works
           </summary>
           <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm leading-relaxed text-muted">
-            {HOW_STORMREADY_WORKS.map((step) => (
+            {HOW_FAULTLINE_WORKS.map((step) => (
               <li key={step}>{step}</li>
             ))}
           </ol>
@@ -131,7 +131,7 @@ function LocalNumberRow({ item }: { item: LocalNumber }) {
         {href ? (
           <a
             href={href}
-            className="shrink-0 rounded-full bg-accent-strong px-3 py-1.5 text-sm font-semibold text-white"
+            className="shrink-0 rounded-full bg-accent-strong px-3 py-1.5 text-sm font-semibold text-background"
             {...(href.startsWith("tel:")
               ? {}
               : { target: "_blank", rel: "noopener noreferrer" })}

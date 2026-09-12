@@ -62,28 +62,28 @@ export function validateExplainRequest(options: {
     return aiUnavailable(
       "grok",
       "invalid_input",
-      "Unknown explanation task. StormReady will not invent a narrative.",
+      "Unknown explanation task. FaultLine will not invent a narrative.",
     );
   }
   if (!hasStructuredJson(options.input) || !isRecord(options.input)) {
     return aiUnavailable(
       "grok",
       "missing_structured_json",
-      "Explanation needs structured optimizer or stress JSON. StormReady will not invent one.",
+      "Explanation needs structured optimizer or stress JSON. FaultLine will not invent one.",
     );
   }
   if (!requiredPayload(options.task, options.input)) {
     return aiUnavailable(
       "grok",
       "missing_structured_json",
-      `Task ${options.task} is missing the required JSON fields. StormReady will not invent them.`,
+      `Task ${options.task} is missing the required JSON fields. FaultLine will not invent them.`,
     );
   }
   if (!getXaiApiKey()) {
     return aiUnavailable(
       "grok",
       "xai_not_configured",
-      "XAI_API_KEY is not set. Ask StormReady stays unavailable instead of inventing an explanation.",
+      "XAI_API_KEY is not set. Ask FaultLine stays unavailable instead of inventing an explanation.",
     );
   }
   return { ok: true, task: options.task, input: options.input };
@@ -108,7 +108,7 @@ export async function explainPlanOrStress(options: {
     return aiUnavailable(
       "grok",
       "empty_model_output",
-      "Grok returned an empty explanation. StormReady will not invent one.",
+      "Grok returned an empty explanation. FaultLine will not invent one.",
     );
   }
   if (looksLikeInventedPolicy(parsed.explanation)) {
