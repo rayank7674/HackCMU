@@ -280,6 +280,12 @@ export function PlanView() {
           >
             Update home details
           </Link>
+          <Link
+            href="/stress-test"
+            className="mt-2 block text-sm font-semibold text-accent-strong"
+          >
+            Test my preparedness
+          </Link>
         </section>
 
         <SavePlanControl

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const tabs = [
+export const STRESS_TEST_HREF = "/stress-test";
+
+export const MAIN_NAV_TABS = [
   { href: "/", label: "Home", icon: HomeIcon, match: (path: string) => path === "/" },
   {
     href: "/plan",
@@ -16,6 +18,12 @@ const tabs = [
     label: "Map",
     icon: MapIcon,
     match: (path: string) => path.startsWith("/map"),
+  },
+  {
+    href: STRESS_TEST_HREF,
+    label: "Stress",
+    icon: StressIcon,
+    match: (path: string) => path.startsWith(STRESS_TEST_HREF),
   },
   {
     href: "/help",
@@ -43,18 +51,19 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="sticky bottom-0 z-20 border-t border-border bg-background/92 px-2 pt-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur"
+      className="sticky bottom-0 z-20 border-t border-border bg-background/92 px-1 pt-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur"
     >
-      <ul className="grid grid-cols-5">
-        {tabs.map((tab) => {
+      <ul className="grid grid-cols-6">
+        {MAIN_NAV_TABS.map((tab) => {
           const active = tab.match(pathname);
           const Icon = tab.icon;
           return (
             <li key={tab.href}>
               <Link
                 href={tab.href}
+                aria-label={tab.href === STRESS_TEST_HREF ? "Stress Test" : tab.label}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[11px] font-medium ${
+                className={`flex flex-col items-center gap-0.5 rounded-2xl px-0.5 py-2 text-center text-[10px] font-medium leading-tight ${
                   active ? "text-accent-strong" : "text-muted"
                 }`}
               >
@@ -99,6 +108,19 @@ function PlanIcon({ active }: IconProps) {
         stroke="currentColor"
         strokeWidth={active ? 1.9 : 1.6}
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StressIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M13 3 6.5 13h5L11 21l6.5-10h-5L13 3Z"
+        stroke="currentColor"
+        strokeWidth={active ? 1.9 : 1.6}
+        strokeLinejoin="round"
       />
     </svg>
   );
