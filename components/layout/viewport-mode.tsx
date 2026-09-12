@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -17,6 +17,8 @@ import {
   parseDemoViewport,
   type DemoViewport,
 } from "@/lib/layout/viewport-mode";
+
+const VIEWPORT_CHANGE = "stormready-demo-viewport";
 
 type ViewportModeContextValue = {
   stored: DemoViewport;
@@ -38,44 +40,51 @@ function readStored(): DemoViewport {
 function applyAttribute(stored: DemoViewport, width: number) {
   const applied = demoViewportAttribute(stored, width);
   document.documentElement.setAttribute("data-demo-viewport", applied);
-  document.documentElement.style.setProperty(
-    "--sr-is-demo-phone",
-    applied === "mobile" ? "1" : "0",
-  );
   return applied;
 }
 
+function subscribeWidth(onChange: () => void) {
+  window.addEventListener("resize", onChange);
+  window.addEventListener("orientationchange", onChange);
+  return () => {
+    window.removeEventListener("resize", onChange);
+    window.removeEventListener("orientationchange", onChange);
+  };
+}
+
+function subscribeStored(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(VIEWPORT_CHANGE, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(VIEWPORT_CHANGE, onChange);
+  };
+}
+
 export function ViewportModeProvider({ children }: { children: ReactNode }) {
-  const [stored, setStoredState] = useState<DemoViewport>("laptop");
-  const [width, setWidth] = useState(LAPTOP_MIN_WIDTH);
+  const width = useSyncExternalStore(
+    subscribeWidth,
+    () => window.innerWidth,
+    () => LAPTOP_MIN_WIDTH,
+  );
+  const stored = useSyncExternalStore(
+    subscribeStored,
+    readStored,
+    (): DemoViewport => "laptop",
+  );
 
   useEffect(() => {
-    const initial = readStored();
-    setStoredState(initial);
-    setWidth(window.innerWidth);
-    applyAttribute(initial, window.innerWidth);
-
-    const onResize = () => {
-      setWidth(window.innerWidth);
-      applyAttribute(readStored(), window.innerWidth);
-    };
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-    };
-  }, []);
+    applyAttribute(stored, width);
+  }, [stored, width]);
 
   const setStored = useCallback((next: DemoViewport) => {
-    setStoredState(next);
     try {
       window.localStorage.setItem(DEMO_VIEWPORT_KEY, next);
     } catch {
       /* private mode */
     }
     applyAttribute(next, window.innerWidth);
-    setWidth(window.innerWidth);
+    window.dispatchEvent(new Event(VIEWPORT_CHANGE));
   }, []);
 
   const value = useMemo<ViewportModeContextValue>(
