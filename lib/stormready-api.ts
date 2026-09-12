@@ -553,7 +553,7 @@ function parseOptimization(value: unknown): OptimizationView | null {
   const hardConstraintIds = Array.isArray(value.hardConstraintIds)
     ? value.hardConstraintIds.filter((id): id is string => typeof id === "string")
     : [];
-  const constraintsUsed = isRecord(value.constraintsUsed)
+  const constraintsUsed: OptimizationConstraints = isRecord(value.constraintsUsed)
     ? {
         budgetDollars:
           typeof value.constraintsUsed.budgetDollars === "number"
@@ -563,18 +563,12 @@ function parseOptimization(value: unknown): OptimizationView | null {
           typeof value.constraintsUsed.availableTimeMinutes === "number"
             ? value.constraintsUsed.availableTimeMinutes
             : null,
-        transport:
-          value.constraintsUsed.transport === "car" ||
-          value.constraintsUsed.transport === "limited" ||
-          value.constraintsUsed.transport === "none" ||
-          value.constraintsUsed.transport === "unknown"
-            ? value.constraintsUsed.transport
-            : "unknown",
+        transport: readTransport(value.constraintsUsed.transport),
       }
     : {
         budgetDollars: null,
         availableTimeMinutes: null,
-        transport: "unknown" as const,
+        transport: "unknown",
       };
 
   return {
@@ -643,6 +637,18 @@ function parseOptimization(value: unknown): OptimizationView | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readTransport(value: unknown): OptimizationConstraints["transport"] {
+  if (
+    value === "car" ||
+    value === "limited" ||
+    value === "none" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
 }
 
 function readUnknownableString(value: unknown): Unknownable<string> {

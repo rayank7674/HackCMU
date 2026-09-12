@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { ChoiceGroup } from "@/components/stormready/choice-field";
 import { SavePlanControl } from "@/components/stormready/save-plan-control";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import { usePlanData } from "@/components/stormready/plan-data";
@@ -29,19 +30,31 @@ import {
   shortReason,
 } from "@/lib/stormready-format";
 import {
+  hazardFixtureFor,
   isKnown,
+  tampaDemoInput,
   type ActiveHazard,
   type BudgetClass,
   type Unknownable,
 } from "@/lib/stormready";
 import { useProfile } from "@/lib/use-profile";
 import {
+  fetchRecommendations,
   fetchTampaDemo,
+  type DemoScenario,
+  type OptimizationView,
   type RecommendationView,
   type ResourceStatus,
 } from "@/lib/stormready-api";
 import { linksForCategory } from "@/lib/help/for-category";
 import type { OfficialLink } from "@/lib/help/content";
+import {
+  diffOptimizationResults,
+  type OptimizationConstraints,
+  type OptimizationDiff,
+  type OptimizationResult,
+  type TransportMode,
+} from "@/lib/optimization";
 
 const ALERT_UNAVAILABLE =
   "Alert service is not connected yet. StormReady will not invent warnings or mark this area all-clear.";
@@ -52,19 +65,67 @@ const ACTION_UNAVAILABLE =
 const ACTION_ERROR =
   "Recommended actions could not be loaded. StormReady will not invent a live checklist.";
 
+const DEMO_SCENARIOS: { value: DemoScenario; label: string }[] = [
+  { value: "quiet", label: "Quiet" },
+  { value: "watch", label: "Watch" },
+  { value: "warning", label: "Warning" },
+  { value: "evac", label: "Evac" },
+  { value: "flood", label: "Flood" },
+];
+
+type BudgetPreset = "0" | "50" | "100" | "250" | "500" | "custom";
+type TimePreset = "15" | "30" | "60" | "180" | "unconstrained";
+
 export function PlanView() {
   const { profile, hydrated } = useProfile();
   useCloudPlanSync();
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
+  const [ruleOpen, setRuleOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [prioritizeOpen, setPrioritizeOpen] = useState(false);
+  const [mode, setMode] = useState<"live" | "demo">("live");
+  const [scenario, setScenario] = useState<DemoScenario>("quiet");
   const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
+  const [demoOptimization, setDemoOptimization] = useState<OptimizationView | null>(
+    null,
+  );
+  const [demoHazards, setDemoHazards] = useState<ReturnType<typeof hazardFixtureFor> | null>(
+    null,
+  );
   const [demoStatus, setDemoStatus] = useState<ResourceStatus>("idle");
+  const [sessionRecs, setSessionRecs] = useState<RecommendationView[] | null>(null);
+  const [sessionOptimization, setSessionOptimization] =
+    useState<OptimizationView | null>(null);
+  const [planDelta, setPlanDelta] = useState<OptimizationDiff | null>(null);
+  const [recalcStatus, setRecalcStatus] = useState<ResourceStatus>("idle");
+  const [budgetPreset, setBudgetPreset] = useState<BudgetPreset>("100");
+  const [customBudget, setCustomBudget] = useState("75");
+  const [timePreset, setTimePreset] = useState<TimePreset>("unconstrained");
+  const [transport, setTransport] = useState<Exclude<TransportMode, "unknown">>("car");
 
   const householdBudget = profile.household?.budgetClass ?? "unknown";
+  const isDemo = mode === "demo";
+  const alerts = isDemo ? demoHazards : plan.alerts;
+  const alertsStatus: ResourceStatus = isDemo
+    ? demoStatus === "idle"
+      ? "loading"
+      : demoStatus
+    : plan.alertsStatus;
+  const baseRecs = isDemo ? (demoRecs ?? []) : plan.recommendations;
+  const recommendations = sessionRecs ?? baseRecs;
+  const optimization = sessionOptimization ?? (isDemo ? demoOptimization : plan.optimization);
+  const recsStatus: ResourceStatus = isDemo
+    ? demoStatus === "idle"
+      ? "loading"
+      : demoStatus
+    : plan.recommendationsStatus;
+
   const primaryAlert = useMemo(
-    () => pickPrimaryAlert(plan.alerts?.hazards ?? []),
-    [plan.alerts],
+    () => pickPrimaryAlert(alerts?.hazards ?? []),
+    [alerts],
   );
+  const topAction = recommendations[0] ?? null;
 
   if (!hydrated) {
     return (
@@ -97,15 +158,98 @@ export function PlanView() {
     );
   }
 
-  const arranged = arrangePlanActions(plan.recommendations, householdBudget);
-  const topAction = arranged[0]?.items[0] ?? plan.recommendations[0] ?? null;
   const lastUpdated =
-    plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
+    alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
+
+  async function applyDemo(nextScenario: DemoScenario) {
+    setDemoStatus("loading");
+    setSessionRecs(null);
+    setSessionOptimization(null);
+    setPlanDelta(null);
+    const result = await fetchTampaDemo(nextScenario);
+    if (result.ok) {
+      setDemoRecs(result.data.recommendations.slice(0, 5));
+      setDemoOptimization(result.data.optimization);
+      setDemoHazards(hazardFixtureFor(nextScenario));
+      setDemoStatus("ready");
+      return;
+    }
+    setDemoRecs([]);
+    setDemoOptimization(null);
+    setDemoHazards(null);
+    setDemoStatus(result.reason);
+  }
+
+  async function recalculate() {
+    const constraints = overlayConstraints(budgetPreset, customBudget, timePreset, transport);
+    const liveInput = {
+      home: profile.home,
+      household: profile.household,
+      hazards: plan.alerts,
+      hazardSource:
+        plan.alertsStatus === "ready"
+          ? ("live" as const)
+          : ("unavailable" as const),
+      constraints,
+    };
+    const input = isDemo
+      ? { ...tampaDemoInput(scenario), constraints }
+      : liveInput;
+
+    if (!isDemo && plan.alertsStatus !== "ready") {
+      setRecalcStatus("unavailable");
+      return;
+    }
+
+    setRecalcStatus("loading");
+    const previous = optimizationAsResult(optimization);
+    const result = await fetchRecommendations(input);
+    if (!result.ok) {
+      setRecalcStatus(result.reason);
+      return;
+    }
+    setSessionRecs(result.data.recommendations.slice(0, 5));
+    setSessionOptimization(result.data.optimization);
+    const next = optimizationAsResult(result.data.optimization);
+    if (previous && next) {
+      setPlanDelta(diffOptimizationResults(previous, next));
+    } else {
+      setPlanDelta(null);
+    }
+    setRecalcStatus("ready");
+    setPrioritizeOpen(false);
+  }
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
       <Header title="Your plan" />
       <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
+        <ModeToggle
+          mode={mode}
+          scenario={scenario}
+          onLive={() => {
+            setMode("live");
+            setSessionRecs(null);
+            setSessionOptimization(null);
+            setPlanDelta(null);
+          }}
+          onDemo={async (next) => {
+            setMode("demo");
+            setScenario(next);
+            await applyDemo(next);
+          }}
+        />
+
+        {isDemo ? (
+          <p
+            role="status"
+            className="rounded-2xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs leading-relaxed text-foreground"
+          >
+            DEMO — Tampa fixture, not live NWS. This is not official alerts for
+            your home.
+          </p>
+        ) : null}
+
         <section>
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
             Home summary
@@ -114,16 +258,15 @@ export function PlanView() {
             {formatLocation(profile.home)}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Current alert: {summarizeAlert(plan, primaryAlert)}
+            Current alert: {summarizeAlert(alertsStatus, alerts, primaryAlert)}
           </p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
             Top action:{" "}
-            {plan.recommendationsStatus === "unavailable" ||
-            plan.recommendationsStatus === "error"
+            {recsStatus === "unavailable" || recsStatus === "error"
               ? "Unavailable"
               : topAction
                 ? topAction.title
-                : plan.recommendationsStatus === "loading"
+                : recsStatus === "loading"
                   ? "Checking…"
                   : "None confirmed"}
           </p>
@@ -142,107 +285,133 @@ export function PlanView() {
           snapshot={{
             home: profile.home,
             household: profile.household,
-            hazards: plan.alerts,
-            recommendations: plan.recommendations,
+            hazards: alerts ?? null,
+            recommendations,
           }}
           returnTo="/plan"
         />
 
-        <QueryState
-          status={plan.alertsStatus}
-          title="Official alerts"
-          loadingLabel="Looking up products for your location."
-          errorMessage={ALERT_ERROR}
-          unavailableMessage={ALERT_UNAVAILABLE}
-        />
-        {plan.alertsStatus === "ready" ? (
+        {!isDemo ? (
+          <QueryState
+            status={plan.alertsStatus}
+            title="Official alerts"
+            loadingLabel="Looking up products for your location."
+            errorMessage={ALERT_ERROR}
+            unavailableMessage={ALERT_UNAVAILABLE}
+          />
+        ) : null}
+        {alertsStatus === "ready" ? (
           <AlertCard
             alert={primaryAlert}
-            source={plan.alerts?.provenance}
-            observedAt={plan.alerts?.observedAt ?? null}
-            allClear={plan.alerts?.allClear ?? "unknown"}
+            source={alerts?.provenance}
+            observedAt={alerts?.observedAt ?? null}
+            allClear={alerts?.allClear ?? "unknown"}
             locationLabel={
-              plan.alerts && isKnown(plan.alerts.locationLabel)
-                ? plan.alerts.locationLabel
+              alerts && isKnown(alerts.locationLabel)
+                ? alerts.locationLabel
                 : formatLocation(profile.home)
             }
           />
         ) : null}
 
         <ConditionsRow
-          status={plan.alertsStatus}
-          hazards={plan.alerts?.hazards ?? []}
-          allClear={plan.alerts?.allClear ?? "unknown"}
+          status={alertsStatus}
+          hazards={alerts?.hazards ?? []}
+          allClear={alerts?.allClear ?? "unknown"}
         />
+
+        {recsStatus === "ready" && topAction ? (
+          <TopPriorityCard
+            action={topAction}
+            ruleOpen={ruleOpen}
+            onToggleRule={() => setRuleOpen((open) => !open)}
+            onWhy={() => setWhy(topAction)}
+          />
+        ) : null}
+
+        <div className="flex flex-col gap-2">
+          <Button variant="secondary" onClick={() => setPrioritizeOpen(true)}>
+            Help Me Prioritize
+          </Button>
+          {planDelta ? (
+            <p
+              role="status"
+              className="rounded-2xl border border-accent/30 bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-foreground"
+            >
+              <span className="font-semibold">PLAN UPDATED.</span> {planDelta.summary}
+            </p>
+          ) : null}
+        </div>
+
+        {optimization && recsStatus === "ready" ? (
+          <WhyThisPlan optimization={optimization} onDetails={() => setDetailsOpen(true)} />
+        ) : null}
 
         <section>
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
             Actions
           </p>
-          {plan.recommendationsStatus === "ready" &&
-          plan.recommendations.length > 0 ? (
+          {recsStatus === "ready" && recommendations.length > 0 ? (
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              Grouped by when to act. Ranked no-cost first
-              {isKnown(householdBudget)
-                ? `, then what fits a ${formatCostClass(householdBudget).toLowerCase()} budget`
-                : ""}
-              . Badges are cost classes, not prices.
+              Grouped by when to act. Order comes from the optimizer (official
+              actions first). Cost badges are classes, not prices. Utility is
+              not a safety score.
             </p>
           ) : null}
-          {plan.recommendationsStatus === "unavailable" &&
+          {!isDemo &&
+          plan.recommendationsStatus === "unavailable" &&
           demoStatus === "idle" ? (
             <div className="mt-2 space-y-3">
               <UnavailableNote title="Recommended actions">
                 {ACTION_UNAVAILABLE}
               </UnavailableNote>
-              <TampaDemoButton
-                busy={false}
-                onClick={() => loadTampaDemo(setDemoRecs, setDemoStatus)}
-              />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setMode("demo");
+                  void applyDemo("quiet");
+                }}
+              >
+                View Tampa quiet demo
+              </Button>
             </div>
-          ) : plan.recommendationsStatus === "error" && demoStatus === "idle" ? (
+          ) : !isDemo &&
+            plan.recommendationsStatus === "error" &&
+            demoStatus === "idle" ? (
             <div className="mt-2 space-y-3">
               <ErrorNote title="Recommended actions">{ACTION_ERROR}</ErrorNote>
-              <TampaDemoButton
-                busy={false}
-                onClick={() => loadTampaDemo(setDemoRecs, setDemoStatus)}
-              />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setMode("demo");
+                  void applyDemo("quiet");
+                }}
+              >
+                View Tampa quiet demo
+              </Button>
             </div>
-          ) : demoStatus === "loading" ? (
+          ) : recsStatus === "loading" ? (
             <div className="mt-2">
               <LoadingCard
-                title="Tampa quiet demo"
-                label="Loading Tampa demo…"
+                title={isDemo ? "Tampa demo" : "Recommended actions"}
+                label={isDemo ? "Loading Tampa demo…" : "Loading actions…"}
               />
             </div>
-          ) : demoStatus === "ready" && demoRecs && demoRecs.length > 0 ? (
-            <div className="mt-2 space-y-3">
-              <p className="text-xs text-muted">
-                Tampa quiet-weather demo — not official alerts for your home.
-              </p>
-              <ActionGroups
-                actions={demoRecs}
-                budgetClass={householdBudget}
-                onWhy={setWhy}
-              />
-            </div>
-          ) : demoStatus === "error" ||
-            (demoStatus === "ready" && demoRecs?.length === 0) ||
-            demoStatus === "unavailable" ? (
+          ) : recsStatus === "error" || recsStatus === "unavailable" ? (
             <div className="mt-2">
               <QueryState
-                status={demoStatus === "ready" ? "unavailable" : demoStatus}
-                title="Tampa demo unavailable"
-                loadingLabel="Loading Tampa demo…"
-                errorMessage="The Tampa demo could not be loaded. StormReady will not invent a checklist."
-                unavailableMessage="GET /api/recommendations?fixture=tampa is not on this branch yet."
+                status={recsStatus}
+                title={isDemo ? "Tampa demo unavailable" : "Recommended actions"}
+                loadingLabel="Loading…"
+                errorMessage="The plan could not be loaded. StormReady will not invent a checklist."
+                unavailableMessage={
+                  isDemo
+                    ? "GET /api/recommendations?fixture=tampa is not on this branch yet."
+                    : ACTION_UNAVAILABLE
+                }
               />
             </div>
-          ) : plan.recommendationsStatus === "loading" ? (
-            <div className="mt-2">
-              <LoadingCard title="Recommended actions" label="Loading actions…" />
-            </div>
-          ) : plan.recommendations.length === 0 ? (
+          ) : recommendations.length === 0 ? (
             <Card className="mt-2" title="No actions returned">
               The plan service responded without recommended actions. That is
               not a fabricated checklist.
@@ -250,7 +419,7 @@ export function PlanView() {
           ) : (
             <div className="mt-2">
               <ActionGroups
-                actions={plan.recommendations}
+                actions={recommendations}
                 budgetClass={householdBudget}
                 onWhy={setWhy}
               />
@@ -273,11 +442,323 @@ export function PlanView() {
             {!isKnown(why.rationale) && !why.body ? (
               <p>No additional explanation was provided by the plan service.</p>
             ) : null}
+            {typeof why.utilityScore === "number" ? (
+              <p className="mt-3 text-xs">
+                Preparedness utility {why.utilityScore.toFixed(2)} — ranking
+                weight only, not a safety score.
+              </p>
+            ) : null}
           </>
         ) : null}
       </Modal>
+
+      <Modal
+        open={detailsOpen}
+        title="Optimization details"
+        onClose={() => setDetailsOpen(false)}
+      >
+        {optimization ? (
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            <p>
+              Solver: {optimization.solver}. Objective: maximize preparedness
+              utility (not a safety percentage).
+            </p>
+            <p>
+              Selected: {optimization.selectedIds.join(", ") || "none"}
+            </p>
+            <p>
+              Hard constraints:{" "}
+              {optimization.hardConstraintIds.join(", ") || "none"}
+            </p>
+            <ul className="space-y-2">
+              {optimization.candidates.map((candidate) => (
+                <li key={candidate.id}>
+                  <span className="font-medium text-foreground">{candidate.title}</span>
+                  <span className="block text-xs">
+                    {candidate.ruleId} · {candidate.hardConstraint ? "hard" : "soft"} ·{" "}
+                    {candidate.selected ? "selected" : "not selected"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p>No optimizer output for this plan.</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={prioritizeOpen}
+        title="Help Me Prioritize"
+        onClose={() => setPrioritizeOpen(false)}
+      >
+        <p className="mb-3 text-xs">
+          Session only — does not change your saved profile or require Auth0.
+        </p>
+        <div className="max-h-[55vh] space-y-4 overflow-y-auto">
+          <ChoiceGroup
+            legend="Budget (planning $)"
+            value={budgetPreset}
+            options={[
+              { value: "0", label: "$0" },
+              { value: "50", label: "$50" },
+              { value: "100", label: "$100" },
+              { value: "250", label: "$250" },
+              { value: "500", label: "$500+" },
+              { value: "custom", label: "Custom" },
+            ]}
+            onChange={setBudgetPreset}
+          />
+          {budgetPreset === "custom" ? (
+            <label className="block text-sm">
+              Custom planning dollars
+              <input
+                type="number"
+                min={0}
+                value={customBudget}
+                onChange={(event) => setCustomBudget(event.target.value)}
+                className="mt-1 h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
+              />
+            </label>
+          ) : null}
+          <ChoiceGroup
+            legend="Time"
+            value={timePreset}
+            options={[
+              { value: "15", label: "15 min" },
+              { value: "30", label: "30 min" },
+              { value: "60", label: "60 min" },
+              { value: "180", label: "3 hours" },
+              { value: "unconstrained", label: "Unconstrained" },
+            ]}
+            onChange={setTimePreset}
+          />
+          <ChoiceGroup
+            legend="Transport"
+            value={transport}
+            options={[
+              { value: "car", label: "Car" },
+              { value: "limited", label: "Limited" },
+              { value: "none", label: "No car" },
+            ]}
+            onChange={setTransport}
+          />
+        </div>
+        {recalcStatus === "unavailable" ? (
+          <p className="mt-3 text-xs text-danger">
+            Live alerts are unavailable, so StormReady will not invent a
+            recalculated plan. Switch to Demo or wait for NWS.
+          </p>
+        ) : null}
+        <div className="mt-4">
+          <Button onClick={() => void recalculate()} disabled={recalcStatus === "loading"}>
+            {recalcStatus === "loading" ? (
+              <Spinner label="Recalculating…" />
+            ) : (
+              "Recalculate plan"
+            )}
+          </Button>
+        </div>
+      </Modal>
     </main>
   );
+}
+
+function ModeToggle({
+  mode,
+  scenario,
+  onLive,
+  onDemo,
+}: {
+  mode: "live" | "demo";
+  scenario: DemoScenario;
+  onLive: () => void;
+  onDemo: (scenario: DemoScenario) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          aria-pressed={mode === "live"}
+          onClick={onLive}
+          className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
+            mode === "live"
+              ? "border-accent-strong bg-accent-strong text-white"
+              : "border-border bg-white text-foreground"
+          }`}
+        >
+          LIVE
+        </button>
+        <button
+          type="button"
+          aria-pressed={mode === "demo"}
+          onClick={() => onDemo(scenario)}
+          className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
+            mode === "demo"
+              ? "border-accent-strong bg-accent-strong text-white"
+              : "border-border bg-white text-foreground"
+          }`}
+        >
+          DEMO
+        </button>
+      </div>
+      {mode === "demo" ? (
+        <div className="flex flex-wrap gap-1.5">
+          {DEMO_SCENARIOS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onDemo(option.value)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                scenario === option.value
+                  ? "bg-accent-strong text-white"
+                  : "bg-surface-elevated text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted">Current NWS path for your saved location.</p>
+      )}
+    </div>
+  );
+}
+
+function TopPriorityCard({
+  action,
+  ruleOpen,
+  onToggleRule,
+  onWhy,
+}: {
+  action: RecommendationView;
+  ruleOpen: boolean;
+  onToggleRule: () => void;
+  onWhy: () => void;
+}) {
+  const cost = asBudgetClass(action.costClass);
+  return (
+    <Card eyebrow="Your Top Priority" title={action.title}>
+      <p className="text-foreground">{shortReason(action.rationale, action.body)}</p>
+      <p className="mt-2 text-xs">
+        Source: {sourceLabel(action.provenance)}
+        {action.official ? " · Official product" : ""}
+      </p>
+      <p className="mt-1 text-xs">
+        {cost ? `Cost class: ${formatCostClass(cost)}` : "Cost class: not listed"}
+        {typeof action.estimatedTimeMinutes === "number"
+          ? ` · About ${action.estimatedTimeMinutes} planning minutes`
+          : ""}
+      </p>
+      <p className="mt-1 text-xs">
+        Utility is a ranking weight for this checklist, not a safety score.
+      </p>
+      <div className="mt-3 flex gap-3">
+        <button
+          type="button"
+          onClick={onWhy}
+          className="text-sm font-semibold text-accent-strong"
+        >
+          Why?
+        </button>
+        <button
+          type="button"
+          onClick={onToggleRule}
+          className="text-sm font-semibold text-accent-strong"
+        >
+          {ruleOpen ? "Hide rule id" : "Show rule id"}
+        </button>
+      </div>
+      {ruleOpen && isKnown(action.ruleId) ? (
+        <p className="mt-2 font-mono text-xs text-foreground">{action.ruleId}</p>
+      ) : null}
+    </Card>
+  );
+}
+
+function WhyThisPlan({
+  optimization,
+  onDetails,
+}: {
+  optimization: OptimizationView;
+  onDetails: () => void;
+}) {
+  const used = optimization.constraintsUsed;
+  return (
+    <Card eyebrow="Why this plan?" title="Constraints used">
+      <p>
+        Budget: {used.budgetDollars === null ? "unconstrained" : `$${used.budgetDollars} planning`}
+        {" · "}
+        Time:{" "}
+        {used.availableTimeMinutes === null
+          ? "unconstrained"
+          : `${used.availableTimeMinutes} min`}
+        {" · "}
+        Transport: {used.transport}
+      </p>
+      <p className="mt-2">
+        {optimization.hardCount} official/hard · {optimization.discretionaryCount}{" "}
+        discretionary · ${optimization.planningCostDollars} planning ·{" "}
+        {optimization.planningMinutes} min
+      </p>
+      <p className="mt-2 text-xs">
+        Planning dollars are assumptions, not contractor prices. Preparedness
+        utility is not a safety or survival score.
+      </p>
+      <button
+        type="button"
+        onClick={onDetails}
+        className="mt-3 text-sm font-semibold text-accent-strong"
+      >
+        View optimization details
+      </button>
+    </Card>
+  );
+}
+
+function overlayConstraints(
+  budgetPreset: BudgetPreset,
+  customBudget: string,
+  timePreset: TimePreset,
+  transport: Exclude<TransportMode, "unknown">,
+): OptimizationConstraints {
+  const budgetDollars =
+    budgetPreset === "custom"
+      ? Math.max(0, Number(customBudget) || 0)
+      : Number(budgetPreset);
+  return {
+    budgetDollars,
+    availableTimeMinutes:
+      timePreset === "unconstrained" ? null : Number(timePreset),
+    transport,
+  };
+}
+
+function optimizationAsResult(
+  view: OptimizationView | null,
+): OptimizationResult | null {
+  if (!view) return null;
+  return {
+    solver: "knapsack_dp",
+    objective: "maximize_preparedness_utility",
+    selected: [],
+    selectedIds: view.selectedIds,
+    rejected: view.rejected.map((item) => ({
+      id: item.id,
+      ruleId: item.ruleId,
+      reasons: item.reasons as OptimizationResult["rejected"][number]["reasons"],
+    })),
+    candidates: view.candidates,
+    hardConstraintIds: view.hardConstraintIds,
+    constraintsUsed: view.constraintsUsed,
+    planningCostDollars: view.planningCostDollars,
+    planningMinutes: view.planningMinutes,
+    hardCount: view.hardCount,
+    discretionaryCount: view.discretionaryCount,
+    notes: view.notes,
+  };
 }
 
 function ActionGroups({
@@ -323,35 +804,6 @@ function ActionGroups({
       ))}
     </div>
   );
-}
-
-function TampaDemoButton({
-  busy,
-  onClick,
-}: {
-  busy: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <Button variant="secondary" disabled={busy} onClick={onClick}>
-      {busy ? <Spinner label="Loading Tampa demo…" /> : "View Tampa quiet demo"}
-    </Button>
-  );
-}
-
-async function loadTampaDemo(
-  setDemoRecs: (recs: RecommendationView[] | null) => void,
-  setDemoStatus: (status: ResourceStatus) => void,
-) {
-  setDemoStatus("loading");
-  const result = await fetchTampaDemo("quiet");
-  if (result.ok) {
-    setDemoRecs(result.data.slice(0, 5));
-    setDemoStatus("ready");
-    return;
-  }
-  setDemoRecs([]);
-  setDemoStatus(result.reason);
 }
 
 function AlertCard({
@@ -499,8 +951,12 @@ function ActionCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
-            Budget rank {rank}
+            {action.hardConstraint || action.official ? "Hard constraint" : "Optimizer"}{" "}
+            {rank}
             {cost ? ` · ${formatCostClass(cost)}` : ""}
+            {typeof action.estimatedTimeMinutes === "number"
+              ? ` · ${action.estimatedTimeMinutes} min`
+              : ""}
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground">
             {action.title}
@@ -513,6 +969,7 @@ function ActionCard({
                 {fit}
               </Badge>
             ) : null}
+            {action.official ? <Badge tone="critical">Official</Badge> : null}
           </div>
         </div>
         <button
@@ -591,15 +1048,14 @@ function pickPrimaryAlert(hazards: ActiveHazard[]): ActiveHazard | null {
 }
 
 function summarizeAlert(
-  plan: ReturnType<typeof usePlanData>,
+  status: ResourceStatus,
+  alerts: { allClear?: boolean | "unknown"; hazards?: ActiveHazard[] } | null | undefined,
   alert: ActiveHazard | null,
 ): string {
-  if (plan.alertsStatus === "unavailable" || plan.alertsStatus === "error") {
-    return "Unavailable";
-  }
-  if (plan.alertsStatus === "loading") return "Checking…";
+  if (status === "unavailable" || status === "error") return "Unavailable";
+  if (status === "loading") return "Checking…";
   if (alert) return alert.headline;
-  if (plan.alerts?.allClear === true) return "No active official products";
+  if (alerts?.allClear === true) return "No active official products";
   return "Not confirmed";
 }
 
@@ -609,4 +1065,3 @@ function sourceLabel(source?: string, fallback?: string): string {
   if (value === "user_reported") return "User reported";
   return "Source not confirmed";
 }
-

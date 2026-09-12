@@ -9,7 +9,7 @@ import {
   toPreparednessActions,
 } from "@/lib/optimization";
 import { ALL_RULES, RULE_COUNT } from "../rules";
-import type { RuleContext } from "../rules/types";
+import type { RuleContext, RuleMatch } from "../rules/types";
 import { toRankedRecommendationFromAction } from "./ranking";
 import {
   ENGINE_REASONS,

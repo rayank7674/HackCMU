@@ -56,7 +56,9 @@ describe("knapsack_dp solver", () => {
     );
     expect(result.solver).toBe("knapsack_dp");
     expect(result.objective).toBe("maximize_preparedness_utility");
-    expect(JSON.stringify(result)).not.toMatch(/safety|survival %|survival%/i);
+    expect(result.objective).not.toMatch(/safety|survival/i);
+    expect(result.notes.join(" ")).toMatch(/not a safety or survival/i);
+    expect(new Set(result.selectedIds).size).toBe(result.selectedIds.length);
   });
 
   it("selects different discretionary sets at $0 vs $100 vs $500", () => {

@@ -110,7 +110,12 @@ describe("recommend() knapsack integration", () => {
 
   it("hurricane, wildfire, winter, and all-clear plans differ", () => {
     const home = makeHome({ state: "FL" });
-    const household = makeHousehold({ budgetClass: "low" });
+    const household = makeHousehold({
+      budgetClass: "low",
+      canSelfEvacuate: true,
+      hasMobilityNeeds: false,
+      petCount: 0,
+    });
     const hurricane = recommend({
       home,
       household,

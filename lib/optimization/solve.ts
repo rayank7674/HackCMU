@@ -39,6 +39,9 @@ function compareHard(a: PreparednessAction, b: PreparednessAction): number {
   const priority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
   if (priority !== 0) return priority;
   if (a.official !== b.official) return a.official ? -1 : 1;
+  const aHousehold = a.ruleId.startsWith("household.") ? 1 : 0;
+  const bHousehold = b.ruleId.startsWith("household.") ? 1 : 0;
+  if (aHousehold !== bHousehold) return aHousehold - bHousehold;
   return a.ruleId.localeCompare(b.ruleId);
 }
 
@@ -64,6 +67,11 @@ function unpackState(state: string): { k: number; b: number; t: number } {
  * Exact 0/1 knapsack over remaining budget, time, and cardinality.
  * Unconstrained dimensions are treated as zero-weight.
  */
+type KnapsackCell = {
+  util: number;
+  picks: number[];
+};
+
 function knapsackSelect(
   items: PreparednessAction[],
   budgetCap: number | null,
@@ -88,11 +96,9 @@ function knapsackSelect(
   const timeOf = (item: PreparednessAction) =>
     timeLimited ? item.estimatedTimeMinutes : 0;
 
-  const util = new Map<string, number>();
-  const parent = new Map<string, { prev: string; item: number }>();
-  util.set(packState(0, 0, 0), 0);
-
   const ordered = [...items].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+  let states = new Map<string, KnapsackCell>();
+  states.set(packState(0, 0, 0), { util: 0, picks: [] });
 
   for (let i = 0; i < ordered.length; i++) {
     const item = ordered[i];
@@ -101,42 +107,31 @@ function knapsackSelect(
     const u = scaledUtility(item);
     if (c > B || tm > T) continue;
 
-    const snapshot = [...util.entries()];
-    for (const [state, current] of snapshot) {
+    const next = new Map(states);
+    for (const [state, cell] of states) {
       const { k, b, t } = unpackState(state);
       if (k >= K) continue;
       const nextB = b + c;
       const nextT = t + tm;
       if (nextB > B || nextT > T) continue;
-      const next = packState(k + 1, nextB, nextT);
-      const nextUtil = current + u;
-      const existing = util.get(next);
-      if (existing === undefined || nextUtil > existing) {
-        util.set(next, nextUtil);
-        parent.set(next, { prev: state, item: i });
+      const nextKey = packState(k + 1, nextB, nextT);
+      const nextUtil = cell.util + u;
+      const existing = next.get(nextKey);
+      if (existing === undefined || nextUtil > existing.util) {
+        next.set(nextKey, { util: nextUtil, picks: [...cell.picks, i] });
       }
     }
+    states = next;
   }
 
-  let bestState = packState(0, 0, 0);
-  let bestUtil = 0;
-  for (const [state, value] of util) {
-    if (value > bestUtil) {
-      bestUtil = value;
-      bestState = state;
-    }
+  let best: KnapsackCell = { util: 0, picks: [] };
+  for (const cell of states.values()) {
+    if (cell.util > best.util) best = cell;
   }
 
-  const picked: PreparednessAction[] = [];
-  let cursor: string | undefined = bestState;
-  while (cursor !== undefined && parent.has(cursor)) {
-    const step = parent.get(cursor);
-    if (!step) break;
-    picked.push(ordered[step.item]);
-    cursor = step.prev;
-  }
-
-  return picked.sort(compareUtility);
+  return [...new Set(best.picks)]
+    .map((index) => ordered[index])
+    .sort(compareUtility);
 }
 
 function actionFitsRemaining(
@@ -249,6 +244,7 @@ export function optimizePreparednessPlan(
   const selectedDisc: PreparednessAction[] = [];
 
   const consume = (action: PreparednessAction) => {
+    if (selectedDisc.some((item) => item.id === action.id)) return;
     selectedDisc.push(action);
     if (remainingBudget !== null) {
       remainingBudget = Math.max(0, remainingBudget - action.estimatedCostDollars);

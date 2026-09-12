@@ -8,7 +8,6 @@ import { LoadingCard } from "@/components/stormready/query-state";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import {
   SEVERITY_RANK,
-  arrangePlanActions,
   formatLocation,
   formatRelativeTime,
 } from "@/lib/stormready-format";
@@ -35,11 +34,7 @@ export function HomeView() {
   const alert = [...(plan.alerts?.hazards ?? [])].sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity],
   )[0];
-  const topAction =
-    arrangePlanActions(
-      plan.recommendations,
-      profile.household?.budgetClass ?? "unknown",
-    )[0]?.items[0] ?? plan.recommendations[0];
+  const topAction = plan.recommendations[0];
   const lastUpdated =
     plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
 
@@ -77,7 +72,7 @@ export function HomeView() {
               : plan.recommendationsStatus === "loading"
                 ? "Building your plan from official alerts and your home details."
                 : topAction
-                  ? "Open your plan for timing, budget rank, and why this matters."
+                  ? "Open your plan for timing, constraints, and why this matters."
                   : "No confirmed actions yet."}
         </Card>
       </div>
