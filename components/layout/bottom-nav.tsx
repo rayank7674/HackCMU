@@ -51,7 +51,7 @@ export function BottomNav() {
   return (
     <nav aria-label="Main" className="sr-nav">
       <p className="sr-nav-brand">StormReady</p>
-      <ul className="sr-nav-list grid-cols-6">
+      <ul className="sr-nav-list">
         {MAIN_NAV_TABS.map((tab) => {
           const active = tab.match(pathname);
           const Icon = tab.icon;
@@ -61,9 +61,7 @@ export function BottomNav() {
                 href={tab.href}
                 aria-label={tab.href === STRESS_TEST_HREF ? "Stress Test" : tab.label}
                 aria-current={active ? "page" : undefined}
-                className={`sr-nav-link text-center text-[10px] leading-tight ${
-                  active ? "is-active" : ""
-                }`}
+                className={`sr-nav-link ${active ? "is-active" : ""}`}
               >
                 <Icon active={active} />
                 {tab.label}

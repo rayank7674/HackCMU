@@ -36,10 +36,13 @@ describe("Stress Test nav and plan CTA", () => {
     expect(hrefs).toHaveLength(6);
   });
 
-  it("keeps six compact tabs so the bar can fit a 430px shell", () => {
+  it("keeps six compact tabs so the bar can fit a phone-width shell", () => {
     const nav = readUi("components/layout/bottom-nav.tsx");
-    expect(nav).toContain("grid-cols-6");
-    expect(nav).toContain("text-[10px]");
+    const css = readUi("app/globals.css");
+    expect(nav).toContain("sr-nav-list");
+    expect(nav).toContain("sr-nav-link");
+    expect(css).toContain("repeat(6, minmax(0, 1fr))");
+    expect(css).toMatch(/\.sr-nav-link[\s\S]*font-size:\s*10px/);
     expect(nav).toMatch(/aria-label=\{tab\.href === STRESS_TEST_HREF \? "Stress Test"/);
   });
 
