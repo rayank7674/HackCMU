@@ -46,6 +46,7 @@ assert.equal(home.dwellingType, UNKNOWN);
 assert.equal(home.roofAgeYears, UNKNOWN);
 assert.equal(home.location.latitude, UNKNOWN);
 assert.notEqual(home.hasBackupPower, false);
+assert.notEqual(home.roofAgeYears, 0);
 
 const savedHome = saveHomeProfile({
   ...home,
@@ -66,6 +67,7 @@ assert.equal(household.petCount, 0);
 assert.equal(household.hasPowerDependentMedicalDevice, UNKNOWN);
 assert.equal(household.budgetClass, UNKNOWN);
 assert.notEqual(household.petCount, UNKNOWN);
+assert.notEqual(household.budgetClass, "zero");
 
 saveHouseholdProfile(household);
 const loaded = loadProfile();

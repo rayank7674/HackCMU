@@ -6,6 +6,9 @@
  *
  *   import { loadProfile, saveHomeProfile, type HomeProfile } from "@/lib/stormready";
  *
+ * Geocode / NWS adapters (do not redefine these types there):
+ *   import { geocode, fetchNwsAlerts, applyGeocodeToHomeProfile } from "@/lib/integrations";
+ *
  * Equivalent splits:
  *   import type { HomeProfile } from "@/types";
  *   import { loadProfile } from "@/lib/profile-store";
@@ -59,3 +62,33 @@ export {
   saveHouseholdProfile,
   saveProfile,
 } from "./profile-store";
+
+export {
+  recommend,
+  evaluateRules,
+  explainHazardAvailability,
+  RULE_COUNT,
+  actionFitsBudget,
+  budgetLabel,
+  ENGINE_REASONS,
+} from "./recommendations";
+
+export type {
+  EngineResult,
+  EngineStatus,
+  HazardSource,
+  RankedRecommendation,
+  RecommendationInput,
+} from "./recommendations";
+
+export {
+  TAMPA_DEMO_HOME,
+  TAMPA_DEMO_HOUSEHOLD,
+  TAMPA_QUIET_WEATHER,
+  TAMPA_HURRICANE_WATCH,
+  TAMPA_EVACUATION_WARNING,
+  TAMPA_FLOOD_WARNING,
+  hazardFixtureFor,
+  tampaDemoInput,
+} from "./fixtures/tampa-demo";
+export type { DemoScenario } from "./fixtures/tampa-demo";
