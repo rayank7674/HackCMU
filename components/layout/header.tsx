@@ -11,7 +11,7 @@ export function Header({ title, backHref }: HeaderProps) {
       {backHref ? (
         <Link
           href={backHref}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-sm text-muted hover:bg-surface"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-sm text-muted hover:bg-surface-elevated"
           aria-label="Go back"
         >
           ←

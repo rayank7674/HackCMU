@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HackCMU Session",
+  title: "StormReady",
   description:
-    "Mobile-first real-time interactive web app skeleton for rooms, sessions, and live boards.",
+    "Your home. Your risk. Your plan. Anonymous household preparedness that stays on this device until you choose to save it.",
 };
 
 export const viewport: Viewport = {
@@ -24,7 +24,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#07080c",
+  themeColor: "#f4f7fb",
 };
 
 export default function RootLayout({

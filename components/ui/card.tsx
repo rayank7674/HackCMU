@@ -11,7 +11,7 @@ export function Card({ title, eyebrow, children, className }: CardProps) {
   return (
     <section
       className={[
-        "rounded-3xl border border-border bg-surface p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)]",
+        "rounded-3xl border border-border bg-surface p-4 shadow-[0_10px_30px_rgba(16,35,61,0.06)]",
         className,
       ]
         .filter(Boolean)
