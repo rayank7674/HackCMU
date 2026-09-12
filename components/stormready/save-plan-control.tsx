@@ -11,11 +11,14 @@ import type { StormReadySnapshot } from "@/lib/stormready";
 type SavePlanControlProps = {
   snapshot?: StormReadySnapshot;
   returnTo?: string;
+  /** Hide the extra caption under the button. */
+  quiet?: boolean;
 };
 
 export function SavePlanControl({
   snapshot,
   returnTo = "/home",
+  quiet = false,
 }: SavePlanControlProps) {
   const session = useAuthSession(returnTo);
   const [busy, setBusy] = useState(false);
@@ -34,10 +37,12 @@ export function SavePlanControl({
           <Button disabled variant="secondary">
             Save My Plan
           </Button>
-          <p className="mt-2 text-xs leading-relaxed text-muted">
-            Sign-in is not connected on this deployment. Your plan stays on
-            this device.
-          </p>
+          {quiet ? null : (
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              Sign-in is not connected on this deployment. Your plan stays on
+              this device.
+            </p>
+          )}
         </section>
       );
     }
@@ -53,10 +58,12 @@ export function SavePlanControl({
         >
           Save My Plan
         </Button>
-        <p className="mt-2 text-xs leading-relaxed text-muted">
-          You&apos;ll sign in, then FaultLine will save this household plan
-          to your account.
-        </p>
+        {quiet ? null : (
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            You&apos;ll sign in, then FaultLine will save this household plan
+            to your account.
+          </p>
+        )}
       </section>
     );
   }
@@ -84,7 +91,7 @@ export function SavePlanControl({
       </Button>
       {notice ? (
         <p className="mt-2 text-xs leading-relaxed text-muted">{notice}</p>
-      ) : (
+      ) : quiet ? null : (
         <p className="mt-2 text-xs leading-relaxed text-muted">
           Saves this household plan to your account.
         </p>

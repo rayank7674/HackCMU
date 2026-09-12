@@ -20,37 +20,59 @@ export default function ProfilePage() {
   const [confirmClear, setConfirmClear] = useState(false);
   useCloudPlanSync();
 
+  const hasPlan = Boolean(profile.home || profile.household);
+  const facts = hasPlan
+    ? [
+        formatDwelling(profile.home?.dwellingType ?? "unknown"),
+        ...householdSummary(profile.household)
+          .split(" · ")
+          .filter((line) => line && line !== "Household details not added yet."),
+      ]
+    : [];
+
   return (
     <main className="flex min-h-full flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         {!hydrated ? (
           <p className="text-sm text-muted">Loading this device…</p>
-        ) : profile.home || profile.household ? (
+        ) : hasPlan ? (
           <>
-            <Card eyebrow="This device" title={formatLocation(profile.home)}>
-              <p>{formatDwelling(profile.home?.dwellingType ?? "unknown")}</p>
-              <p className="mt-2">{householdSummary(profile.household)}</p>
-            </Card>
-            <div className="flex flex-wrap gap-2">
-              <Button href="/onboarding">Update home details</Button>
-              <SavePlanControl
-                snapshot={{
-                  home: profile.home,
-                  household: profile.household,
-                  hazards: null,
-                  recommendations: [],
-                }}
-                returnTo="/profile"
-              />
-            </div>
-            <details className="rounded-2xl border border-border bg-surface p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                Account
-              </summary>
-              <div className="mt-3">
-                <AuthControls returnTo="/profile" />
+            <section>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                This device
+              </p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                {formatLocation(profile.home)}
+              </h2>
+              {facts.length > 0 ? (
+                <ul className="mt-3 space-y-1 text-sm leading-relaxed text-muted">
+                  {facts.map((fact) => (
+                    <li key={fact}>{fact}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+
+            <Card title="Plan">
+              <div className="flex flex-col gap-2">
+                <Button href="/onboarding">Update home details</Button>
+                <SavePlanControl
+                  quiet
+                  snapshot={{
+                    home: profile.home,
+                    household: profile.household,
+                    hazards: null,
+                    recommendations: [],
+                  }}
+                  returnTo="/profile"
+                />
               </div>
-            </details>
+            </Card>
+
+            <Card title="Account">
+              <AuthControls returnTo="/profile" />
+            </Card>
+
             <Button
               variant="secondary"
               className="border-danger/40 text-danger hover:bg-danger/10"
@@ -69,9 +91,6 @@ export default function ProfilePage() {
             <AuthControls returnTo="/profile" />
           </>
         )}
-        <p className="text-xs leading-relaxed text-muted">
-          Onboarding stays anonymous. Log in only to save or restore a plan.
-        </p>
       </div>
 
       <Modal

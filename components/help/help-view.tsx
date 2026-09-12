@@ -54,7 +54,9 @@ export function HelpView() {
             {LOCAL_HELP_INTRO}
           </p>
           {local.missingNote ? (
-            <p className="mt-2 text-xs leading-relaxed text-muted">{local.missingNote}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              {local.missingNote}
+            </p>
           ) : null}
           {!local.placeKnown ? (
             <div className="mt-3">
@@ -75,7 +77,9 @@ export function HelpView() {
 
         <Card title="Official pages">
           {showRegionalNote ? (
-            <p className="mb-2 text-xs leading-relaxed">{LOCAL_HELP_EXAMPLE_NOTE}</p>
+            <p className="mb-2 text-xs leading-relaxed">
+              {LOCAL_HELP_EXAMPLE_NOTE}
+            </p>
           ) : null}
           <OfficialLinkList
             links={[...PREPAREDNESS_LINKS, ...LOCAL_HELP_LINKS, ...local.links]}
@@ -122,7 +126,9 @@ function LocalNumberRow({ item }: { item: LocalNumber }) {
                 ? "State"
                 : "National"}
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">{item.label}</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">
+            {item.label}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-muted">{item.note}</p>
           <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
             Source: {item.source}

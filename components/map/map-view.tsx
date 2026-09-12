@@ -28,7 +28,6 @@ import {
   PlaceTypeChip,
 } from "@/components/map/place-chips";
 import {
-  GOOGLE_HOURS_DISCLAIMER,
   hoursOutlookForMatch,
   type PinHoursMatch,
 } from "@/lib/map/google-hours";
@@ -233,15 +232,6 @@ export function MapView() {
           or guess open/closed.
         </UnavailableNote>
       ) : null}
-      {hoursStatus === "ready" && hoursConfigured ? (
-        <Card eyebrow="Not a model" title="Open or closed right now">
-          <p className="text-xs leading-relaxed text-muted">
-            {GOOGLE_HOURS_DISCLAIMER} Green = open now. Red = closed now. Gray
-            = no hours matched that pin.
-          </p>
-        </Card>
-      ) : null}
-
       {placesStatus === "ready" && pins.length > 0 ? (
         <Card eyebrow="Nearby" title="Access points on this map">
           <p className="mb-3 text-xs leading-relaxed text-muted">
