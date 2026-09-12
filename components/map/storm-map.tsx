@@ -50,7 +50,7 @@ function FitPins({
     const bounds = latLngBounds(
       points.map((point) => [point.latitude, point.longitude] as [number, number]),
     );
-    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 12 });
+    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 10 });
   }, [home, map, pins]);
   return null;
 }
@@ -94,13 +94,11 @@ export function StormMap({
             weight: 2,
           }}
         >
-          <Popup maxWidth={220} autoPan>
+          <Popup maxWidth={200} autoPan>
             <p className="text-sm font-semibold text-foreground">
               Approximate home location
             </p>
-            <p className="mt-1 text-xs text-muted">
-              Offset on purpose. This is not your exact address.
-            </p>
+            <p className="mt-1 text-xs text-muted">Not your exact address.</p>
           </Popup>
         </CircleMarker>
       ) : null}
@@ -116,9 +114,8 @@ export function StormMap({
             weight: 2,
           }}
         >
-          <Popup maxWidth={220} autoPan>
+          <Popup maxWidth={200} autoPan>
             <p className="text-sm font-semibold text-foreground">{pin.title}</p>
-            <p className="mt-1 text-xs text-muted">{pin.description}</p>
             <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
               Source: {pin.source}
             </p>
@@ -126,7 +123,7 @@ export function StormMap({
               href={pin.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block text-xs font-semibold text-accent-strong underline-offset-2 hover:underline"
+              className="mt-1 inline-block text-xs font-semibold text-accent-strong underline-offset-2 hover:underline"
             >
               Official page
             </a>
