@@ -41,6 +41,21 @@ function Recenter({ center, zoom }: { center: LatLon; zoom: number }) {
   return null;
 }
 
+function InvalidateMapSize() {
+  const map = useMap();
+  useEffect(() => {
+    const refresh = () => map.invalidateSize();
+    refresh();
+    window.addEventListener("resize", refresh);
+    window.addEventListener("orientationchange", refresh);
+    return () => {
+      window.removeEventListener("resize", refresh);
+      window.removeEventListener("orientationchange", refresh);
+    };
+  }, [map]);
+  return null;
+}
+
 function FitPins({
   home,
   pins,
@@ -86,6 +101,7 @@ export function StormMap({
       className="h-full w-full"
       attributionControl
     >
+      <InvalidateMapSize />
       {pins.length > 0 || fitToOverlay ? (
         <FitPins
           home={approximateHome}

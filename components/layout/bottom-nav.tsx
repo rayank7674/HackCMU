@@ -49,11 +49,9 @@ export function BottomNav() {
   }
 
   return (
-    <nav
-      aria-label="Main"
-      className="sticky bottom-0 z-20 border-t border-border bg-background/92 px-1 pt-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur"
-    >
-      <ul className="grid grid-cols-6">
+    <nav aria-label="Main" className="sr-nav">
+      <p className="sr-nav-brand">StormReady</p>
+      <ul className="sr-nav-list grid-cols-6">
         {MAIN_NAV_TABS.map((tab) => {
           const active = tab.match(pathname);
           const Icon = tab.icon;
@@ -63,8 +61,8 @@ export function BottomNav() {
                 href={tab.href}
                 aria-label={tab.href === STRESS_TEST_HREF ? "Stress Test" : tab.label}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-2xl px-0.5 py-2 text-center text-[10px] font-medium leading-tight ${
-                  active ? "text-accent-strong" : "text-muted"
+                className={`sr-nav-link text-center text-[10px] leading-tight ${
+                  active ? "is-active" : ""
                 }`}
               >
                 <Icon active={active} />

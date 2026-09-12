@@ -17,7 +17,7 @@ export default function HelpPage() {
   return (
     <main className="flex min-h-full flex-1 flex-col">
       <Header title="Help" />
-      <div className="flex flex-1 flex-col gap-3 px-5 pb-8 pt-4">
+      <div className="grid flex-1 grid-cols-1 content-start gap-3 px-5 pb-8 pt-4 sr-card-grid">
         <Card title="How StormReady works">
           <ol className="list-decimal space-y-2 pl-4 text-sm leading-relaxed text-muted">
             {HOW_STORMREADY_WORKS.map((step) => (

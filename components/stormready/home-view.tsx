@@ -50,7 +50,7 @@ export function HomeView() {
         Last updated {formatRelativeTime(lastUpdated)}
       </p>
 
-      <div className="mt-6 grid gap-3">
+      <div className="mt-6 grid gap-3 sr-card-grid">
         <Card eyebrow="Current alert" title={alertTitle(plan, alert?.headline)}>
           {plan.alertsStatus === "error"
             ? "Official alerts could not be loaded. StormReady will not invent a warning."
@@ -77,7 +77,7 @@ export function HomeView() {
         </Card>
       </div>
 
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3 sr-cta">
         <Button href="/plan">Open your plan</Button>
         <Button href="/onboarding" variant="secondary">
           Update home details
@@ -103,12 +103,12 @@ export function Welcome() {
         answers stay on this device.
       </p>
 
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3 sr-cta">
         <Button href="/onboarding">Get Started</Button>
         <AuthControls returnTo="/" />
       </div>
 
-      <div className="mt-10 grid gap-3">
+      <div className="mt-10 grid gap-3 sr-card-grid">
         <Card title="No account required">
           You can finish setup without signing in. Log in only when you want
           to save a plan across devices.
