@@ -120,6 +120,7 @@ export {
   resolveOptimizationConstraints,
   planningDollarsForHousehold,
   planningMinutesFor,
+  costUnitsForHousehold,
 } from "./optimization";
 
 export type {

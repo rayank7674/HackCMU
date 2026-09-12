@@ -9,8 +9,16 @@ import type {
 export type TransportMode = "car" | "limited" | "none" | "unknown";
 
 export type OptimizationConstraints = {
-  /** Planning dollars. `null` means no budget cap. */
-  budgetDollars: number | null;
+  /**
+   * Discrete cost-class units (0=zero, 1=low, 2=moderate, 3=flexible).
+   * `null` means no cost-class cap. Not a dollar price.
+   */
+  budgetUnits?: number | null;
+  /**
+   * Alias accepted on the API. Mapped onto `budgetUnits` (0–3 already
+   * units; larger values are legacy class aliases, not prices).
+   */
+  budgetDollars?: number | null;
   /** Planning minutes. `null` / unknown time means no time cap. */
   availableTimeMinutes: number | null;
   transport: TransportMode;
@@ -52,6 +60,9 @@ export type PreparednessAction = {
   /** Official actions OR evacuate category — always selected when eligible. */
   hardConstraint: boolean;
   costClass: BudgetClass;
+  /** Discrete cost-class units (0–3), not a price. */
+  estimatedCostUnits: number;
+  /** @deprecated alias of estimatedCostUnits */
   estimatedCostDollars: number;
   estimatedTimeMinutes: number;
   estimatedCostRange: { min: number; max: number };
@@ -82,6 +93,7 @@ export type CandidateSummary = {
   official: boolean;
   selected: boolean;
   utility: number;
+  estimatedCostUnits: number;
   estimatedCostDollars: number;
   estimatedTimeMinutes: number;
 };
@@ -95,11 +107,15 @@ export type OptimizationResult = {
   candidates: CandidateSummary[];
   hardConstraintIds: string[];
   constraintsUsed: OptimizationConstraints;
+  planningCostUnits: number;
+  /** @deprecated alias of planningCostUnits */
   planningCostDollars: number;
   planningMinutes: number;
   hardCount: number;
   discretionaryCount: number;
   notes: string[];
+  /** Set when fewer than MIN_SURFACED actions fit remaining capacity. */
+  shortfall: string | null;
 };
 
 export type OptimizationDiff = {
@@ -109,6 +125,7 @@ export type OptimizationDiff = {
   beforeIds: string[];
   afterIds: string[];
   constraintChanges: {
+    budgetUnits: { from: number | null; to: number | null };
     budgetDollars: { from: number | null; to: number | null };
     availableTimeMinutes: { from: number | null; to: number | null };
     transport: { from: TransportMode; to: TransportMode };

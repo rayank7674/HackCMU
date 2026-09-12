@@ -11,6 +11,10 @@ function action(
   overrides: Partial<PreparednessAction> & Pick<PreparednessAction, "id">,
 ): PreparednessAction {
   const id = overrides.id;
+  const units = overrides.estimatedCostUnits ?? overrides.estimatedCostDollars ?? 0;
+  const rest = { ...overrides };
+  delete rest.estimatedCostUnits;
+  delete rest.estimatedCostDollars;
   return {
     ruleId: overrides.ruleId ?? id,
     title: overrides.title ?? id,
@@ -23,7 +27,6 @@ function action(
     official: false,
     hardConstraint: false,
     costClass: "zero",
-    estimatedCostDollars: 0,
     estimatedTimeMinutes: 15,
     estimatedCostRange: { min: 0, max: 0 },
     costEstimateSource: "planning_assumption",
@@ -36,13 +39,16 @@ function action(
     generatorAcquisition: false,
     transportReadiness: false,
     constraintEffects: [],
-    ...overrides,
+    ...rest,
+    estimatedCostUnits: units,
+    estimatedCostDollars: units,
     id,
   };
 }
 
 const open: OptimizationConstraints = {
-  budgetDollars: 500,
+  budgetUnits: 3,
+  budgetDollars: 3,
   availableTimeMinutes: null,
   transport: "car",
 };
@@ -61,29 +67,33 @@ describe("knapsack_dp solver", () => {
     expect(new Set(result.selectedIds).size).toBe(result.selectedIds.length);
   });
 
-  it("selects different discretionary sets at $0 vs $100 vs $500", () => {
+  it("selects different discretionary sets at 0 vs 1 vs 3 cost units", () => {
     const candidates = [
       action({
         id: "free",
+        estimatedCostUnits: 0,
         estimatedCostDollars: 0,
         costClass: "zero",
         utility: 0.4,
       }),
       action({
         id: "cheap",
-        estimatedCostDollars: 50,
+        estimatedCostUnits: 1,
+        estimatedCostDollars: 1,
         costClass: "low",
         utility: 0.55,
       }),
       action({
         id: "mid",
-        estimatedCostDollars: 150,
+        estimatedCostUnits: 2,
+        estimatedCostDollars: 2,
         costClass: "moderate",
         utility: 0.7,
       }),
       action({
         id: "gen",
-        estimatedCostDollars: 400,
+        estimatedCostUnits: 3,
+        estimatedCostDollars: 3,
         costClass: "flexible",
         utility: 0.95,
         generatorAcquisition: true,
@@ -92,30 +102,31 @@ describe("knapsack_dp solver", () => {
 
     const at0 = optimizePreparednessPlan(
       candidates,
-      { ...open, budgetDollars: 0 },
+      { ...open, budgetUnits: 0 },
       { hasBackupPower: false },
     );
-    const at100 = optimizePreparednessPlan(
+    const at1 = optimizePreparednessPlan(
       candidates,
-      { ...open, budgetDollars: 100 },
+      { ...open, budgetUnits: 1 },
       { hasBackupPower: false },
     );
-    const at500 = optimizePreparednessPlan(
+    const at3 = optimizePreparednessPlan(
       candidates,
-      { ...open, budgetDollars: 500 },
+      { ...open, budgetUnits: 3 },
       { hasBackupPower: false },
     );
 
     expect(at0.selectedIds).toEqual(["free"]);
-    expect(at0.selected.every((item) => item.estimatedCostDollars === 0)).toBe(
+    expect(at0.selected.every((item) => item.estimatedCostUnits === 0)).toBe(
       true,
     );
-    expect(at100.selectedIds).toContain("cheap");
-    expect(at100.selectedIds).not.toContain("gen");
-    expect(at100.planningCostDollars).toBeLessThanOrEqual(100);
-    expect(at500.selectedIds).toContain("gen");
-    expect(at0.selectedIds).not.toEqual(at100.selectedIds);
-    expect(at100.selectedIds).not.toEqual(at500.selectedIds);
+    expect(at1.selectedIds).toContain("cheap");
+    expect(at1.selectedIds).not.toContain("mid");
+    expect(at1.selectedIds).not.toContain("gen");
+    expect(at1.planningCostUnits).toBeLessThanOrEqual(1);
+    expect(at3.selectedIds).toContain("mid");
+    expect(at0.selectedIds).not.toEqual(at1.selectedIds);
+    expect(at1.selectedIds).not.toEqual(at3.selectedIds);
   });
 
   it("does not add paid actions when budget is $0 even if under three", () => {
@@ -124,12 +135,12 @@ describe("knapsack_dp solver", () => {
         action({ id: "free", estimatedCostDollars: 0, utility: 0.2 }),
         action({
           id: "paid",
-          estimatedCostDollars: 50,
+          estimatedCostDollars: 1,
           costClass: "low",
           utility: 0.99,
         }),
       ],
-      { ...open, budgetDollars: 0 },
+      { ...open, budgetUnits: 0, budgetDollars: 0 },
       { hasBackupPower: false },
     );
     expect(result.selectedIds).toEqual(["free"]);
@@ -186,7 +197,7 @@ describe("knapsack_dp solver", () => {
         }),
         action({
           id: "paid.kit",
-          estimatedCostDollars: 50,
+          estimatedCostDollars: 1,
           estimatedTimeMinutes: 20,
           utility: 0.8,
         }),
@@ -328,7 +339,7 @@ describe("knapsack_dp solver", () => {
       action({
         id: "buy.gen",
         generatorAcquisition: true,
-        estimatedCostDollars: 400,
+        estimatedCostDollars: 3,
         costClass: "flexible",
         utility: 0.99,
       }),
@@ -362,7 +373,7 @@ describe("knapsack_dp solver", () => {
           hardConstraint: true,
           official: true,
           priority: "critical",
-          estimatedCostDollars: 400,
+          estimatedCostDollars: 3,
           estimatedTimeMinutes: 90,
           utility: 1,
         }),
@@ -371,7 +382,7 @@ describe("knapsack_dp solver", () => {
           hardConstraint: true,
           official: true,
           priority: "critical",
-          estimatedCostDollars: 400,
+          estimatedCostDollars: 3,
           estimatedTimeMinutes: 90,
           utility: 0.9,
           ruleId: "hard.b",
@@ -386,8 +397,8 @@ describe("knapsack_dp solver", () => {
 
   it("is deterministic for identical inputs", () => {
     const candidates = [
-      action({ id: "z", utility: 0.5, estimatedCostDollars: 50 }),
-      action({ id: "a", utility: 0.5, estimatedCostDollars: 50 }),
+      action({ id: "z", utility: 0.5, estimatedCostDollars: 1 }),
+      action({ id: "a", utility: 0.5, estimatedCostDollars: 1 }),
       action({ id: "m", utility: 0.4, estimatedCostDollars: 0 }),
     ];
     const constraints = { budgetDollars: 100, availableTimeMinutes: 60, transport: "car" as const };
@@ -476,7 +487,7 @@ describe("optimization diff", () => {
         action({ id: "free", estimatedCostDollars: 0, utility: 0.4 }),
         action({
           id: "gen",
-          estimatedCostDollars: 400,
+          estimatedCostDollars: 3,
           costClass: "flexible",
           utility: 0.95,
         }),
@@ -489,7 +500,7 @@ describe("optimization diff", () => {
         action({ id: "free", estimatedCostDollars: 0, utility: 0.4 }),
         action({
           id: "gen",
-          estimatedCostDollars: 400,
+          estimatedCostDollars: 3,
           costClass: "flexible",
           utility: 0.95,
         }),
@@ -499,11 +510,11 @@ describe("optimization diff", () => {
     );
     const diff = diffOptimizationResults(before, after);
     expect(diff.removedIds).toContain("gen");
-    expect(diff.constraintChanges.budgetDollars).toEqual({
-      from: 500,
-      to: 100,
+    expect(diff.constraintChanges.budgetUnits).toEqual({
+      from: 3,
+      to: 2,
     });
     expect(diff.constraintChanges.transport.to).toBe("none");
-    expect(diff.summary.toLowerCase()).toMatch(/budget|removed|transport/);
+    expect(diff.summary.toLowerCase()).toMatch(/cost class|removed|transport/);
   });
 });

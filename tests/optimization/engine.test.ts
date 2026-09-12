@@ -99,9 +99,9 @@ describe("recommend() knapsack integration", () => {
       ...base,
       constraints: { budgetDollars: 0, availableTimeMinutes: null, transport: "car" },
     });
-    expect(at500.optimization?.constraintsUsed.budgetDollars).toBe(500);
-    expect(at100.optimization?.constraintsUsed.budgetDollars).toBe(100);
-    expect(at0.optimization?.constraintsUsed.budgetDollars).toBe(0);
+    expect(at500.optimization?.constraintsUsed.budgetUnits).toBe(3);
+    expect(at100.optimization?.constraintsUsed.budgetUnits).toBe(2);
+    expect(at0.optimization?.constraintsUsed.budgetUnits).toBe(0);
     const ids500 = at500.recommendations.map((rec) => rec.id).join(",");
     const ids100 = at100.recommendations.map((rec) => rec.id).join(",");
     const ids0 = at0.recommendations.map((rec) => rec.id).join(",");
@@ -218,6 +218,7 @@ describe("recommend() knapsack integration", () => {
       },
     });
     expect(result.optimization?.constraintsUsed).toEqual({
+      budgetUnits: 0,
       budgetDollars: 0,
       availableTimeMinutes: 15,
       transport: "none",

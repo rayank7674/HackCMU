@@ -3,7 +3,7 @@ import type { HazardKind, HomeProfile, HouseholdProfile } from "@/types";
 import type { RuleContext, RuleMatch } from "@/lib/rules/types";
 import {
   COST_CLASS_RANGE,
-  planningDollarsForCostClass,
+  costUnitsForClass,
   planningMinutesFor,
 } from "./planning-values";
 import type { PreparednessAction } from "./types";
@@ -161,7 +161,8 @@ export function toPreparednessAction(
     official: match.official,
     hardConstraint: isHardConstraint(match),
     costClass,
-    estimatedCostDollars: planningDollarsForCostClass(costClass),
+    estimatedCostUnits: costUnitsForClass(costClass),
+    estimatedCostDollars: costUnitsForClass(costClass),
     estimatedTimeMinutes: planningMinutesFor(match.category, match.horizon),
     estimatedCostRange: COST_CLASS_RANGE[costClass],
     costEstimateSource: "planning_assumption",

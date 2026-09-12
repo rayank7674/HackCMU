@@ -2,23 +2,28 @@ import { isUnknown, type BudgetClass, type Unknownable } from "@/types";
 import type { RecommendationCategory, RecommendationHorizon } from "@/types";
 
 /**
- * Planning-dollar assumptions for the knapsack — NOT contractor prices.
- * Flexible actions are capped at $400 inside the solver.
+ * Discrete knapsack cost units from budget class — not contractor prices.
+ * zero=0, low=1, moderate=2, flexible=3.
  */
-export const PLANNING_DOLLARS_BY_COST_CLASS: Record<BudgetClass, number> = {
+export const COST_UNITS_BY_CLASS: Record<BudgetClass, number> = {
   zero: 0,
-  low: 50,
-  moderate: 150,
-  flexible: 400,
+  low: 1,
+  moderate: 2,
+  flexible: 3,
 };
 
-/** Household budget class → planning-dollar cap (flexible uses $500). */
-export const HOUSEHOLD_PLANNING_DOLLARS: Record<BudgetClass, number> = {
+/** Household budget class → unit cap (same ladder as action cost). */
+export const HOUSEHOLD_COST_UNITS: Record<BudgetClass, number> = {
   zero: 0,
-  low: 50,
-  moderate: 150,
-  flexible: 500,
+  low: 1,
+  moderate: 2,
+  flexible: 3,
 };
+
+/** @deprecated alias — cost units, not dollars */
+export const PLANNING_DOLLARS_BY_COST_CLASS = COST_UNITS_BY_CLASS;
+/** @deprecated alias — cost units, not dollars */
+export const HOUSEHOLD_PLANNING_DOLLARS = HOUSEHOLD_COST_UNITS;
 
 export const PLANNING_MINUTES_BEFORE_NEXT_EVENT = 90;
 export const PLANNING_MINUTES_LONG_TERM = 240;
@@ -36,30 +41,64 @@ const NOW_MINUTES_BY_CATEGORY: Record<RecommendationCategory, number> = {
   other: 20,
 };
 
+/** Unit span for the class — not a dollar range. */
 export const COST_CLASS_RANGE: Record<BudgetClass, { min: number; max: number }> =
   {
     zero: { min: 0, max: 0 },
-    low: { min: 0, max: 50 },
-    moderate: { min: 50, max: 150 },
-    flexible: { min: 150, max: 400 },
+    low: { min: 0, max: 1 },
+    moderate: { min: 1, max: 2 },
+    flexible: { min: 2, max: 3 },
   };
 
+export function costUnitsForClass(costClass: BudgetClass): number {
+  return COST_UNITS_BY_CLASS[costClass];
+}
+
+/** @deprecated use costUnitsForClass */
 export function planningDollarsForCostClass(costClass: BudgetClass): number {
-  return PLANNING_DOLLARS_BY_COST_CLASS[costClass];
+  return costUnitsForClass(costClass);
 }
 
 /**
- * Unknown household budget is not treated as flexible — same preference as
- * low/no-cost ranking ($50 planning cap).
+ * Unknown household budget is not treated as flexible — cap at low (1 unit).
  */
+export function costUnitsForHousehold(
+  budgetClass: Unknownable<BudgetClass>,
+): number {
+  if (isUnknown(budgetClass)) return HOUSEHOLD_COST_UNITS.low;
+  return HOUSEHOLD_COST_UNITS[budgetClass];
+}
+
+/** @deprecated use costUnitsForHousehold */
 export function planningDollarsForHousehold(
   budgetClass: Unknownable<BudgetClass>,
 ): number {
-  if (isUnknown(budgetClass)) return HOUSEHOLD_PLANNING_DOLLARS.low;
-  return HOUSEHOLD_PLANNING_DOLLARS[budgetClass];
+  return costUnitsForHousehold(budgetClass);
 }
 
-/** Horizon + category planning minutes (now is 10–25). */
+/**
+ * Map a session cap onto discrete units.
+ * Values 0–3 are already units. Larger numbers are treated as legacy
+ * planning-dollar aliases (0 / ≤50 / ≤150 / more), never as prices.
+ */
+export function toCostUnits(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value)) return null;
+  if (value <= 0) return 0;
+  if (value <= 3) return Math.floor(value);
+  if (value <= 50) return 1;
+  if (value <= 150) return 2;
+  return 3;
+}
+
+export function labelForCostUnits(units: number | null): string {
+  if (units === null) return "unconstrained";
+  if (units <= 0) return "no-cost";
+  if (units === 1) return "low-cost";
+  if (units === 2) return "moderate-cost";
+  return "higher-cost";
+}
+
 export function planningMinutesFor(
   category: RecommendationCategory,
   horizon: RecommendationHorizon,
@@ -70,4 +109,4 @@ export function planningMinutesFor(
 }
 
 export const PLANNING_ASSUMPTION_DISCLAIMER =
-  "Planning dollars and minutes are ranking assumptions, not contractor quotes or measured task times. Preparedness utility is not a safety or survival percentage.";
+  "Cost classes are discrete ranking units (no-cost / low / moderate / higher), not contractor prices. Preparedness utility is not a safety or survival percentage.";

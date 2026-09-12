@@ -49,7 +49,9 @@ import {
 import { linksForCategory } from "@/lib/help/for-category";
 import type { OfficialLink } from "@/lib/help/content";
 import {
+  COST_UNITS_BY_CLASS,
   diffOptimizationResults,
+  labelForCostUnits,
   type OptimizationConstraints,
   type OptimizationDiff,
   type OptimizationResult,
@@ -73,7 +75,7 @@ const DEMO_SCENARIOS: { value: DemoScenario; label: string }[] = [
   { value: "flood", label: "Flood" },
 ];
 
-type BudgetPreset = "0" | "50" | "100" | "250" | "500" | "custom";
+type BudgetPreset = "zero" | "low" | "moderate" | "flexible" | "unconstrained";
 type TimePreset = "15" | "30" | "60" | "180" | "unconstrained";
 
 export function PlanView() {
@@ -99,8 +101,7 @@ export function PlanView() {
     useState<OptimizationView | null>(null);
   const [planDelta, setPlanDelta] = useState<OptimizationDiff | null>(null);
   const [recalcStatus, setRecalcStatus] = useState<ResourceStatus>("idle");
-  const [budgetPreset, setBudgetPreset] = useState<BudgetPreset>("100");
-  const [customBudget, setCustomBudget] = useState("75");
+  const [budgetPreset, setBudgetPreset] = useState<BudgetPreset>("low");
   const [timePreset, setTimePreset] = useState<TimePreset>("unconstrained");
   const [transport, setTransport] = useState<Exclude<TransportMode, "unknown">>("car");
 
@@ -181,7 +182,7 @@ export function PlanView() {
   }
 
   async function recalculate() {
-    const constraints = overlayConstraints(budgetPreset, customBudget, timePreset, transport);
+    const constraints = overlayConstraints(budgetPreset, timePreset, transport);
     const liveInput = {
       home: profile.home,
       household: profile.household,
@@ -417,12 +418,15 @@ export function PlanView() {
               not a fabricated checklist.
             </Card>
           ) : (
-            <div className="mt-2">
+            <div className="mt-2 space-y-3">
               <ActionGroups
                 actions={recommendations}
                 budgetClass={householdBudget}
                 onWhy={setWhy}
               />
+              {optimization ? (
+                <LeftOutActions optimization={optimization} />
+              ) : null}
             </div>
           )}
         </section>
@@ -470,16 +474,29 @@ export function PlanView() {
               Hard constraints:{" "}
               {optimization.hardConstraintIds.join(", ") || "none"}
             </p>
-            <ul className="space-y-2">
-              {optimization.candidates.map((candidate) => (
-                <li key={candidate.id}>
-                  <span className="font-medium text-foreground">{candidate.title}</span>
-                  <span className="block text-xs">
-                    {candidate.ruleId} · {candidate.hardConstraint ? "hard" : "soft"} ·{" "}
-                    {candidate.selected ? "selected" : "not selected"}
-                  </span>
-                </li>
-              ))}
+            <p className="text-xs font-semibold text-foreground">Selected</p>
+            <ul className="space-y-1">
+              {optimization.candidates
+                .filter((candidate) => candidate.selected)
+                .map((candidate) => (
+                  <li key={candidate.id} className="text-xs">
+                    {candidate.ruleId}
+                    {candidate.hardConstraint ? " · hard" : ""}
+                  </li>
+                ))}
+            </ul>
+            <p className="text-xs font-semibold text-foreground">Left out</p>
+            <ul className="space-y-1">
+              {optimization.candidates
+                .filter((candidate) => !candidate.selected)
+                .map((candidate) => (
+                  <li key={candidate.id} className="text-xs">
+                    {candidate.ruleId}
+                    {leftOutReason(optimization, candidate.id)
+                      ? ` · ${leftOutReason(optimization, candidate.id)}`
+                      : ""}
+                  </li>
+                ))}
             </ul>
           </div>
         ) : (
@@ -497,30 +514,18 @@ export function PlanView() {
         </p>
         <div className="max-h-[55vh] space-y-4 overflow-y-auto">
           <ChoiceGroup
-            legend="Budget (planning $)"
+            legend="Budget class (not a price)"
+            hint="Discrete knapsack units: no-cost, low, moderate, or higher."
             value={budgetPreset}
             options={[
-              { value: "0", label: "$0" },
-              { value: "50", label: "$50" },
-              { value: "100", label: "$100" },
-              { value: "250", label: "$250" },
-              { value: "500", label: "$500+" },
-              { value: "custom", label: "Custom" },
+              { value: "zero", label: "No-cost" },
+              { value: "low", label: "Low" },
+              { value: "moderate", label: "Moderate" },
+              { value: "flexible", label: "Higher" },
+              { value: "unconstrained", label: "Unconstrained" },
             ]}
             onChange={setBudgetPreset}
           />
-          {budgetPreset === "custom" ? (
-            <label className="block text-sm">
-              Custom planning dollars
-              <input
-                type="number"
-                min={0}
-                value={customBudget}
-                onChange={(event) => setCustomBudget(event.target.value)}
-                className="mt-1 h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm"
-              />
-            </label>
-          ) : null}
           <ChoiceGroup
             legend="Time"
             value={timePreset}
@@ -686,10 +691,11 @@ function WhyThisPlan({
   onDetails: () => void;
 }) {
   const used = optimization.constraintsUsed;
+  const units = used.budgetUnits ?? used.budgetDollars ?? null;
   return (
     <Card eyebrow="Why this plan?" title="Constraints used">
       <p>
-        Budget: {used.budgetDollars === null ? "unconstrained" : `$${used.budgetDollars} planning`}
+        Cost class: {labelForCostUnits(units)}
         {" · "}
         Time:{" "}
         {used.availableTimeMinutes === null
@@ -700,12 +706,15 @@ function WhyThisPlan({
       </p>
       <p className="mt-2">
         {optimization.hardCount} official/hard · {optimization.discretionaryCount}{" "}
-        discretionary · ${optimization.planningCostDollars} planning ·{" "}
-        {optimization.planningMinutes} min
+        discretionary · {optimization.planningCostUnits ?? optimization.planningCostDollars}{" "}
+        cost units · {optimization.planningMinutes} min
       </p>
+      {optimization.shortfall ? (
+        <p className="mt-2 text-xs text-foreground">{optimization.shortfall}</p>
+      ) : null}
       <p className="mt-2 text-xs">
-        Planning dollars are assumptions, not contractor prices. Preparedness
-        utility is not a safety or survival score.
+        Cost classes are ranking units, not prices. Preparedness utility is not
+        a safety or survival score.
       </p>
       <button
         type="button"
@@ -720,26 +729,72 @@ function WhyThisPlan({
 
 function overlayConstraints(
   budgetPreset: BudgetPreset,
-  customBudget: string,
   timePreset: TimePreset,
   transport: Exclude<TransportMode, "unknown">,
 ): OptimizationConstraints {
-  const budgetDollars =
-    budgetPreset === "custom"
-      ? Math.max(0, Number(customBudget) || 0)
-      : Number(budgetPreset);
+  const budgetUnits =
+    budgetPreset === "unconstrained" ? null : COST_UNITS_BY_CLASS[budgetPreset];
   return {
-    budgetDollars,
+    budgetUnits,
+    budgetDollars: budgetUnits,
     availableTimeMinutes:
       timePreset === "unconstrained" ? null : Number(timePreset),
     transport,
   };
 }
 
+function leftOutReason(optimization: OptimizationView, id: string): string | null {
+  const rejected = optimization.rejected.find((item) => item.id === id);
+  if (!rejected || rejected.reasons.length === 0) return "Not in the 3–5 selected set";
+  return rejected.reasons.map(humanRejection).join("; ");
+}
+
+function humanRejection(reason: string): string {
+  switch (reason) {
+    case "over_budget":
+      return "Above this cost class";
+    case "over_time":
+      return "Needs more time than available";
+    case "excluded_transport":
+      return "Needs a car";
+    case "skipped_backup_power":
+      return "Backup power already on the profile";
+    case "over_surface_limit":
+      return "Plan already has 5 actions";
+    default:
+      return "Not in the 3–5 selected set";
+  }
+}
+
+function LeftOutActions({ optimization }: { optimization: OptimizationView }) {
+  const leftOut = optimization.candidates.filter((candidate) => !candidate.selected);
+  if (leftOut.length === 0) return null;
+  return (
+    <Card eyebrow="Not selected this round" title="Left-out actions">
+      <p className="mb-2 text-xs">
+        Matched rules that did not fit remaining cost-class, time, transport, or
+        the 3–5 action cap. Official / evacuate actions stay in the selected set.
+      </p>
+      <ul className="space-y-2">
+        {leftOut.map((candidate) => (
+          <li key={candidate.id} className="text-sm leading-snug text-foreground">
+            {candidate.title}
+            <span className="block text-xs text-muted">
+              {candidate.ruleId} · {leftOutReason(optimization, candidate.id)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function optimizationAsResult(
   view: OptimizationView | null,
 ): OptimizationResult | null {
   if (!view) return null;
+  const units =
+    view.constraintsUsed.budgetUnits ?? view.constraintsUsed.budgetDollars ?? null;
   return {
     solver: "knapsack_dp",
     objective: "maximize_preparedness_utility",
@@ -752,12 +807,18 @@ function optimizationAsResult(
     })),
     candidates: view.candidates,
     hardConstraintIds: view.hardConstraintIds,
-    constraintsUsed: view.constraintsUsed,
-    planningCostDollars: view.planningCostDollars,
+    constraintsUsed: {
+      ...view.constraintsUsed,
+      budgetUnits: units,
+      budgetDollars: units,
+    },
+    planningCostUnits: view.planningCostUnits ?? view.planningCostDollars,
+    planningCostDollars: view.planningCostUnits ?? view.planningCostDollars,
     planningMinutes: view.planningMinutes,
     hardCount: view.hardCount,
     discretionaryCount: view.discretionaryCount,
     notes: view.notes,
+    shortfall: view.shortfall,
   };
 }
 

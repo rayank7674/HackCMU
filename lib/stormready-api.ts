@@ -89,12 +89,14 @@ export type OptimizationView = {
   objective: "maximize_preparedness_utility";
   selectedIds: string[];
   hardConstraintIds: string[];
+  planningCostUnits: number;
   planningCostDollars: number;
   planningMinutes: number;
   hardCount: number;
   discretionaryCount: number;
   constraintsUsed: OptimizationConstraints;
   notes: string[];
+  shortfall: string | null;
   candidates: OptimizationResult["candidates"];
   rejected: { id: string; ruleId: string; reasons: string[] }[];
 };
@@ -553,23 +555,36 @@ function parseOptimization(value: unknown): OptimizationView | null {
   const hardConstraintIds = Array.isArray(value.hardConstraintIds)
     ? value.hardConstraintIds.filter((id): id is string => typeof id === "string")
     : [];
-  const constraintsUsed: OptimizationConstraints = isRecord(value.constraintsUsed)
+  const used = isRecord(value.constraintsUsed) ? value.constraintsUsed : null;
+  const unitCap =
+    used && typeof used.budgetUnits === "number"
+      ? used.budgetUnits
+      : used && typeof used.budgetDollars === "number"
+        ? used.budgetDollars
+        : null;
+  const constraintsUsed: OptimizationConstraints = used
     ? {
-        budgetDollars:
-          typeof value.constraintsUsed.budgetDollars === "number"
-            ? value.constraintsUsed.budgetDollars
-            : null,
+        budgetUnits: unitCap,
+        budgetDollars: unitCap,
         availableTimeMinutes:
-          typeof value.constraintsUsed.availableTimeMinutes === "number"
-            ? value.constraintsUsed.availableTimeMinutes
+          typeof used.availableTimeMinutes === "number"
+            ? used.availableTimeMinutes
             : null,
-        transport: readTransport(value.constraintsUsed.transport),
+        transport: readTransport(used.transport),
       }
     : {
+        budgetUnits: null,
         budgetDollars: null,
         availableTimeMinutes: null,
         transport: "unknown",
       };
+
+  const planningCostUnits =
+    typeof value.planningCostUnits === "number"
+      ? value.planningCostUnits
+      : typeof value.planningCostDollars === "number"
+        ? value.planningCostDollars
+        : 0;
 
   return {
     solver: "knapsack_dp",
@@ -579,10 +594,8 @@ function parseOptimization(value: unknown): OptimizationView | null {
         : "maximize_preparedness_utility",
     selectedIds,
     hardConstraintIds,
-    planningCostDollars:
-      typeof value.planningCostDollars === "number"
-        ? value.planningCostDollars
-        : 0,
+    planningCostUnits,
+    planningCostDollars: planningCostUnits,
     planningMinutes:
       typeof value.planningMinutes === "number" ? value.planningMinutes : 0,
     hardCount: typeof value.hardCount === "number" ? value.hardCount : 0,
@@ -594,6 +607,7 @@ function parseOptimization(value: unknown): OptimizationView | null {
     notes: Array.isArray(value.notes)
       ? value.notes.filter((item): item is string => typeof item === "string")
       : [],
+    shortfall: typeof value.shortfall === "string" ? value.shortfall : null,
     candidates: Array.isArray(value.candidates)
       ? value.candidates.flatMap((item) => {
           if (!isRecord(item) || typeof item.id !== "string") return [];
@@ -606,10 +620,18 @@ function parseOptimization(value: unknown): OptimizationView | null {
               official: item.official === true,
               selected: item.selected === true,
               utility: typeof item.utility === "number" ? item.utility : 0,
+              estimatedCostUnits:
+                typeof item.estimatedCostUnits === "number"
+                  ? item.estimatedCostUnits
+                  : typeof item.estimatedCostDollars === "number"
+                    ? item.estimatedCostDollars
+                    : 0,
               estimatedCostDollars:
                 typeof item.estimatedCostDollars === "number"
                   ? item.estimatedCostDollars
-                  : 0,
+                  : typeof item.estimatedCostUnits === "number"
+                    ? item.estimatedCostUnits
+                    : 0,
               estimatedTimeMinutes:
                 typeof item.estimatedTimeMinutes === "number"
                   ? item.estimatedTimeMinutes

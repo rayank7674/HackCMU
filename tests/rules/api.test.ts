@@ -40,6 +40,7 @@ describe("POST /api/recommendations", () => {
       }),
     );
     const body = await response.json();
+    expect(body.optimization.constraintsUsed.budgetUnits).toBe(0);
     expect(body.optimization.constraintsUsed.budgetDollars).toBe(0);
     expect(body.optimization.constraintsUsed.availableTimeMinutes).toBe(15);
     expect(body.optimization.constraintsUsed.transport).toBe("none");

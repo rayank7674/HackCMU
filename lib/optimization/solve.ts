@@ -1,6 +1,6 @@
 import { MAX_SURFACED, MIN_SURFACED } from "@/lib/recommendations/ranking";
 import type { RecommendationPriority } from "@/types";
-import { PLANNING_ASSUMPTION_DISCLAIMER } from "./planning-values";
+import { PLANNING_ASSUMPTION_DISCLAIMER, toCostUnits } from "./planning-values";
 import type {
   ConstraintEffect,
   OptimizationConstraints,
@@ -20,9 +20,24 @@ const PRIORITY_RANK: Record<RecommendationPriority, number> = {
 const UTIL_SCALE = 10_000;
 const TRANSPORT_READINESS_BOOST = 0.2;
 
+function costUnits(action: PreparednessAction): number {
+  return action.estimatedCostUnits ?? action.estimatedCostDollars;
+}
+
+function budgetCapOf(constraints: OptimizationConstraints): number | null {
+  return toCostUnits(
+    constraints.budgetUnits !== undefined && constraints.budgetUnits !== null
+      ? constraints.budgetUnits
+      : constraints.budgetDollars,
+  );
+}
+
 function cloneAction(action: PreparednessAction): PreparednessAction {
+  const units = costUnits(action);
   return {
     ...action,
+    estimatedCostUnits: units,
+    estimatedCostDollars: units,
     hazardKinds: [...action.hazardKinds],
     constraintEffects: [...action.constraintEffects],
     estimatedCostRange: { ...action.estimatedCostRange },
@@ -92,7 +107,7 @@ function knapsackSelect(
   const K = Math.max(0, maxItems);
 
   const costOf = (item: PreparednessAction) =>
-    budgetLimited ? item.estimatedCostDollars : 0;
+    budgetLimited ? costUnits(item) : 0;
   const timeOf = (item: PreparednessAction) =>
     timeLimited ? item.estimatedTimeMinutes : 0;
 
@@ -139,7 +154,7 @@ function actionFitsRemaining(
   leftoverBudget: number | null,
   leftoverTime: number | null,
 ): boolean {
-  if (leftoverBudget !== null && action.estimatedCostDollars > leftoverBudget) {
+  if (leftoverBudget !== null && costUnits(action) > leftoverBudget) {
     return false;
   }
   if (leftoverTime !== null && action.estimatedTimeMinutes > leftoverTime) {
@@ -206,7 +221,7 @@ export function optimizePreparednessPlan(
   }
 
   const hardCost = selectedHard.reduce(
-    (sum, action) => sum + action.estimatedCostDollars,
+    (sum, action) => sum + costUnits(action),
     0,
   );
   const hardTime = selectedHard.reduce(
@@ -214,10 +229,9 @@ export function optimizePreparednessPlan(
     0,
   );
 
+  const budgetCap = budgetCapOf(constraints);
   const leftoverBudget =
-    constraints.budgetDollars === null
-      ? null
-      : Math.max(0, constraints.budgetDollars - hardCost);
+    budgetCap === null ? null : Math.max(0, budgetCap - hardCost);
   const leftoverTime =
     constraints.availableTimeMinutes === null
       ? null
@@ -247,7 +261,7 @@ export function optimizePreparednessPlan(
     if (selectedDisc.some((item) => item.id === action.id)) return;
     selectedDisc.push(action);
     if (remainingBudget !== null) {
-      remainingBudget = Math.max(0, remainingBudget - action.estimatedCostDollars);
+      remainingBudget = Math.max(0, remainingBudget - costUnits(action));
     }
     if (remainingTime !== null) {
       remainingTime = Math.max(0, remainingTime - action.estimatedTimeMinutes);
@@ -259,7 +273,7 @@ export function optimizePreparednessPlan(
   for (const action of knapsackPicks) {
     if (hardKept.length + selectedDisc.length >= MAX_SURFACED) break;
     if (!actionFitsRemaining(action, remainingBudget, remainingTime)) {
-      if (remainingBudget !== null && action.estimatedCostDollars > remainingBudget) {
+      if (remainingBudget !== null && costUnits(action) > remainingBudget) {
         markRejected(action, "over_budget");
       }
       if (
@@ -289,10 +303,7 @@ export function optimizePreparednessPlan(
       if (!actionFitsRemaining(action, remainingBudget, remainingTime)) {
         continue;
       }
-      if (
-        remainingBudget === 0 &&
-        action.estimatedCostDollars > 0
-      ) {
+      if (remainingBudget === 0 && costUnits(action) > 0) {
         continue;
       }
       addEffect(action, "fill_to_minimum");
@@ -307,7 +318,7 @@ export function optimizePreparednessPlan(
     if (pickedIds.has(action.id)) continue;
     const reasons: RejectionReason[] = [];
     if (!actionFitsRemaining(action, leftoverBudget, leftoverTime)) {
-      if (leftoverBudget !== null && action.estimatedCostDollars > leftoverBudget) {
+      if (leftoverBudget !== null && costUnits(action) > leftoverBudget) {
         reasons.push("over_budget");
       }
       if (leftoverTime !== null && action.estimatedTimeMinutes > leftoverTime) {
@@ -329,6 +340,21 @@ export function optimizePreparednessPlan(
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 
+  const planningCostUnits = selected.reduce(
+    (sum, action) => sum + costUnits(action),
+    0,
+  );
+  const shortfall =
+    selected.length < MIN_SURFACED
+      ? `Only ${selected.length} action${selected.length === 1 ? "" : "s"} fit the remaining cost-class and time capacity. Official and evacuate actions are still included.`
+      : null;
+
+  const resolvedConstraints: OptimizationConstraints = {
+    ...constraints,
+    budgetUnits: budgetCap,
+    budgetDollars: budgetCap,
+  };
+
   return {
     solver: "knapsack_dp",
     objective: "maximize_preparedness_utility",
@@ -346,21 +372,24 @@ export function optimizePreparednessPlan(
         official: action.official,
         selected: pickedIds.has(action.id),
         utility: action.utility,
-        estimatedCostDollars: action.estimatedCostDollars,
+        estimatedCostUnits: costUnits(action),
+        estimatedCostDollars: costUnits(action),
         estimatedTimeMinutes: action.estimatedTimeMinutes,
       })),
     hardConstraintIds: hardKept.map((action) => action.id),
-    constraintsUsed: { ...constraints },
-    planningCostDollars: selected.reduce(
-      (sum, action) => sum + action.estimatedCostDollars,
-      0,
-    ),
+    constraintsUsed: resolvedConstraints,
+    planningCostUnits,
+    planningCostDollars: planningCostUnits,
     planningMinutes: selected.reduce(
       (sum, action) => sum + action.estimatedTimeMinutes,
       0,
     ),
     hardCount: hardKept.length,
     discretionaryCount: selected.filter((action) => !action.hardConstraint).length,
-    notes: [PLANNING_ASSUMPTION_DISCLAIMER],
+    notes: [
+      PLANNING_ASSUMPTION_DISCLAIMER,
+      ...(shortfall ? [shortfall] : []),
+    ],
+    shortfall,
   };
 }

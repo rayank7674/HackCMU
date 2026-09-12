@@ -1,3 +1,4 @@
+import { labelForCostUnits } from "./planning-values";
 import type { OptimizationDiff, OptimizationResult } from "./types";
 
 function summarize(diff: Omit<OptimizationDiff, "summary">): string {
@@ -8,15 +9,15 @@ function summarize(diff: Omit<OptimizationDiff, "summary">): string {
   if (diff.removedIds.length > 0) {
     bits.push(`Removed ${diff.removedIds.join(", ")}`);
   }
-  const budget = diff.constraintChanges.budgetDollars;
+  const budget = diff.constraintChanges.budgetUnits;
   if (budget.from !== budget.to) {
     bits.push(
-      `Budget ${formatCap(budget.from)} → ${formatCap(budget.to)}`,
+      `Cost class ${labelForCostUnits(budget.from)} → ${labelForCostUnits(budget.to)}`,
     );
   }
   const time = diff.constraintChanges.availableTimeMinutes;
   if (time.from !== time.to) {
-    bits.push(`Time ${formatCap(time.from, "min")} → ${formatCap(time.to, "min")}`);
+    bits.push(`Time ${formatTime(time.from)} → ${formatTime(time.to)}`);
   }
   const transport = diff.constraintChanges.transport;
   if (transport.from !== transport.to) {
@@ -31,9 +32,9 @@ function summarize(diff: Omit<OptimizationDiff, "summary">): string {
   return bits.join(". ") + ".";
 }
 
-function formatCap(value: number | null, suffix = ""): string {
+function formatTime(value: number | null): string {
   if (value === null) return "unconstrained";
-  return suffix ? `${value} ${suffix}` : `$${value}`;
+  return `${value} min`;
 }
 
 export function diffOptimizationResults(
@@ -52,6 +53,13 @@ export function diffOptimizationResults(
     sameMembers &&
     before.selectedIds.some((id, index) => after.selectedIds[index] !== id);
 
+  const fromUnits =
+    before.constraintsUsed.budgetUnits ??
+    before.constraintsUsed.budgetDollars ??
+    null;
+  const toUnits =
+    after.constraintsUsed.budgetUnits ?? after.constraintsUsed.budgetDollars ?? null;
+
   const diff: OptimizationDiff = {
     addedIds,
     removedIds,
@@ -59,10 +67,8 @@ export function diffOptimizationResults(
     beforeIds: [...before.selectedIds],
     afterIds: [...after.selectedIds],
     constraintChanges: {
-      budgetDollars: {
-        from: before.constraintsUsed.budgetDollars,
-        to: after.constraintsUsed.budgetDollars,
-      },
+      budgetUnits: { from: fromUnits, to: toUnits },
+      budgetDollars: { from: fromUnits, to: toUnits },
       availableTimeMinutes: {
         from: before.constraintsUsed.availableTimeMinutes,
         to: after.constraintsUsed.availableTimeMinutes,
@@ -72,10 +78,11 @@ export function diffOptimizationResults(
         to: after.constraintsUsed.transport,
       },
     },
-    planningCostDelta: after.planningCostDollars - before.planningCostDollars,
+    planningCostDelta: after.planningCostUnits - before.planningCostUnits,
     planningMinutesDelta: after.planningMinutes - before.planningMinutes,
     summary: "",
   };
   diff.summary = summarize(diff);
   return diff;
 }
+
