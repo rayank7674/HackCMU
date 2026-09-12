@@ -26,6 +26,7 @@ import {
   formatSeverity,
   resolvePlanHorizon,
   shortReason,
+
 } from "@/lib/stormready-format";
 import {
   checklistActions as pickChecklistActions,
@@ -283,31 +284,22 @@ export function PlanView() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 flex-col bg-blue-wash">
+    <main className="flex min-h-full flex-1 flex-col bg-background">
       <Header title="PLAN" emphatic />
 
-      {/* Colorful hero (screenshot 2 energy, StormReady blues) */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-deep via-blue-mid to-navy px-5 pb-16 pt-5 text-white">
-        <div
-          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-blue-sky/30"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-blue-pale/20"
-          aria-hidden
-        />
-        <h2 className="text-3xl font-semibold tracking-tight">{homeTitle}</h2>
-        {homeMeta ? (
-          <p className="mt-1 text-sm text-blue-pale/90">{homeMeta}</p>
-        ) : null}
-        <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-pale/85">
-          {recsStatus === "ready" && checklistActions.length > 0
-            ? `Checklist ${checklistPercent}% · ${formatRelativeTime(lastUpdated)}`
-            : `Updated ${formatRelativeTime(lastUpdated)}`}
-        </p>
+      <section className="border-b border-border bg-surface px-5 py-6">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Top priority</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{stepOne?.title ?? "Get your household ready"}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{stepOne ? "Start here because it is the most useful next step for your household." : "A short plan will appear once we can check your home."}</p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {stepOne ? <Button onClick={() => toggleStep(stepOne.id)}>{checkedSteps[stepOne.id] ? "Done" : "Start next step"}</Button> : <Button href="/onboarding">Add home details</Button>}
+            <p className="text-xs text-muted">{homeMeta || formatRelativeTime(lastUpdated)}</p>
+          </div>
+        </div>
       </section>
 
-      <div className="relative z-10 -mt-5 flex min-w-0 flex-1 flex-col gap-4 rounded-t-[1.75rem] bg-blue-wash px-5 pb-8 pt-2">
+      <div className="mx-auto flex min-w-0 w-full max-w-3xl flex-1 flex-col gap-4 px-5 pb-8 pt-6">
         {isDemo ? (
           <p
             role="status"
@@ -332,11 +324,11 @@ export function PlanView() {
         />
 
         {/* Completion bar + checklist (screenshot 1) */}
-        <section className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
+        <section className="rounded-2xl border border-border bg-surface p-4">
           {recsStatus === "ready" && checklistActions.length > 0 ? (
             <div className="mb-4">
               <div className="flex items-end justify-between gap-3">
-                <p className="text-sm font-semibold text-navy">Plan progress</p>
+                <p className="text-sm font-semibold text-foreground">Plan progress</p>
                 <p className="text-sm font-semibold text-navy">{checklistPercent}%</p>
               </div>
               <div
@@ -348,7 +340,7 @@ export function PlanView() {
                 aria-label="Checklist completion"
               >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-deep to-blue-sky transition-[width] duration-300 ease-out"
+                  className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
                   style={{ width: `${checklistPercent}%` }}
                 />
               </div>
@@ -471,9 +463,9 @@ export function PlanView() {
           ) : null}
         </section>
 
-        <details className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)]">
+        <details className="rounded-3xl border border-border bg-surface p-4">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
-            More options
+How we ranked this
           </summary>
           <div className="mt-4 space-y-4">
             <div className="flex flex-col gap-2">
@@ -752,7 +744,7 @@ function SituationStrip({
 
   return (
     <section
-      className={`w-full min-w-0 rounded-3xl border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)] ${tone.border}`}
+      className={`w-full min-w-0 rounded-3xl border bg-surface p-4 ${tone.border}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
