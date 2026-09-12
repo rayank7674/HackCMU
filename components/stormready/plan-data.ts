@@ -4,36 +4,72 @@ import { useEffect, useState } from "react";
 import {
   fetchAlerts,
   fetchRecommendations,
+  statusFromResult,
   type RecommendationView,
+  type ResourceStatus,
 } from "@/lib/stormready-api";
 import { isKnown, type HazardState, type PersistedProfile } from "@/lib/stormready";
 
 export type PlanQuery = {
   alerts: HazardState | null;
-  alertsUnavailable: boolean;
+  alertsStatus: ResourceStatus;
   recommendations: RecommendationView[];
-  recommendationsUnavailable: boolean;
+  recommendationsStatus: ResourceStatus;
+  /** True while either live request is still in flight. */
   loading: boolean;
+  alertsUnavailable: boolean;
+  recommendationsUnavailable: boolean;
 };
 
 const idle: PlanQuery = {
   alerts: null,
-  alertsUnavailable: false,
+  alertsStatus: "idle",
   recommendations: [],
-  recommendationsUnavailable: false,
+  recommendationsStatus: "idle",
   loading: false,
+  alertsUnavailable: false,
+  recommendationsUnavailable: false,
 };
 
-type FetchedPlan = Omit<PlanQuery, "loading"> & { key: string };
+type FetchedPlan = {
+  key: string;
+  alerts: HazardState | null;
+  alertsStatus: ResourceStatus;
+  recommendations: RecommendationView[];
+  recommendationsStatus: ResourceStatus;
+};
 
-export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQuery {
+function toQuery(data: Omit<FetchedPlan, "key">): PlanQuery {
+  const alertsBlocked =
+    data.alertsStatus === "error" || data.alertsStatus === "unavailable";
+  const recsBlocked =
+    data.recommendationsStatus === "error" ||
+    data.recommendationsStatus === "unavailable";
+  return {
+    ...data,
+    loading:
+      data.alertsStatus === "loading" ||
+      data.recommendationsStatus === "loading",
+    alertsUnavailable: alertsBlocked,
+    recommendationsUnavailable: recsBlocked,
+  };
+}
+
+export function usePlanData(
+  profile: PersistedProfile,
+  hydrated: boolean,
+): PlanQuery {
   const postalCode =
     profile.home && isKnown(profile.home.postalCode) ? profile.home.postalCode : "";
   const city = profile.home && isKnown(profile.home.city) ? profile.home.city : "";
+  const addressLine =
+    profile.home && isKnown(profile.home.addressLine)
+      ? profile.home.addressLine
+      : "";
   const homeId = profile.home?.id ?? "";
   const householdId = profile.household?.id ?? "";
   const updatedAt = profile.updatedAt ?? "";
-  const cacheKey = `${homeId}|${householdId}|${postalCode}|${city}|${updatedAt}`;
+  const cacheKey = `${homeId}|${householdId}|${postalCode}|${city}|${addressLine}|${updatedAt}`;
   const [data, setData] = useState<FetchedPlan | null>(null);
 
   useEffect(() => {
@@ -48,6 +84,7 @@ export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQ
 
     (async () => {
       const alertsResult = await fetchAlerts({
+        addressLine: isKnown(home.addressLine) ? home.addressLine : undefined,
         postalCode: isKnown(home.postalCode) ? home.postalCode : undefined,
         city: isKnown(home.city) ? home.city : undefined,
         state: isKnown(home.state) ? home.state : undefined,
@@ -55,6 +92,16 @@ export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQ
       });
 
       const hazards = alertsResult.ok ? alertsResult.data : null;
+      if (cancelled) return;
+
+      setData({
+        key,
+        alerts: hazards,
+        alertsStatus: statusFromResult(alertsResult),
+        recommendations: [],
+        recommendationsStatus: "loading",
+      });
+
       const recsResult = await fetchRecommendations({
         home,
         household,
@@ -67,9 +114,9 @@ export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQ
       setData({
         key,
         alerts: hazards,
-        alertsUnavailable: !alertsResult.ok,
+        alertsStatus: statusFromResult(alertsResult),
         recommendations: recsResult.ok ? recsResult.data.slice(0, 5) : [],
-        recommendationsUnavailable: !recsResult.ok,
+        recommendationsStatus: statusFromResult(recsResult),
       });
     })();
 
@@ -83,8 +130,13 @@ export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQ
   }
 
   if (!data || data.key !== cacheKey) {
-    return { ...idle, loading: true };
+    return toQuery({
+      alerts: null,
+      alertsStatus: "loading",
+      recommendations: [],
+      recommendationsStatus: "loading",
+    });
   }
 
-  return { ...data, loading: false };
+  return toQuery(data);
 }

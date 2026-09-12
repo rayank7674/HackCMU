@@ -1,4 +1,5 @@
 import {
+  actionFitsBudget,
   isKnown,
   type BackupPowerType,
   type BudgetClass,
@@ -7,6 +8,7 @@ import {
   type HazardSeverity,
   type HomeProfile,
   type HouseholdProfile,
+  type RecommendationHorizon,
   type RecommendationPriority,
   type RecommendationTimeframe,
   type Unknownable,
@@ -85,33 +87,140 @@ export function formatPriority(value: RecommendationPriority): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+/** Qualitative cost class only — never a dollar figure or exact price. */
 export function formatCostClass(value: string): string {
-  return (
-    BUDGET_OPTIONS.find((option) => option.value === value)?.label ?? value
-  );
+  switch (value) {
+    case "zero":
+      return "No cost";
+    case "low":
+      return "Low cost";
+    case "moderate":
+      return "Moderate cost";
+    case "flexible":
+      return "Higher cost";
+    default:
+      return value;
+  }
+}
+
+export const PLAN_HORIZONS = [
+  "now",
+  "before_next_event",
+  "long_term",
+] as const satisfies readonly RecommendationHorizon[];
+
+export const PLAN_HORIZON_LABELS: Record<RecommendationHorizon, string> = {
+  now: "Now",
+  before_next_event: "Before the next event",
+  long_term: "Long term",
+};
+
+const COST_RANK: Record<BudgetClass, number> = {
+  zero: 0,
+  low: 1,
+  moderate: 2,
+  flexible: 3,
+};
+
+export function asBudgetClass(value: unknown): BudgetClass | null {
+  if (
+    value === "zero" ||
+    value === "low" ||
+    value === "moderate" ||
+    value === "flexible"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+export function resolvePlanHorizon(
+  timeframe: Unknownable<RecommendationTimeframe>,
+  horizon?: Unknownable<string>,
+): RecommendationHorizon {
+  for (const value of [horizon, timeframe]) {
+    if (value === "now" || value === "during_event") return "now";
+    if (value === "before_next_event" || value === "before_event") {
+      return "before_next_event";
+    }
+    if (value === "long_term" || value === "after_event") return "long_term";
+  }
+  return "before_next_event";
 }
 
 export function formatHorizon(
   timeframe: Unknownable<RecommendationTimeframe>,
   horizon?: Unknownable<string>,
 ): string | null {
-  if (horizon && isKnown(horizon)) return horizon;
-  if (!isKnown(timeframe)) return null;
-  switch (timeframe) {
-    case "now":
-      return "Now";
-    case "before_event":
-    case "before_next_event":
-      return "Before the next event";
-    case "during_event":
-      return "During the event";
-    case "after_event":
-      return "After the event";
-    case "long_term":
-      return "Long term";
-    default:
-      return null;
+  const raw =
+    horizon && isKnown(horizon)
+      ? horizon
+      : isKnown(timeframe)
+        ? timeframe
+        : null;
+  if (!raw) return null;
+  return PLAN_HORIZON_LABELS[resolvePlanHorizon(timeframe, raw)];
+}
+
+export type PlanActionLike = {
+  timeframe: Unknownable<RecommendationTimeframe>;
+  horizon?: Unknownable<string>;
+  costClass?: Unknownable<string>;
+};
+
+export type HorizonGroup<T extends PlanActionLike> = {
+  horizon: RecommendationHorizon;
+  label: string;
+  items: T[];
+};
+
+export function sortActionsByBudget<T extends PlanActionLike>(
+  actions: T[],
+  householdBudget: Unknownable<BudgetClass>,
+): T[] {
+  return [...actions].sort((a, b) => {
+    const aCost = asBudgetClass(a.costClass);
+    const bCost = asBudgetClass(b.costClass);
+    const aFits = aCost ? actionFitsBudget(aCost, householdBudget) : false;
+    const bFits = bCost ? actionFitsBudget(bCost, householdBudget) : false;
+    if (aFits !== bFits) return aFits ? -1 : 1;
+    const aRank = aCost ? COST_RANK[aCost] : 99;
+    const bRank = bCost ? COST_RANK[bCost] : 99;
+    return aRank - bRank;
+  });
+}
+
+/** Group 3–5 plan actions under now / before_next_event / long_term. */
+export function arrangePlanActions<T extends PlanActionLike>(
+  actions: T[],
+  householdBudget: Unknownable<BudgetClass>,
+): HorizonGroup<T>[] {
+  const buckets: Record<RecommendationHorizon, T[]> = {
+    now: [],
+    before_next_event: [],
+    long_term: [],
+  };
+
+  for (const action of actions) {
+    buckets[resolvePlanHorizon(action.timeframe, action.horizon)].push(action);
   }
+
+  return PLAN_HORIZONS.flatMap((horizon) => {
+    const items = sortActionsByBudget(buckets[horizon], householdBudget);
+    if (items.length === 0) return [];
+    return [{ horizon, label: PLAN_HORIZON_LABELS[horizon], items }];
+  });
+}
+
+export function budgetFitLabel(
+  costClass: Unknownable<string> | undefined,
+  householdBudget: Unknownable<BudgetClass>,
+): "Fits budget" | "Above budget" | null {
+  const cost = asBudgetClass(costClass);
+  if (!cost || !isKnown(householdBudget)) return null;
+  return actionFitsBudget(cost, householdBudget)
+    ? "Fits budget"
+    : "Above budget";
 }
 
 export function shortReason(

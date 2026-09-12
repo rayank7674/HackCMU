@@ -22,11 +22,21 @@ export const GEOCODE_PATH = "/api/geocode";
 export const ALERTS_PATH = "/api/alerts";
 export const RECOMMENDATIONS_PATH = "/api/recommendations";
 
+export type ApiFailureReason = "unavailable" | "error";
+
 export type ApiFailure = {
   ok: false;
-  reason: "unavailable";
+  reason: ApiFailureReason;
   status: number | null;
 };
+
+/** Shared UI status for geocode, alerts, and recommendations. */
+export type ResourceStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "error"
+  | "unavailable";
 
 export type ApiSuccess<T> = {
   ok: true;
@@ -83,12 +93,14 @@ export async function fetchGeocode(input: {
 }
 
 export async function fetchAlerts(input: {
+  addressLine?: string;
   postalCode?: string;
   city?: string;
   state?: string;
   location?: GeocodedLocation | null;
 }): Promise<ApiResult<HazardState>> {
   const params = new URLSearchParams();
+  if (input.addressLine) params.set("addressLine", input.addressLine);
   if (input.postalCode) params.set("postalCode", input.postalCode);
   if (input.city) params.set("city", input.city);
   if (input.state) params.set("state", input.state);
@@ -105,7 +117,20 @@ export async function fetchAlerts(input: {
 
   const payload = await requestJson(`${ALERTS_PATH}?${params.toString()}`);
   if (!payload.ok) {
-    return tryAlternateMethod(ALERTS_PATH, "POST", input, parseHazardState);
+    return tryAlternateMethod(
+      ALERTS_PATH,
+      "POST",
+      {
+        addressLine: input.addressLine,
+        postalCode: input.postalCode,
+        city: input.city,
+        state: input.state,
+        latitude: loc && isKnown(loc.latitude) ? loc.latitude : undefined,
+        longitude: loc && isKnown(loc.longitude) ? loc.longitude : undefined,
+        location: input.location,
+      },
+      parseHazardState,
+    );
   }
   return parseOrUnavailable(payload.data, parseHazardState);
 }
@@ -221,7 +246,11 @@ async function requestJson(
     });
 
     if (!response.ok) {
-      return { ok: false, reason: "unavailable", status: response.status };
+      return {
+        ok: false,
+        reason: classifyRequestFailure(response.status),
+        status: response.status,
+      };
     }
 
     const text = await response.text();
@@ -235,8 +264,26 @@ async function requestJson(
       return { ok: false, reason: "unavailable", status: response.status };
     }
   } catch {
-    return { ok: false, reason: "unavailable", status: null };
+    return { ok: false, reason: "error", status: null };
   }
+}
+
+/**
+ * Transport failures are errors. Missing or fail-closed routes (404/400)
+ * stay unavailable so the UI never treats them as an all-clear.
+ */
+export function classifyRequestFailure(
+  status: number | null,
+): ApiFailureReason {
+  if (status === null) return "error";
+  if (status >= 500 || status === 408 || status === 429) return "error";
+  return "unavailable";
+}
+
+export function statusFromResult(
+  result: ApiResult<unknown>,
+): Exclude<ResourceStatus, "idle" | "loading"> {
+  return result.ok ? "ready" : result.reason;
 }
 
 function parseGeocode(value: unknown): GeocodeResult | null {
