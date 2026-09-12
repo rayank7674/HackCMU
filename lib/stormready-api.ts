@@ -16,6 +16,13 @@ import type {
   OptimizationConstraints,
   OptimizationResult,
 } from "@/lib/optimization";
+import {
+  MAP_PLACE_KIND_LABEL,
+  OSM_SOURCE,
+  type MapPlaceKind,
+  type MapPlacePin,
+} from "@/lib/map/places";
+import type { HoursPeriod, PinHoursMatch } from "@/lib/map/google-hours";
 
 /**
  * Fail-closed client for routes that may land on parallel branches.
@@ -28,6 +35,8 @@ export const REVERSE_GEOCODE_PATH = "/api/geocode/reverse";
 export const SITE_FACTS_PATH = "/api/site-facts";
 export const ALERTS_PATH = "/api/alerts";
 export const RECOMMENDATIONS_PATH = "/api/recommendations";
+export const MAP_PLACES_PATH = "/api/map-places";
+export const PLACE_HOURS_PATH = "/api/place-hours";
 
 export type ApiFailureReason = "unavailable" | "error";
 
@@ -207,6 +216,59 @@ export async function fetchAlerts(input: {
     );
   }
   return parseOrUnavailable(payload.data, parseHazardState);
+}
+
+export async function fetchMapPlaces(input: {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+}): Promise<ApiResult<MapPlacePin[]>> {
+  const params = new URLSearchParams();
+  params.set("lat", String(input.latitude));
+  params.set("lon", String(input.longitude));
+  if (input.radiusKm !== undefined) {
+    params.set("radiusKm", String(input.radiusKm));
+  }
+  const url = `${MAP_PLACES_PATH}?${params.toString()}`;
+
+  const first = await requestMapPlaces(url);
+  if (first.ok && first.data.length > 0) return first;
+  if (first.ok) return first;
+
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  return requestMapPlaces(url);
+}
+
+async function requestMapPlaces(
+  url: string,
+): Promise<ApiResult<MapPlacePin[]>> {
+  const payload = await requestJson(url);
+  if (!payload.ok) return payload;
+  return parseOrUnavailable(payload.data, parseMapPlaces);
+}
+
+export type PlaceHoursPayload = {
+  configured: boolean;
+  hours: PinHoursMatch[];
+  disclaimer: string | null;
+};
+
+export async function fetchPlaceHours(input: {
+  latitude: number;
+  longitude: number;
+  pins: Array<{
+    id: string;
+    kind: MapPlaceKind;
+    latitude: number;
+    longitude: number;
+  }>;
+}): Promise<ApiResult<PlaceHoursPayload>> {
+  const payload = await requestJson(PLACE_HOURS_PATH, {
+    method: "POST",
+    body: input,
+  });
+  if (!payload.ok) return payload;
+  return parseOrUnavailable(payload.data, parsePlaceHours);
 }
 
 export async function fetchRecommendations(
@@ -726,6 +788,116 @@ function parseOptimization(value: unknown): OptimizationView | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parsePlaceHours(value: unknown): PlaceHoursPayload | null {
+  if (!isRecord(value) || value.ok !== true) return null;
+  if (typeof value.configured !== "boolean") return null;
+  const list = Array.isArray(value.hours) ? value.hours : null;
+  if (!list) return null;
+  const hours: PinHoursMatch[] = [];
+  for (const item of list) {
+    const parsed = parsePinHoursMatch(item);
+    if (parsed) hours.push(parsed);
+  }
+  const disclaimer =
+    typeof value.disclaimer === "string" && value.disclaimer.trim()
+      ? value.disclaimer
+      : null;
+  return { configured: value.configured, hours, disclaimer };
+}
+
+function parsePinHoursMatch(value: unknown): PinHoursMatch | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.pinId !== "string" || typeof value.googlePlaceId !== "string") {
+    return null;
+  }
+  if (typeof value.googleName !== "string") return null;
+  const periods = Array.isArray(value.periods)
+    ? value.periods
+        .map(parseHoursPeriod)
+        .filter((item): item is HoursPeriod => item !== null)
+    : [];
+  const weekdayDescriptions = Array.isArray(value.weekdayDescriptions)
+    ? value.weekdayDescriptions.filter((item): item is string => typeof item === "string")
+    : [];
+  const businessStatus =
+    typeof value.businessStatus === "string" ? value.businessStatus : null;
+  return {
+    pinId: value.pinId,
+    googlePlaceId: value.googlePlaceId,
+    googleName: value.googleName,
+    periods,
+    weekdayDescriptions,
+    businessStatus,
+  };
+}
+
+function parseHoursPeriod(value: unknown): HoursPeriod | null {
+  if (!isRecord(value)) return null;
+  const open = parseClockMinutes(value.open);
+  if (!open) return null;
+  const close = value.close == null ? null : parseClockMinutes(value.close);
+  if (value.close != null && !close) return null;
+  return { open, close };
+}
+
+function parseClockMinutes(value: unknown): HoursPeriod["open"] | null {
+  if (!isRecord(value)) return null;
+  const day = typeof value.day === "number" ? value.day : Number(value.day);
+  const minuteOfDay =
+    typeof value.minuteOfDay === "number" ? value.minuteOfDay : Number(value.minuteOfDay);
+  if (!Number.isFinite(day) || day < 0 || day > 6) return null;
+  if (!Number.isFinite(minuteOfDay) || minuteOfDay < 0 || minuteOfDay >= 24 * 60) {
+    return null;
+  }
+  return { day, minuteOfDay };
+}
+
+const MAP_PLACE_KINDS = new Set<string>(Object.keys(MAP_PLACE_KIND_LABEL));
+
+function parseMapPlaces(value: unknown): MapPlacePin[] | null {
+  if (!isRecord(value) || value.ok !== true) return null;
+  const list = Array.isArray(value.pins) ? value.pins : null;
+  if (!list) return null;
+  const pins: MapPlacePin[] = [];
+  for (const item of list) {
+    if (!isRecord(item)) continue;
+    if (typeof item.id !== "string" || typeof item.title !== "string") continue;
+    if (typeof item.kind !== "string" || !MAP_PLACE_KINDS.has(item.kind)) continue;
+    if (typeof item.latitude !== "number" || typeof item.longitude !== "number") {
+      continue;
+    }
+    if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)) {
+      continue;
+    }
+    const osmType =
+      item.osmType === "node" || item.osmType === "way" || item.osmType === "relation"
+        ? item.osmType
+        : null;
+    const osmId = typeof item.osmId === "number" ? item.osmId : Number(item.osmId);
+    if (!osmType || !Number.isFinite(osmId)) continue;
+    const href =
+      typeof item.href === "string" && item.href.startsWith("https://")
+        ? item.href
+        : `https://www.openstreetmap.org/${osmType}/${osmId}`;
+    pins.push({
+      id: item.id,
+      title: item.title,
+      kind: item.kind as MapPlaceKind,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      source: OSM_SOURCE,
+      description:
+        typeof item.description === "string"
+          ? item.description
+          : MAP_PLACE_KIND_LABEL[item.kind as MapPlaceKind],
+      href,
+      osmType,
+      osmId,
+    });
+  }
+  return pins;
 }
 
 function readTransport(value: unknown): OptimizationConstraints["transport"] {

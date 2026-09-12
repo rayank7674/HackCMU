@@ -43,7 +43,7 @@ Bottom navigation: Home / Plan / Map / Help / Profile.
 
 **Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only — apply on official sites; StormReady never promises eligibility.
 
-**Map** is a simple Leaflet view: approximate home marker when geocode coordinates exist, otherwise a Tampa demo center with a setup prompt. A few static Tampa-area example pins (official offices, source-labeled) appear when the view is near the demo. No routing, heatmap, Places API, or “verified / best” contractors. OpenStreetMap tiles are the default so the map works with **no Mapbox token**. Optional `NEXT_PUBLIC_MAPBOX_TOKEN` swaps in Mapbox tiles.
+**Map** is a Leaflet view: approximate home marker when geocode coordinates exist, otherwise a Tampa demo center. Nearby grocery / food / utilities, pharmacy, clinic, and mapped shelter points come from OpenStreetMap. Pin green/red is posted hours for right now when `GOOGLE_PLACES_API_KEY` is set on the server (Places API New). Without the key, the map still works and does not guess open/closed. OpenStreetMap tiles are the default so the map works with **no Mapbox token**. Optional `NEXT_PUBLIC_MAPBOX_TOKEN` swaps in Mapbox tiles.
 
 `/dashboard` redirects to `/`.
 
@@ -118,6 +118,8 @@ The UI calls these when present and fails closed if they 404 or return an unusab
 | `POST` `/api/save-plan` | Cloud upsert of the local snapshot. 503 without Supabase; 401 without Auth0 `sub` |
 | `GET` `/api/load-plan` | Restore the latest saved snapshot for the Auth0 `sub` |
 | `GET` `/api/auth/login` | Start Auth0 login (501 when Auth0 env is missing) |
+| `GET` `/api/map-places` | Nearby OSM grocery / pharmacy / clinic points |
+| `POST` `/api/place-hours` | Posted weekly hours matched to OSM pins (empty without API key) |
 
 If `recommend()` is exported from `@/lib/stormready` (rules-engine branch), the plan screen can use it when the route is missing. A 404 still shows unavailable copy and never invents live alerts.
 

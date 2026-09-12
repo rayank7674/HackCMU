@@ -4,33 +4,56 @@ import { useEffect } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Popup,
   TileLayer,
   useMap,
 } from "react-leaflet";
-import { latLngBounds } from "leaflet";
+import { divIcon, latLngBounds } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { MapResourcePin } from "@/lib/map/resources";
 import { pointsForBounds, type LatLon } from "@/lib/map/location";
 import { getMapTileLayer } from "@/lib/map/resources";
-import type { StressOverlayModel } from "@/lib/integrations/geo/stress-overlay";
-import { overlayPointsAsLatLon } from "@/lib/integrations/geo/stress-overlay";
-import { MapStressOverlay } from "@/components/stormready/map-stress-overlay";
+import {
+  MAP_PLACE_KIND_LABEL,
+  MAP_PLACE_KIND_LETTER,
+  type MapPlaceKind,
+  type MapPlacePin,
+} from "@/lib/map/places";
+import {
+  PlaceHoursChip,
+  PlaceOffers,
+  PlaceTypeChip,
+} from "@/components/map/place-chips";
+import {
+  GOOGLE_HOURS_DISCLAIMER,
+  HOURS_OUTLOOK_FILL,
+  HOURS_OUTLOOK_LETTER,
+  hoursOutlookForMatch,
+  type PinHoursMatch,
+} from "@/lib/map/google-hours";
 
 const HOME_COLOR = "#1e4f86";
-const PIN_COLORS: Record<MapResourcePin["kind"], string> = {
-  forecast_office: "#5a6d82",
-  emergency_management: "#2c6aa8",
-  red_cross: "#6b4f5b",
-};
+const NEUTRAL_FILL = "#64748b";
+const NEUTRAL_LETTER = "#ffffff";
+
+function placeDivIcon(kind: MapPlaceKind, fill: string, letterColor: string) {
+  const letter = MAP_PLACE_KIND_LETTER[kind];
+  return divIcon({
+    className: "sr-place-pin",
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -16],
+    html: `<span class="sr-place-pin-dot" style="background:${fill};color:${letterColor}">${letter}</span>`,
+  });
+}
 
 type StormMapProps = {
   center: LatLon;
   zoom: number;
   approximateHome: LatLon | null;
-  pins: MapResourcePin[];
-  /** Schematic modeled overlay. Omitted keeps today’s map. */
-  stressOverlay?: StressOverlayModel | null;
+  pins: MapPlacePin[];
+  hoursByPinId?: Record<string, PinHoursMatch>;
+  hoursAt?: Date | null;
 };
 
 function Recenter({ center, zoom }: { center: LatLon; zoom: number }) {
@@ -59,23 +82,19 @@ function InvalidateMapSize() {
 function FitPins({
   home,
   pins,
-  extraPoints,
-  extraKey,
 }: {
   home: LatLon | null;
-  pins: MapResourcePin[];
-  extraPoints: LatLon[];
-  extraKey: string;
+  pins: MapPlacePin[];
 }) {
   const map = useMap();
   useEffect(() => {
-    const points = pointsForBounds(home, [...pins, ...extraPoints]);
+    const points = pointsForBounds(home, pins);
     if (points.length < 2) return;
     const bounds = latLngBounds(
       points.map((point) => [point.latitude, point.longitude] as [number, number]),
     );
-    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 10 });
-  }, [extraKey, extraPoints, home, map, pins]);
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+  }, [home, map, pins]);
   return null;
 }
 
@@ -84,14 +103,11 @@ export function StormMap({
   zoom,
   approximateHome,
   pins,
-  stressOverlay = null,
+  hoursByPinId = {},
+  hoursAt = null,
 }: StormMapProps) {
   const tiles = getMapTileLayer();
-  const overlayPoints = overlayPointsAsLatLon(stressOverlay);
-  const overlayKey = overlayPoints
-    .map((point) => `${point.latitude},${point.longitude}`)
-    .join("|");
-  const fitToOverlay = overlayPoints.length > 0;
+  const clock = hoursAt ?? new Date();
 
   return (
     <MapContainer
@@ -102,13 +118,8 @@ export function StormMap({
       attributionControl
     >
       <InvalidateMapSize />
-      {pins.length > 0 || fitToOverlay ? (
-        <FitPins
-          home={approximateHome}
-          pins={pins}
-          extraPoints={overlayPoints}
-          extraKey={overlayKey}
-        />
+      {pins.length > 0 ? (
+        <FitPins home={approximateHome} pins={pins} />
       ) : (
         <Recenter center={center} zoom={zoom} />
       )}
@@ -138,35 +149,66 @@ export function StormMap({
           </Popup>
         </CircleMarker>
       ) : null}
-      {stressOverlay ? <MapStressOverlay overlay={stressOverlay} /> : null}
-      {pins.map((pin) => (
-        <CircleMarker
-          key={pin.id}
-          center={[pin.latitude, pin.longitude]}
-          radius={8}
-          pathOptions={{
-            color: PIN_COLORS[pin.kind],
-            fillColor: PIN_COLORS[pin.kind],
-            fillOpacity: 0.8,
-            weight: 2,
-          }}
-        >
-          <Popup maxWidth={200} autoPan>
-            <p className="text-sm font-semibold text-foreground">{pin.title}</p>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
-              Source: {pin.source}
-            </p>
-            <a
-              href={pin.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-xs font-semibold text-accent-strong underline-offset-2 hover:underline"
-            >
-              Official page
-            </a>
-          </Popup>
-        </CircleMarker>
-      ))}
+      {pins.map((pin) => {
+        const hoursMatch = hoursByPinId[pin.id];
+        const hoursOutlook = hoursMatch
+          ? hoursOutlookForMatch(hoursMatch, clock)
+          : null;
+        const usesHours = hoursOutlook != null && hoursOutlook !== "unknown";
+        const fill = usesHours
+          ? HOURS_OUTLOOK_FILL[hoursOutlook]
+          : NEUTRAL_FILL;
+        const letterColor = usesHours
+          ? HOURS_OUTLOOK_LETTER[hoursOutlook]
+          : NEUTRAL_LETTER;
+        const titleExtra = usesHours
+          ? hoursOutlook === "usually_open"
+            ? "Open now"
+            : "Closed now"
+          : null;
+        return (
+          <Marker
+            key={pin.id}
+            position={[pin.latitude, pin.longitude]}
+            icon={placeDivIcon(pin.kind, fill, letterColor)}
+            zIndexOffset={usesHours && hoursOutlook === "usually_closed" ? 500 : 200}
+            title={
+              titleExtra
+                ? `${MAP_PLACE_KIND_LABEL[pin.kind]} · ${titleExtra}`
+                : MAP_PLACE_KIND_LABEL[pin.kind]
+            }
+          >
+            <Popup maxWidth={260} autoPan>
+              <p className="text-sm font-semibold text-foreground">{pin.title}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <PlaceTypeChip kind={pin.kind} />
+                {hoursOutlook ? <PlaceHoursChip outlook={hoursOutlook} /> : null}
+              </div>
+              <PlaceOffers kind={pin.kind} />
+              {hoursMatch ? (
+                <p className="mt-2 text-xs text-muted">
+                  {hoursMatch.weekdayDescriptions[0]
+                    ? `${hoursMatch.weekdayDescriptions[0]} `
+                    : ""}
+                  {GOOGLE_HOURS_DISCLAIMER}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted">
+                  Mapped in OpenStreetMap. Hours and stock are not confirmed here.
+                </p>
+              )}
+              <a
+                href={pin.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-semibold text-accent-strong underline-offset-2 hover:underline"
+              >
+                Open in OpenStreetMap
+              </a>
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
   );
 }
