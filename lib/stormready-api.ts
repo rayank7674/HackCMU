@@ -1,12 +1,14 @@
 import {
   isKnown,
   type ActiveHazard,
+  type BudgetClass,
   type GeocodedLocation,
   type HazardSeverity,
   type HazardState,
   type HomeProfile,
   type HouseholdProfile,
   type Recommendation,
+  type RecommendationHorizon,
   type Unknownable,
 } from "@/lib/stormready";
 
@@ -40,11 +42,22 @@ export type GeocodeResult = {
   postalCode: Unknownable<string>;
 };
 
-/** Recommendation plus optional display fields adapters may add later. */
-export type RecommendationView = Recommendation & {
-  costClass?: Unknownable<string>;
-  horizon?: Unknownable<string>;
+export type HazardSource = "live" | "unavailable" | "fixture";
+
+export type RecommendationRequest = {
+  home: HomeProfile | null;
+  household: HouseholdProfile | null;
+  hazards: HazardState | null;
+  hazardSource: HazardSource;
 };
+
+/** Recommendation plus engine display fields when the route is present. */
+export type RecommendationView = Recommendation & {
+  costClass?: Unknownable<BudgetClass | string>;
+  horizon?: Unknownable<RecommendationHorizon | string>;
+};
+
+export type DemoScenario = "quiet" | "watch" | "warning" | "evac" | "flood";
 
 export async function fetchGeocode(input: {
   addressLine?: string;
@@ -97,33 +110,79 @@ export async function fetchAlerts(input: {
   return parseOrUnavailable(payload.data, parseHazardState);
 }
 
-export async function fetchRecommendations(input: {
-  home: HomeProfile | null;
-  household: HouseholdProfile | null;
-  hazards: HazardState | null;
-}): Promise<ApiResult<RecommendationView[]>> {
-  const snapshot = {
+export async function fetchRecommendations(
+  input: RecommendationRequest,
+): Promise<ApiResult<RecommendationView[]>> {
+  const body: RecommendationRequest = {
     home: input.home,
     household: input.household,
     hazards: input.hazards,
-    recommendations: [] as Recommendation[],
+    hazardSource: input.hazardSource,
   };
 
   const posted = await requestJson(RECOMMENDATIONS_PATH, {
     method: "POST",
-    body: snapshot,
+    body,
   });
   if (posted.ok) {
-    return parseOrUnavailable(posted.data, parseRecommendations);
+    const parsed = parseEngineRecommendations(posted.data);
+    if (parsed) return parsed;
   }
 
-  const params = new URLSearchParams();
-  if (input.home && isKnown(input.home.postalCode)) {
-    params.set("postalCode", input.home.postalCode);
-  }
-  const queried = await requestJson(`${RECOMMENDATIONS_PATH}?${params.toString()}`);
+  const local = await tryLocalRecommend(body);
+  if (local) return local;
+
+  return posted.ok
+    ? { ok: false, reason: "unavailable", status: 200 }
+    : posted;
+}
+
+/** Explicit Tampa fixture only — never used as a silent stand-in for live alerts. */
+export async function fetchTampaDemo(
+  scenario: DemoScenario = "quiet",
+): Promise<ApiResult<RecommendationView[]>> {
+  const queried = await requestJson(
+    `${RECOMMENDATIONS_PATH}?fixture=tampa&scenario=${scenario}`,
+  );
   if (!queried.ok) return queried;
-  return parseOrUnavailable(queried.data, parseRecommendations);
+  return parseEngineRecommendations(queried.data) ?? {
+    ok: false,
+    reason: "unavailable",
+    status: 200,
+  };
+}
+
+type RecommendFn = (input: RecommendationRequest) => {
+  status?: string;
+  recommendations?: unknown;
+};
+
+async function tryLocalRecommend(
+  input: RecommendationRequest,
+): Promise<ApiResult<RecommendationView[]> | null> {
+  try {
+    const mod = (await import("@/lib/stormready")) as {
+      recommend?: RecommendFn;
+    };
+    if (typeof mod.recommend !== "function") return null;
+    return parseEngineRecommendations(mod.recommend(input));
+  } catch {
+    return null;
+  }
+}
+
+function parseEngineRecommendations(
+  value: unknown,
+): ApiResult<RecommendationView[]> | null {
+  if (!isRecord(value)) {
+    const list = parseRecommendations(value);
+    return list ? { ok: true, data: list } : null;
+  }
+  if (value.status === "unavailable" || value.ok === false) {
+    return { ok: false, reason: "unavailable", status: 200 };
+  }
+  const list = parseRecommendations(value);
+  return list ? { ok: true, data: list } : null;
 }
 
 async function tryAlternateMethod<T, B>(
@@ -406,6 +465,7 @@ function readHazardKind(value: unknown): ActiveHazard["kind"] {
     "extreme_cold",
     "winter_storm",
     "wind",
+    "wildfire",
     "rip_current",
     "other",
   ];
@@ -473,8 +533,10 @@ function readTimeframe(value: unknown): Recommendation["timeframe"] {
   if (
     value === "now" ||
     value === "before_event" ||
+    value === "before_next_event" ||
     value === "during_event" ||
-    value === "after_event"
+    value === "after_event" ||
+    value === "long_term"
   ) {
     return value;
   }

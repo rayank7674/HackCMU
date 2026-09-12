@@ -10,6 +10,7 @@ import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
   SEVERITY_RANK,
+  formatCostClass,
   formatHorizon,
   formatLocation,
   formatPriority,
@@ -19,12 +20,17 @@ import {
 } from "@/lib/stormready-format";
 import { isKnown, type ActiveHazard } from "@/lib/stormready";
 import { useProfile } from "@/lib/use-profile";
-import type { RecommendationView } from "@/lib/stormready-api";
+import {
+  fetchTampaDemo,
+  type RecommendationView,
+} from "@/lib/stormready-api";
 
 export function PlanView() {
   const { profile, hydrated } = useProfile();
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
+  const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
 
   const primaryAlert = useMemo(
     () => pickPrimaryAlert(plan.alerts?.hazards ?? []),
@@ -132,12 +138,44 @@ export function PlanView() {
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
             Actions
           </p>
-          {plan.recommendationsUnavailable ? (
-            <div className="mt-2">
+          {plan.recommendationsUnavailable && !demoRecs ? (
+            <div className="mt-2 space-y-3">
               <UnavailableNote title="Recommended actions">
-                The plan service is not connected yet. When it is, you will see
-                3–5 actions with priority, timing, and a short reason. StormReady
-                will not invent a checklist.
+                The plan service is not connected yet, or it failed closed
+                because official alerts are unavailable. StormReady will not
+                invent a live checklist.
+              </UnavailableNote>
+              <Button
+                variant="secondary"
+                disabled={demoBusy}
+                onClick={async () => {
+                  setDemoBusy(true);
+                  const result = await fetchTampaDemo("quiet");
+                  setDemoRecs(result.ok ? result.data.slice(0, 5) : []);
+                  setDemoBusy(false);
+                }}
+              >
+                {demoBusy ? "Loading Tampa demo…" : "View Tampa quiet demo"}
+              </Button>
+            </div>
+          ) : demoRecs && demoRecs.length > 0 ? (
+            <div className="mt-2 space-y-3">
+              <p className="text-xs text-muted">
+                Tampa quiet-weather demo — not official alerts for your home.
+              </p>
+              <ul className="space-y-3">
+                {demoRecs.map((item) => (
+                  <li key={item.id}>
+                    <ActionCard action={item} onWhy={() => setWhy(item)} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : plan.recommendationsUnavailable && demoRecs?.length === 0 ? (
+            <div className="mt-2">
+              <UnavailableNote title="Tampa demo unavailable">
+                GET /api/recommendations?fixture=tampa is not on this branch
+                yet.
               </UnavailableNote>
             </div>
           ) : plan.loading && plan.recommendations.length === 0 ? (
@@ -297,7 +335,7 @@ function ActionCard({
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Badge tone={action.priority}>{formatPriority(action.priority)}</Badge>
             {horizon ? <Badge>{horizon}</Badge> : null}
-            {cost ? <Badge>{cost}</Badge> : null}
+            {cost ? <Badge>{formatCostClass(cost)}</Badge> : null}
           </div>
         </div>
         <button

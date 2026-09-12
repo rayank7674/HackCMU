@@ -59,6 +59,7 @@ export function usePlanData(profile: PersistedProfile, hydrated: boolean): PlanQ
         home,
         household,
         hazards,
+        hazardSource: alertsResult.ok ? "live" : "unavailable",
       });
 
       if (cancelled) return;

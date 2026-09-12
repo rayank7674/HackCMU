@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
@@ -12,9 +12,6 @@ import {
   CONSTRUCTION_OPTIONS,
   DWELLING_OPTIONS,
   inputClassName,
-  readBudgetFromNotes,
-  writeBudgetToNotes,
-  type ImmediateBudget,
 } from "@/lib/stormready-format";
 import { useOnboardingStep } from "@/lib/onboarding-progress";
 import {
@@ -22,6 +19,7 @@ import {
   createEmptyHomeProfile,
   createEmptyHouseholdProfile,
   isKnown,
+  type BudgetClass,
   type HomeProfile,
   type HouseholdProfile,
   type Unknownable,
@@ -98,10 +96,7 @@ export function OnboardingFlow() {
     goTo(1);
   };
 
-  const budget = useMemo(
-    () => readBudgetFromNotes(household.notes),
-    [household.notes],
-  );
+  const budget = household.budgetClass;
 
   if (!hydrated) {
     return (
@@ -156,7 +151,7 @@ export function OnboardingFlow() {
               onChange={(next) =>
                 setHouseholdDraft({
                   ...household,
-                  notes: writeBudgetToNotes(household.notes, next),
+                  budgetClass: next,
                 })
               }
             />
@@ -358,6 +353,24 @@ function CharacteristicsStep({
           }
           inputMode="numeric"
           placeholder="1998"
+        />
+      </Field>
+      <Field
+        label="Roof age (years)"
+        hint="Unknown is not treated as a new roof."
+      >
+        <input
+          className={inputClassName}
+          value={isKnown(home.roofAgeYears) ? String(home.roofAgeYears) : ""}
+          onChange={(event) =>
+            onChange({
+              ...home,
+              roofAgeYears: parseOptionalNumber(event.target.value),
+              attributesProvenance: "user_reported",
+            })
+          }
+          inputMode="numeric"
+          placeholder="12"
         />
       </Field>
       <ChoiceGroup
@@ -594,8 +607,8 @@ function BudgetStep({
   value,
   onChange,
 }: {
-  value: Unknownable<ImmediateBudget>;
-  onChange: (value: Unknownable<ImmediateBudget>) => void;
+  value: Unknownable<BudgetClass>;
+  onChange: (value: Unknownable<BudgetClass>) => void;
 }) {
   return (
     <ChoiceGroup

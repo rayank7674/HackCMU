@@ -45,7 +45,10 @@ The UI calls these when present and fails closed if they 404 or return an unusab
 | --- | --- |
 | `GET`/`POST` `/api/geocode` | Optional location lookup after the address/ZIP step |
 | `GET`/`POST` `/api/alerts` | Official hazard picture (`HazardState`) |
-| `POST`/`GET` `/api/recommendations` | Deterministic actions (`Recommendation[]`) |
+| `POST` `/api/recommendations` | Actions. Body: `{ home, household, hazards, hazardSource: "live" \| "unavailable" }` |
+| `GET` `/api/recommendations?fixture=tampa` | Explicit Tampa quiet demo (`&scenario=quiet\|watch\|warning\|evac\|flood`) |
+
+If `recommend()` is exported from `@/lib/stormready` (rules-engine branch), the plan screen can use it when the route is missing. A 404 still shows unavailable copy and never invents live alerts.
 
 `GET`/`POST` `/api/core-logic` is leftover skeleton and is not on the StormReady user path.
 

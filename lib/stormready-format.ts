@@ -1,7 +1,7 @@
 import {
-  UNKNOWN,
   isKnown,
   type BackupPowerType,
+  type BudgetClass,
   type ConstructionType,
   type DwellingType,
   type HazardSeverity,
@@ -44,20 +44,12 @@ export const BACKUP_POWER_OPTIONS: { value: BackupPowerType; label: string }[] =
     { value: "other", label: "Other" },
   ];
 
-export type ImmediateBudget =
-  | "prefer_free"
-  | "under_50"
-  | "50_to_200"
-  | "200_plus";
-
-export const BUDGET_OPTIONS: { value: ImmediateBudget; label: string }[] = [
-  { value: "prefer_free", label: "Prefer $0 / free options" },
-  { value: "under_50", label: "Under $50" },
-  { value: "50_to_200", label: "$50–200" },
-  { value: "200_plus", label: "$200 or more" },
+export const BUDGET_OPTIONS: { value: BudgetClass; label: string }[] = [
+  { value: "zero", label: "Prefer $0 / free options" },
+  { value: "low", label: "Under $50" },
+  { value: "moderate", label: "$50–200" },
+  { value: "flexible", label: "$200 or more" },
 ];
-
-const BUDGET_PREFIX = "Immediate budget: ";
 
 export function formatLocation(home: HomeProfile | null): string {
   if (!home) return "Location not set";
@@ -93,6 +85,12 @@ export function formatPriority(value: RecommendationPriority): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+export function formatCostClass(value: string): string {
+  return (
+    BUDGET_OPTIONS.find((option) => option.value === value)?.label ?? value
+  );
+}
+
 export function formatHorizon(
   timeframe: Unknownable<RecommendationTimeframe>,
   horizon?: Unknownable<string>,
@@ -103,11 +101,14 @@ export function formatHorizon(
     case "now":
       return "Now";
     case "before_event":
-      return "Before the event";
+    case "before_next_event":
+      return "Before the next event";
     case "during_event":
       return "During the event";
     case "after_event":
       return "After the event";
+    case "long_term":
+      return "Long term";
     default:
       return null;
   }
@@ -142,45 +143,13 @@ export function householdSummary(household: HouseholdProfile | null): string {
       `${household.petCount} ${household.petCount === 1 ? "pet" : "pets"}`,
     );
   }
-  const budget = readBudgetFromNotes(household.notes);
-  if (isKnown(budget)) {
-    const label = BUDGET_OPTIONS.find((option) => option.value === budget)?.label;
+  if (isKnown(household.budgetClass)) {
+    const label = BUDGET_OPTIONS.find(
+      (option) => option.value === household.budgetClass,
+    )?.label;
     if (label) bits.push(label);
   }
   return bits.length > 0 ? bits.join(" · ") : "Household details not added yet.";
-}
-
-export function readBudgetFromNotes(
-  notes: Unknownable<string>,
-): Unknownable<ImmediateBudget> {
-  if (!isKnown(notes)) return UNKNOWN;
-  const match = notes
-    .split("\n")
-    .find((line) => line.startsWith(BUDGET_PREFIX));
-  if (!match) return UNKNOWN;
-  const label = match.slice(BUDGET_PREFIX.length).trim();
-  const found = BUDGET_OPTIONS.find((option) => option.label === label);
-  return found?.value ?? UNKNOWN;
-}
-
-export function writeBudgetToNotes(
-  notes: Unknownable<string>,
-  budget: Unknownable<ImmediateBudget>,
-): Unknownable<string> {
-  const existing = isKnown(notes)
-    ? notes
-        .split("\n")
-        .filter((line) => !line.startsWith(BUDGET_PREFIX))
-        .join("\n")
-        .trim()
-    : "";
-  if (!isKnown(budget)) {
-    return existing === "" ? UNKNOWN : existing;
-  }
-  const label = BUDGET_OPTIONS.find((option) => option.value === budget)?.label;
-  if (!label) return existing === "" ? UNKNOWN : existing;
-  const line = `${BUDGET_PREFIX}${label}`;
-  return existing === "" ? line : `${existing}\n${line}`;
 }
 
 export const SEVERITY_RANK: Record<HazardSeverity, number> = {

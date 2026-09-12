@@ -14,6 +14,7 @@
 export type {
   ActiveHazard,
   BackupPowerType,
+  BudgetClass,
   ConstructionType,
   DwellingType,
   GeocodedLocation,
@@ -27,6 +28,7 @@ export type {
   Provenance,
   Recommendation,
   RecommendationCategory,
+  RecommendationHorizon,
   RecommendationPriority,
   RecommendationTimeframe,
   StormReadySnapshot,

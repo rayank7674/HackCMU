@@ -43,6 +43,7 @@ assert.equal(loadProfile().household, null);
 const home = createEmptyHomeProfile();
 assert.equal(home.hasBackupPower, UNKNOWN);
 assert.equal(home.dwellingType, UNKNOWN);
+assert.equal(home.roofAgeYears, UNKNOWN);
 assert.equal(home.location.latitude, UNKNOWN);
 assert.notEqual(home.hasBackupPower, false);
 
@@ -63,6 +64,7 @@ const household = createEmptyHouseholdProfile({
 });
 assert.equal(household.petCount, 0);
 assert.equal(household.hasPowerDependentMedicalDevice, UNKNOWN);
+assert.equal(household.budgetClass, UNKNOWN);
 assert.notEqual(household.petCount, UNKNOWN);
 
 saveHouseholdProfile(household);
