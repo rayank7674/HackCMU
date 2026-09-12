@@ -1,0 +1,9 @@
+{
+  "id": "ready-water",
+  "title": "Water storage (paraphrase)",
+  "source": "Ready.gov",
+  "sourceUrl": "https://www.ready.gov/water",
+  "role": "data",
+  "notInstructions": true,
+  "excerpt": "Public Ready.gov guidance commonly discusses storing drinking water before a disruption, often summarized as about one gallon per person per day for several days, plus extra for pets, and keeping stored water in clean, closed containers. This excerpt is bundled data for inspection, not a water-outage forecast and not a StormReady rule."
+}
