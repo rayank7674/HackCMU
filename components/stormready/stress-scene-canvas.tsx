@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Html, Line, OrbitControls } from "@react-three/drei";
+import { Line, OrbitControls } from "@react-three/drei";
 import type { Mesh } from "three";
 import { SCENE_LEVEL_COLOR, type StressSceneModel, type StressSceneNode } from "@/lib/stress/scene";
 
@@ -10,20 +10,20 @@ function HouseholdHouse({ level }: { level: StressSceneModel["houseLevel"] }) {
   const roof = level === "none" || level === "constrained" ? "#1e4f86" : SCENE_LEVEL_COLOR[level];
   return (
     <group>
-      <mesh position={[0, 0.46, 0]} castShadow>
-        <boxGeometry args={[1.35, 0.92, 1.15]} />
-        <meshStandardMaterial color="#8fa6be" />
+      <mesh position={[0, 0.55, 0]}>
+        <boxGeometry args={[1.55, 1.1, 1.28]} />
+        <meshStandardMaterial color="#6f8aa6" roughness={0.7} />
       </mesh>
-      <mesh position={[0, 1.12, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
-        <coneGeometry args={[1.08, 0.52, 4]} />
-        <meshStandardMaterial color={roof} />
+      <mesh position={[0, 1.32, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[1.22, 0.62, 4]} />
+        <meshStandardMaterial color={roof} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 0.28, 0.59]}>
-        <boxGeometry args={[0.26, 0.42, 0.06]} />
-        <meshStandardMaterial color="#163a62" />
+      <mesh position={[0, 0.32, 0.66]}>
+        <boxGeometry args={[0.3, 0.48, 0.08]} />
+        <meshStandardMaterial color="#10233d" />
       </mesh>
-      <mesh position={[0.32, 0.58, 0.58]}>
-        <boxGeometry args={[0.22, 0.18, 0.04]} />
+      <mesh position={[0.38, 0.7, 0.65]}>
+        <boxGeometry args={[0.26, 0.22, 0.05]} />
         <meshStandardMaterial color="#d7e4f4" />
       </mesh>
     </group>
@@ -32,17 +32,12 @@ function HouseholdHouse({ level }: { level: StressSceneModel["houseLevel"] }) {
 
 function DependencyOrb({ node }: { node: StressSceneNode }) {
   const ref = useRef<Mesh>(null);
-  const radius = node.isFirstBreak ? 0.28 : node.failed ? 0.24 : 0.18;
-  const base = 1;
+  const radius = node.isFirstBreak ? 0.34 : node.failed ? 0.28 : node.inCascade ? 0.22 : 0.16;
 
   useFrame((state) => {
-    if (!ref.current) return;
-    if (!node.isFirstBreak) {
-      ref.current.scale.setScalar(base);
-      return;
-    }
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * 3.1) * 0.12;
-    ref.current.scale.setScalar(base * pulse);
+    if (!ref.current || !node.isFirstBreak) return;
+    const pulse = 1 + Math.sin(state.clock.elapsedTime * 3.1) * 0.14;
+    ref.current.scale.setScalar(pulse);
   });
 
   if (node.id === "home") return null;
@@ -50,30 +45,13 @@ function DependencyOrb({ node }: { node: StressSceneNode }) {
   return (
     <group position={node.position}>
       <mesh position={[0, -node.position[1] / 2, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, Math.max(node.position[1], 0.2), 8]} />
-        <meshStandardMaterial color={node.failed ? node.color : "#b7c4d3"} />
+        <cylinderGeometry args={[0.03, 0.03, Math.max(node.position[1], 0.2), 8]} />
+        <meshBasicMaterial color={node.color} />
       </mesh>
-      <mesh ref={ref} castShadow>
+      <mesh ref={ref}>
         <sphereGeometry args={[radius, 24, 24]} />
-        <meshStandardMaterial
-          color={node.color}
-          emissive={node.failed ? node.color : "#000000"}
-          emissiveIntensity={node.failed ? 0.55 : 0}
-          roughness={0.35}
-          metalness={0.05}
-        />
+        <meshBasicMaterial color={node.color} />
       </mesh>
-      <Html
-        position={[0, -(radius + 0.22), 0]}
-        center
-        distanceFactor={8}
-        style={{ pointerEvents: "none", userSelect: "none" }}
-        zIndexRange={[1, 0]}
-      >
-        <div className={`sr-stress-label${node.failed ? " is-failed" : ""}`}>
-          {node.shortLabel}
-        </div>
-      </Html>
     </group>
   );
 }
@@ -81,28 +59,22 @@ function DependencyOrb({ node }: { node: StressSceneNode }) {
 function SceneContents({ model }: { model: StressSceneModel }) {
   return (
     <>
-      <color attach="background" args={["#c9d8ea"]} />
-      <ambientLight intensity={0.75} />
-      <directionalLight
-        position={[4.2, 6.4, 3.2]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize-width={512}
-        shadow-mapSize-height={512}
-      />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[5.1, 48]} />
-        <meshStandardMaterial color="#d5e1ee" />
+      <color attach="background" args={["#b9cce0"]} />
+      <ambientLight intensity={0.95} />
+      <directionalLight position={[3.4, 5.2, 2.6]} intensity={0.85} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <circleGeometry args={[4.8, 48]} />
+        <meshStandardMaterial color="#c5d6e8" />
       </mesh>
       <HouseholdHouse level={model.houseLevel} />
       {model.edges.map((edge) => (
         <Line
           key={`${edge.from}-${edge.to}`}
           points={[edge.fromPos, edge.toPos]}
-          color={edge.inCascade ? "#b42318" : "#8ea0b4"}
-          lineWidth={edge.inCascade ? 3.4 : 1.4}
+          color={edge.inCascade ? "#b42318" : "#7f93a8"}
+          lineWidth={edge.inCascade ? 4 : 1.5}
           transparent
-          opacity={edge.inCascade ? 0.95 : 0.55}
+          opacity={edge.inCascade ? 0.95 : 0.45}
         />
       ))}
       {model.nodes.map((node) => (
@@ -112,10 +84,11 @@ function SceneContents({ model }: { model: StressSceneModel }) {
         enablePan={false}
         enableDamping
         dampingFactor={0.12}
-        minDistance={4.2}
-        maxDistance={11}
-        maxPolarAngle={Math.PI / 2.15}
-        target={[0, 0.55, 0]}
+        minDistance={3.8}
+        maxDistance={8}
+        minPolarAngle={Math.PI / 3.4}
+        maxPolarAngle={Math.PI / 2.25}
+        target={[0, 0.6, 0]}
       />
     </>
   );
@@ -124,9 +97,9 @@ function SceneContents({ model }: { model: StressSceneModel }) {
 export function StressSceneCanvas({ model }: { model: StressSceneModel }) {
   return (
     <Canvas
-      camera={{ position: [4.4, 2.7, 5.4], fov: 40, near: 0.1, far: 40 }}
+      className="h-full w-full"
+      camera={{ position: [3.8, 2.15, 4.9], fov: 42, near: 0.1, far: 40 }}
       dpr={[1, 1.5]}
-      shadows
       gl={{ antialias: true, alpha: false, powerPreference: "default" }}
       aria-label="Modeled 3D household dependencies under this simulated scenario"
     >

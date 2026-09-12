@@ -85,15 +85,27 @@ export function StressScene({
       <p className="mb-2 text-xs leading-relaxed">{STRESS_SCENE_DISCLAIMER}</p>
       <ul className="mb-2 flex flex-wrap gap-3 text-[11px] text-muted" aria-label="Modeled colors">
         <li className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-danger" aria-hidden />
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#b42318" }}
+            aria-hidden
+          />
           Fails in this model
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-warning" aria-hidden />
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#c4a15a" }}
+            aria-hidden
+          />
           Strained
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted" aria-hidden />
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ background: "#7a8ea3" }}
+            aria-hidden
+          />
           Holding up
         </li>
       </ul>
@@ -110,6 +122,16 @@ export function StressScene({
               <StressSceneCanvas model={model} />
             </SceneErrorBoundary>
           )}
+          <ul className="sr-stress-chips" aria-label="Modeled household systems">
+            {model.nodes
+              .filter((node) => node.id !== "home")
+              .map((node) => (
+                <li key={node.id} className={node.failed ? "is-failed" : undefined}>
+                  <span style={{ background: node.color }} aria-hidden />
+                  {node.shortLabel}
+                </li>
+              ))}
+          </ul>
         </div>
       )}
     </div>

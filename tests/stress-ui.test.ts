@@ -113,6 +113,7 @@ describe("Stress Test copy", () => {
     expect(scene).toContain("StressSceneCanvas");
     expect(scene).toContain("StressCascade");
     expect(scene).toContain("canUseWebGL");
+    expect(scene).toContain("sr-stress-chips");
     expect(scene).toContain("STRESS_SCENE_DISCLAIMER");
     expect(STRESS_SCENE_DISCLAIMER.toLowerCase()).toMatch(/modeled household view/);
     expect(scene.toLowerCase()).toMatch(/modeled 3d view|simulated/);

@@ -165,10 +165,21 @@ body {
   background: linear-gradient(180deg, #d7e4f4 0%, #eef3f8 100%);
 }
 
-.sr-stress-label {
-  white-space: nowrap;
+.sr-stress-chips {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0.45rem 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.sr-stress-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   padding: 0.12rem 0.4rem;
   font-size: 9px;
   font-weight: 600;
@@ -177,9 +188,16 @@ body {
   box-shadow: 0 1px 4px rgba(16, 35, 61, 0.12);
 }
 
-.sr-stress-label.is-failed {
+.sr-stress-chips li.is-failed {
   background: color-mix(in srgb, var(--danger) 16%, white);
   color: var(--danger);
+}
+
+.sr-stress-chips span {
+  display: inline-block;
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
 }
 
 @media (orientation: landscape) and (max-height: 540px) {
