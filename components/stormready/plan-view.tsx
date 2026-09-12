@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { SavePlanControl } from "@/components/stormready/save-plan-control";
 import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
@@ -104,6 +105,15 @@ export function PlanView() {
             Update home details
           </Link>
         </section>
+
+        <SavePlanControl
+          snapshot={{
+            home: profile.home,
+            household: profile.household,
+            hazards: plan.alerts,
+            recommendations: plan.recommendations,
+          }}
+        />
 
         {plan.alertsUnavailable ? (
           <UnavailableNote title="Official alerts">

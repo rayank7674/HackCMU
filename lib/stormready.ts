@@ -57,11 +57,42 @@ export {
   createEmptyHouseholdProfile,
   emptyPersistedProfile,
   hasStoredProfile,
+  hydrateHomeProfile,
+  hydrateHouseholdProfile,
   loadProfile,
+  normalizeHomeProfile,
+  normalizeHouseholdProfile,
   saveHomeProfile,
   saveHouseholdProfile,
   saveProfile,
 } from "./profile-store";
+
+export {
+  applySavedSnapshotToLocalStore,
+  homeProfileToRow,
+  householdProfileToRow,
+  loadStormReadySnapshot,
+  saveStormReadySnapshot,
+  snapshotFromRows,
+} from "./supabase/persist";
+
+export {
+  getSupabasePublicEnv,
+  isSupabaseConfigured,
+} from "./supabase/env";
+export {
+  createBrowserSupabaseClient,
+  createSupabaseClient,
+} from "./supabase/client";
+
+export type { AuthIdentity } from "./auth/identity";
+export {
+  AUTH0_LOGIN_PATH,
+  AUTH0_LOGOUT_PATH,
+  DEV_BYPASS_SUB_HEADER,
+  isAuth0Configured,
+  resolveAuthIdentity,
+} from "./auth/identity";
 
 export {
   recommend,

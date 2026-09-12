@@ -11,6 +11,7 @@ import {
   householdSummary,
 } from "@/lib/stormready-format";
 import { clearOnboardingStep } from "@/lib/onboarding-progress";
+import { SavePlanControl } from "@/components/stormready/save-plan-control";
 import { useProfile } from "@/lib/use-profile";
 
 export default function ProfilePage() {
@@ -30,6 +31,14 @@ export default function ProfilePage() {
               <p className="mt-2">{householdSummary(profile.household)}</p>
             </Card>
             <Button href="/onboarding">Update home details</Button>
+            <SavePlanControl
+              snapshot={{
+                home: profile.home,
+                household: profile.household,
+                hazards: null,
+                recommendations: [],
+              }}
+            />
             <Button variant="secondary" onClick={() => setConfirmClear(true)}>
               Clear this device
             </Button>
@@ -41,14 +50,19 @@ export default function ProfilePage() {
               this browser.
             </Card>
             <Button href="/onboarding">Get Started</Button>
-            <Button disabled variant="secondary">
-              Log In
-            </Button>
+            <SavePlanControl
+              snapshot={{
+                home: null,
+                household: null,
+                hazards: null,
+                recommendations: [],
+              }}
+            />
           </>
         )}
         <p className="text-xs leading-relaxed text-muted">
-          Sign-in and cloud save are not part of this release. The Log In control
-          is a placeholder.
+          This device keeps an anonymous copy. Sign in to save a cloud copy once
+          an account is connected.
         </p>
       </div>
 
