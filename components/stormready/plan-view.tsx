@@ -167,10 +167,10 @@ export function PlanView() {
           {plan.recommendationsStatus === "ready" &&
           plan.recommendations.length > 0 ? (
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              Grouped by when to act. Ranked by budget class
+              Grouped by when to act. Ranked no-cost first
               {isKnown(householdBudget)
-                ? ` — ${formatCostClass(householdBudget).toLowerCase()} first`
-                : " — no-cost first"}
+                ? `, then what fits a ${formatCostClass(householdBudget).toLowerCase()} budget`
+                : ""}
               . Badges are cost classes, not prices.
             </p>
           ) : null}
