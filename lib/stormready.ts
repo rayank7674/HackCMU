@@ -6,6 +6,9 @@
  *
  *   import { loadProfile, saveHomeProfile, type HomeProfile } from "@/lib/stormready";
  *
+ * Geocode / NWS adapters (do not redefine these types there):
+ *   import { geocode, fetchNwsAlerts, applyGeocodeToHomeProfile } from "@/lib/integrations";
+ *
  * Equivalent splits:
  *   import type { HomeProfile } from "@/types";
  *   import { loadProfile } from "@/lib/profile-store";
