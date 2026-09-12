@@ -62,6 +62,20 @@ describe("horizon grouping", () => {
     expect(groups[1]?.items[0]?.id).toBe("soon");
     expect(groups[2]?.items[0]?.id).toBe("later");
   });
+
+  it("preserves optimizer order within a horizon instead of re-sorting by budget", () => {
+    const groups = arrangePlanActions(
+      [
+        action({ id: "higher-cost-first", horizon: "now", costClass: "flexible" }),
+        action({ id: "zero-second", horizon: "now", costClass: "zero" }),
+      ],
+      "zero",
+    );
+    expect(groups[0]?.items.map((item) => item.id)).toEqual([
+      "higher-cost-first",
+      "zero-second",
+    ]);
+  });
 });
 
 describe("budget ranking", () => {

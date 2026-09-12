@@ -5,6 +5,7 @@ import {
   fetchAlerts,
   fetchRecommendations,
   statusFromResult,
+  type OptimizationView,
   type RecommendationView,
   type ResourceStatus,
 } from "@/lib/stormready-api";
@@ -16,6 +17,7 @@ export type PlanQuery = {
   alertsStatus: ResourceStatus;
   recommendations: RecommendationView[];
   recommendationsStatus: ResourceStatus;
+  optimization: OptimizationView | null;
   /** True while either live request is still in flight. */
   loading: boolean;
   alertsUnavailable: boolean;
@@ -27,6 +29,7 @@ const idle: PlanQuery = {
   alertsStatus: "idle",
   recommendations: [],
   recommendationsStatus: "idle",
+  optimization: null,
   loading: false,
   alertsUnavailable: false,
   recommendationsUnavailable: false,
@@ -38,6 +41,7 @@ type FetchedPlan = {
   alertsStatus: ResourceStatus;
   recommendations: RecommendationView[];
   recommendationsStatus: ResourceStatus;
+  optimization: OptimizationView | null;
 };
 
 function toQuery(data: Omit<FetchedPlan, "key">): PlanQuery {
@@ -101,6 +105,7 @@ export function usePlanData(
         alertsStatus: statusFromResult(alertsResult),
         recommendations: [],
         recommendationsStatus: "loading",
+        optimization: null,
       });
 
       const recsResult = await fetchRecommendations({
@@ -112,7 +117,10 @@ export function usePlanData(
 
       if (cancelled) return;
 
-      const recommendations = recsResult.ok ? recsResult.data.slice(0, 5) : [];
+      const recommendations = recsResult.ok
+        ? recsResult.data.recommendations.slice(0, 5)
+        : [];
+      const optimization = recsResult.ok ? recsResult.data.optimization : null;
       cachePlanExtras({
         hazards,
         recommendations,
@@ -124,6 +132,7 @@ export function usePlanData(
         alertsStatus: statusFromResult(alertsResult),
         recommendations,
         recommendationsStatus: statusFromResult(recsResult),
+        optimization,
       });
     })();
 
@@ -142,6 +151,7 @@ export function usePlanData(
       alertsStatus: "loading",
       recommendations: [],
       recommendationsStatus: "loading",
+      optimization: null,
     });
   }
 

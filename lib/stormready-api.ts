@@ -11,6 +11,11 @@ import {
   type RecommendationHorizon,
   type Unknownable,
 } from "@/lib/stormready";
+import type {
+  ConstraintEffect,
+  OptimizationConstraints,
+  OptimizationResult,
+} from "@/lib/optimization";
 
 /**
  * Fail-closed client for routes that may land on parallel branches.
@@ -59,12 +64,46 @@ export type RecommendationRequest = {
   household: HouseholdProfile | null;
   hazards: HazardState | null;
   hazardSource: HazardSource;
+  constraints?: Partial<OptimizationConstraints>;
 };
 
 /** Recommendation plus engine display fields when the route is present. */
 export type RecommendationView = Recommendation & {
   costClass?: Unknownable<BudgetClass | string>;
   horizon?: Unknownable<RecommendationHorizon | string>;
+  official?: boolean;
+  hardConstraint?: boolean;
+  estimatedTimeMinutes?: number;
+  estimatedCostRange?: { min: number; max: number };
+  utilityScore?: number;
+  hazardRelevance?: number;
+  householdFit?: number;
+  urgency?: number;
+  costEstimateSource?: string;
+  costEstimateConfidence?: string;
+  constraintEffects?: ConstraintEffect[] | string[];
+};
+
+export type OptimizationView = {
+  solver: "knapsack_dp";
+  objective: "maximize_preparedness_utility";
+  selectedIds: string[];
+  hardConstraintIds: string[];
+  planningCostUnits: number;
+  planningCostDollars: number;
+  planningMinutes: number;
+  hardCount: number;
+  discretionaryCount: number;
+  constraintsUsed: OptimizationConstraints;
+  notes: string[];
+  shortfall: string | null;
+  candidates: OptimizationResult["candidates"];
+  rejected: { id: string; ruleId: string; reasons: string[] }[];
+};
+
+export type RecommendationsPayload = {
+  recommendations: RecommendationView[];
+  optimization: OptimizationView | null;
 };
 
 export type DemoScenario = "quiet" | "watch" | "warning" | "evac" | "flood";
@@ -137,12 +176,13 @@ export async function fetchAlerts(input: {
 
 export async function fetchRecommendations(
   input: RecommendationRequest,
-): Promise<ApiResult<RecommendationView[]>> {
+): Promise<ApiResult<RecommendationsPayload>> {
   const body: RecommendationRequest = {
     home: input.home,
     household: input.household,
     hazards: input.hazards,
     hazardSource: input.hazardSource,
+    constraints: input.constraints,
   };
 
   const posted = await requestJson(RECOMMENDATIONS_PATH, {
@@ -165,7 +205,7 @@ export async function fetchRecommendations(
 /** Explicit Tampa fixture only — never used as a silent stand-in for live alerts. */
 export async function fetchTampaDemo(
   scenario: DemoScenario = "quiet",
-): Promise<ApiResult<RecommendationView[]>> {
+): Promise<ApiResult<RecommendationsPayload>> {
   const queried = await requestJson(
     `${RECOMMENDATIONS_PATH}?fixture=tampa&scenario=${scenario}`,
   );
@@ -180,11 +220,12 @@ export async function fetchTampaDemo(
 type RecommendFn = (input: RecommendationRequest) => {
   status?: string;
   recommendations?: unknown;
+  optimization?: unknown;
 };
 
 async function tryLocalRecommend(
   input: RecommendationRequest,
-): Promise<ApiResult<RecommendationView[]> | null> {
+): Promise<ApiResult<RecommendationsPayload> | null> {
   try {
     const mod = (await import("@/lib/stormready")) as {
       recommend?: RecommendFn;
@@ -198,16 +239,25 @@ async function tryLocalRecommend(
 
 function parseEngineRecommendations(
   value: unknown,
-): ApiResult<RecommendationView[]> | null {
+): ApiResult<RecommendationsPayload> | null {
   if (!isRecord(value)) {
     const list = parseRecommendations(value);
-    return list ? { ok: true, data: list } : null;
+    return list
+      ? { ok: true, data: { recommendations: list, optimization: null } }
+      : null;
   }
   if (value.status === "unavailable" || value.ok === false) {
     return { ok: false, reason: "unavailable", status: 200 };
   }
   const list = parseRecommendations(value);
-  return list ? { ok: true, data: list } : null;
+  if (!list) return null;
+  return {
+    ok: true,
+    data: {
+      recommendations: list,
+      optimization: parseOptimization(value.optimization),
+    },
+  };
 }
 
 async function tryAlternateMethod<T, B>(
@@ -454,11 +504,174 @@ function parseRecommendation(value: unknown): RecommendationView | null {
     provenance: readProvenance(value.provenance, "external_source"),
     costClass: readUnknownableString(value.costClass ?? value.cost_class),
     horizon: readUnknownableString(value.horizon),
+    official: value.official === true,
+    hardConstraint: value.hardConstraint === true,
+    estimatedTimeMinutes:
+      typeof value.estimatedTimeMinutes === "number"
+        ? value.estimatedTimeMinutes
+        : undefined,
+    estimatedCostRange: parseCostRange(value.estimatedCostRange),
+    utilityScore:
+      typeof value.utilityScore === "number" ? value.utilityScore : undefined,
+    hazardRelevance:
+      typeof value.hazardRelevance === "number"
+        ? value.hazardRelevance
+        : undefined,
+    householdFit:
+      typeof value.householdFit === "number" ? value.householdFit : undefined,
+    urgency: typeof value.urgency === "number" ? value.urgency : undefined,
+    costEstimateSource:
+      typeof value.costEstimateSource === "string"
+        ? value.costEstimateSource
+        : undefined,
+    costEstimateConfidence:
+      typeof value.costEstimateConfidence === "string"
+        ? value.costEstimateConfidence
+        : undefined,
+    constraintEffects: Array.isArray(value.constraintEffects)
+      ? (value.constraintEffects.filter(
+          (item): item is ConstraintEffect => typeof item === "string",
+        ) as ConstraintEffect[])
+      : undefined,
+  };
+}
+
+function parseCostRange(
+  value: unknown,
+): { min: number; max: number } | undefined {
+  if (!isRecord(value)) return undefined;
+  if (typeof value.min !== "number" || typeof value.max !== "number") {
+    return undefined;
+  }
+  return { min: value.min, max: value.max };
+}
+
+function parseOptimization(value: unknown): OptimizationView | null {
+  if (!isRecord(value)) return null;
+  if (value.solver !== "knapsack_dp") return null;
+  const selectedIds = Array.isArray(value.selectedIds)
+    ? value.selectedIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const hardConstraintIds = Array.isArray(value.hardConstraintIds)
+    ? value.hardConstraintIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const used = isRecord(value.constraintsUsed) ? value.constraintsUsed : null;
+  const unitCap =
+    used && typeof used.budgetUnits === "number"
+      ? used.budgetUnits
+      : used && typeof used.budgetDollars === "number"
+        ? used.budgetDollars
+        : null;
+  const constraintsUsed: OptimizationConstraints = used
+    ? {
+        budgetUnits: unitCap,
+        budgetDollars: unitCap,
+        availableTimeMinutes:
+          typeof used.availableTimeMinutes === "number"
+            ? used.availableTimeMinutes
+            : null,
+        transport: readTransport(used.transport),
+      }
+    : {
+        budgetUnits: null,
+        budgetDollars: null,
+        availableTimeMinutes: null,
+        transport: "unknown",
+      };
+
+  const planningCostUnits =
+    typeof value.planningCostUnits === "number"
+      ? value.planningCostUnits
+      : typeof value.planningCostDollars === "number"
+        ? value.planningCostDollars
+        : 0;
+
+  return {
+    solver: "knapsack_dp",
+    objective:
+      value.objective === "maximize_preparedness_utility"
+        ? "maximize_preparedness_utility"
+        : "maximize_preparedness_utility",
+    selectedIds,
+    hardConstraintIds,
+    planningCostUnits,
+    planningCostDollars: planningCostUnits,
+    planningMinutes:
+      typeof value.planningMinutes === "number" ? value.planningMinutes : 0,
+    hardCount: typeof value.hardCount === "number" ? value.hardCount : 0,
+    discretionaryCount:
+      typeof value.discretionaryCount === "number"
+        ? value.discretionaryCount
+        : 0,
+    constraintsUsed,
+    notes: Array.isArray(value.notes)
+      ? value.notes.filter((item): item is string => typeof item === "string")
+      : [],
+    shortfall: typeof value.shortfall === "string" ? value.shortfall : null,
+    candidates: Array.isArray(value.candidates)
+      ? value.candidates.flatMap((item) => {
+          if (!isRecord(item) || typeof item.id !== "string") return [];
+          return [
+            {
+              id: item.id,
+              ruleId: typeof item.ruleId === "string" ? item.ruleId : item.id,
+              title: typeof item.title === "string" ? item.title : item.id,
+              category: readCategory(item.category),
+              hardConstraint: item.hardConstraint === true,
+              official: item.official === true,
+              selected: item.selected === true,
+              utility: typeof item.utility === "number" ? item.utility : 0,
+              estimatedCostUnits:
+                typeof item.estimatedCostUnits === "number"
+                  ? item.estimatedCostUnits
+                  : typeof item.estimatedCostDollars === "number"
+                    ? item.estimatedCostDollars
+                    : 0,
+              estimatedCostDollars:
+                typeof item.estimatedCostDollars === "number"
+                  ? item.estimatedCostDollars
+                  : typeof item.estimatedCostUnits === "number"
+                    ? item.estimatedCostUnits
+                    : 0,
+              estimatedTimeMinutes:
+                typeof item.estimatedTimeMinutes === "number"
+                  ? item.estimatedTimeMinutes
+                  : 0,
+            },
+          ];
+        })
+      : [],
+    rejected: Array.isArray(value.rejected)
+      ? value.rejected.flatMap((item) => {
+          if (!isRecord(item) || typeof item.id !== "string") return [];
+          return [
+            {
+              id: item.id,
+              ruleId: typeof item.ruleId === "string" ? item.ruleId : item.id,
+              reasons: Array.isArray(item.reasons)
+                ? item.reasons.filter((reason): reason is string => typeof reason === "string")
+                : [],
+            },
+          ];
+        })
+      : [],
   };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readTransport(value: unknown): OptimizationConstraints["transport"] {
+  if (
+    value === "car" ||
+    value === "limited" ||
+    value === "none" ||
+    value === "unknown"
+  ) {
+    return value;
+  }
+  return "unknown";
 }
 
 function readUnknownableString(value: unknown): Unknownable<string> {

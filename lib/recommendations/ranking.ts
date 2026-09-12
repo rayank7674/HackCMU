@@ -1,4 +1,5 @@
 import type { RecommendationPriority } from "@/types";
+import type { PreparednessAction } from "@/lib/optimization/types";
 import { actionFitsBudget } from "./budget";
 import type { RankedRecommendation } from "./types";
 import type { RuleContext, RuleMatch } from "../rules/types";
@@ -102,5 +103,35 @@ export function toRankedRecommendation(match: RuleMatch): RankedRecommendation {
     horizon: match.horizon,
     official: match.official,
     costClass: match.costClass,
+  };
+}
+
+export function toRankedRecommendationFromAction(
+  action: PreparednessAction,
+): RankedRecommendation {
+  return {
+    id: action.id,
+    title: action.title,
+    body: action.body,
+    priority: action.priority,
+    category: action.category,
+    hazardKinds: action.hazardKinds,
+    ruleId: action.ruleId,
+    rationale: action.rationale,
+    timeframe: action.horizon,
+    provenance: action.official ? "external_source" : "user_reported",
+    horizon: action.horizon,
+    official: action.official,
+    costClass: action.costClass,
+    hardConstraint: action.hardConstraint,
+    estimatedTimeMinutes: action.estimatedTimeMinutes,
+    estimatedCostRange: action.estimatedCostRange,
+    utilityScore: action.utility,
+    hazardRelevance: action.hazardRelevance,
+    householdFit: action.householdFit,
+    urgency: action.urgency,
+    costEstimateSource: action.costEstimateSource,
+    costEstimateConfidence: action.costEstimateConfidence,
+    constraintEffects: action.constraintEffects,
   };
 }
