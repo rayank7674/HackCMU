@@ -3,11 +3,11 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 const variants = {
   primary:
-    "bg-accent-strong text-background shadow-[0_8px_24px_rgba(6,182,212,0.28)] hover:bg-accent active:scale-[0.98]",
+    "bg-accent-strong text-white shadow-[0_8px_24px_rgba(30,79,134,0.22)] hover:bg-accent active:scale-[0.98]",
   secondary:
     "border border-border bg-surface text-foreground hover:bg-surface-elevated active:scale-[0.98]",
   ghost:
-    "bg-transparent text-muted hover:bg-surface hover:text-foreground active:scale-[0.98]",
+    "bg-transparent text-muted hover:bg-surface-elevated hover:text-foreground active:scale-[0.98]",
 } as const;
 
 type ButtonVariant = keyof typeof variants;
@@ -20,7 +20,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 function classes(variant: ButtonVariant, className?: string) {
   return [
-    "inline-flex h-12 w-full items-center justify-center rounded-2xl px-4 text-sm font-semibold transition",
+    "inline-flex h-12 w-full items-center justify-center rounded-2xl px-4 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50",
     variants[variant],
     className,
   ]
@@ -34,9 +34,10 @@ export function Button({
   href,
   variant = "primary",
   type = "button",
+  disabled,
   ...rest
 }: ButtonProps) {
-  if (href) {
+  if (href && !disabled) {
     return (
       <Link href={href} className={classes(variant, className)}>
         {children}
@@ -45,7 +46,12 @@ export function Button({
   }
 
   return (
-    <button type={type} className={classes(variant, className)} {...rest}>
+    <button
+      type={type}
+      className={classes(variant, className)}
+      disabled={disabled}
+      {...rest}
+    >
       {children}
     </button>
   );

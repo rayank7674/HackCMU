@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Isolated leftover from the HackCMU rooms skeleton.
+ * `/dashboard` redirects to `/` so this is not on the StormReady user path.
+ */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
