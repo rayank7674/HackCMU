@@ -13,6 +13,9 @@ import "leaflet/dist/leaflet.css";
 import type { MapResourcePin } from "@/lib/map/resources";
 import { pointsForBounds, type LatLon } from "@/lib/map/location";
 import { getMapTileLayer } from "@/lib/map/resources";
+import type { StressOverlayModel } from "@/lib/integrations/geo/stress-overlay";
+import { overlayPointsAsLatLon } from "@/lib/integrations/geo/stress-overlay";
+import { MapStressOverlay } from "@/components/stormready/map-stress-overlay";
 
 const HOME_COLOR = "#1e4f86";
 const PIN_COLORS: Record<MapResourcePin["kind"], string> = {
@@ -26,6 +29,8 @@ type StormMapProps = {
   zoom: number;
   approximateHome: LatLon | null;
   pins: MapResourcePin[];
+  /** Schematic modeled overlay. Omitted keeps today’s map. */
+  stressOverlay?: StressOverlayModel | null;
 };
 
 function Recenter({ center, zoom }: { center: LatLon; zoom: number }) {
@@ -39,19 +44,23 @@ function Recenter({ center, zoom }: { center: LatLon; zoom: number }) {
 function FitPins({
   home,
   pins,
+  extraPoints,
+  extraKey,
 }: {
   home: LatLon | null;
   pins: MapResourcePin[];
+  extraPoints: LatLon[];
+  extraKey: string;
 }) {
   const map = useMap();
   useEffect(() => {
-    const points = pointsForBounds(home, pins);
+    const points = pointsForBounds(home, [...pins, ...extraPoints]);
     if (points.length < 2) return;
     const bounds = latLngBounds(
       points.map((point) => [point.latitude, point.longitude] as [number, number]),
     );
     map.fitBounds(bounds, { padding: [20, 20], maxZoom: 10 });
-  }, [home, map, pins]);
+  }, [extraKey, extraPoints, home, map, pins]);
   return null;
 }
 
@@ -60,8 +69,14 @@ export function StormMap({
   zoom,
   approximateHome,
   pins,
+  stressOverlay = null,
 }: StormMapProps) {
   const tiles = getMapTileLayer();
+  const overlayPoints = overlayPointsAsLatLon(stressOverlay);
+  const overlayKey = overlayPoints
+    .map((point) => `${point.latitude},${point.longitude}`)
+    .join("|");
+  const fitToOverlay = overlayPoints.length > 0;
 
   return (
     <MapContainer
@@ -71,8 +86,13 @@ export function StormMap({
       className="h-full w-full"
       attributionControl
     >
-      {pins.length > 0 ? (
-        <FitPins home={approximateHome} pins={pins} />
+      {pins.length > 0 || fitToOverlay ? (
+        <FitPins
+          home={approximateHome}
+          pins={pins}
+          extraPoints={overlayPoints}
+          extraKey={overlayKey}
+        />
       ) : (
         <Recenter center={center} zoom={zoom} />
       )}
@@ -102,6 +122,7 @@ export function StormMap({
           </Popup>
         </CircleMarker>
       ) : null}
+      {stressOverlay ? <MapStressOverlay overlay={stressOverlay} /> : null}
       {pins.map((pin) => (
         <CircleMarker
           key={pin.id}

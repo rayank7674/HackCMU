@@ -1,11 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { resolveMapView } from "@/lib/map/location";
 import { MAP_LOCATOR_LINKS, pinsForView } from "@/lib/map/resources";
 import { useProfile } from "@/lib/use-profile";
+import type { StressOverlayModel } from "@/lib/integrations/geo/stress-overlay";
+import { MapStressLegend } from "@/components/stormready/map-stress-legend";
 
 const StormMap = dynamic(
   () => import("./storm-map").then((mod) => mod.StormMap),
@@ -19,13 +22,20 @@ const StormMap = dynamic(
   },
 );
 
-export function MapView() {
+export function MapView({
+  stressOverlay = null,
+  leading = null,
+}: {
+  stressOverlay?: StressOverlayModel | null;
+  leading?: ReactNode;
+} = {}) {
   const { profile, hydrated } = useProfile();
   const view = resolveMapView(profile.home?.location);
   const pins = pinsForView(view.showTampaExamplePins);
 
   return (
     <div className="flex flex-1 flex-col gap-3 px-5 pb-8 pt-4">
+      {leading}
       {!hydrated ? (
         <Card title="Map">Loading this device…</Card>
       ) : view.hasHomeLocation ? (
@@ -54,6 +64,7 @@ export function MapView() {
             zoom={view.zoom}
             approximateHome={view.approximateHome}
             pins={pins}
+            stressOverlay={stressOverlay}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted">
@@ -61,6 +72,8 @@ export function MapView() {
           </div>
         )}
       </div>
+
+      {stressOverlay ? <MapStressLegend overlay={stressOverlay} /> : null}
 
       {!view.showTampaExamplePins && view.hasHomeLocation ? (
         <p className="text-xs leading-relaxed text-muted">
