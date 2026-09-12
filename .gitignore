@@ -78,6 +78,12 @@ web_modules/
 .next
 out
 
+# Vercel
+.vercel
+
+# Local toolchain (not committed)
+.tools/
+
 # Nuxt.js build / generate output
 .nuxt
 dist
