@@ -48,7 +48,7 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative z-10 w-full max-w-[430px] rounded-t-3xl border border-border bg-surface-elevated p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+        className="relative z-10 w-full max-w-lg rounded-t-3xl border border-border bg-surface-elevated p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" />
         <h2 id="modal-title" className="text-lg font-semibold text-foreground">

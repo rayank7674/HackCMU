@@ -7,7 +7,7 @@ type HeaderProps = {
 
 export function Header({ title, backHref }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+    <header className="sr-page-header sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
       {backHref ? (
         <Link
           href={backHref}
