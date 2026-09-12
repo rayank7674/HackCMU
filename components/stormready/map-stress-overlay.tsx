@@ -59,29 +59,31 @@ export function MapStressOverlay({
           />
         );
       })}
-      {overlay.points.map((point) => (
-        <CircleMarker
-          key={`stress-${point.id}`}
-          center={[point.latitude, point.longitude]}
-          radius={point.id === "home" ? 11 : point.isFirstBreak ? 9 : 7}
-          pathOptions={{
-            color: LEVEL_COLOR[point.level],
-            fillColor: LEVEL_COLOR[point.level],
-            fillOpacity: point.id === "home" ? 0.2 : 0.75,
-            weight: point.inCascade ? 3 : 2,
-          }}
-        >
-          <Popup maxWidth={220} autoPan>
-            <p className="text-sm font-semibold text-foreground">{point.label}</p>
-            <p className="mt-1 text-xs text-muted">
-              Modeled capacity {point.capacity}% ({point.level}).
-            </p>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
-              Schematic offset — not a real site
-            </p>
-          </Popup>
-        </CircleMarker>
-      ))}
+      {overlay.points
+        .filter((point) => point.id !== "home")
+        .map((point) => (
+          <CircleMarker
+            key={`stress-${point.id}`}
+            center={[point.latitude, point.longitude]}
+            radius={point.isFirstBreak ? 9 : 7}
+            pathOptions={{
+              color: LEVEL_COLOR[point.level],
+              fillColor: LEVEL_COLOR[point.level],
+              fillOpacity: 0.75,
+              weight: point.inCascade ? 3 : 2,
+            }}
+          >
+            <Popup maxWidth={220} autoPan>
+              <p className="text-sm font-semibold text-foreground">{point.label}</p>
+              <p className="mt-1 text-xs text-muted">
+                Modeled capacity {point.capacity}% ({point.level}).
+              </p>
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
+                Schematic offset — not a real site
+              </p>
+            </Popup>
+          </CircleMarker>
+        ))}
     </>
   );
 }
