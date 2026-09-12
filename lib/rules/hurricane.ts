@@ -451,6 +451,63 @@ export const hurricaneRules: Rule[] = [
     },
   },
   {
+    id: "household.mobility_aids",
+    evaluate(ctx) {
+      if (ctx.household.hasMobilityNeeds !== true) return null;
+      const aids = ctx.household.mobilityAids;
+      if (!Array.isArray(aids) || aids.length === 0) return null;
+
+      const wheelchair = aids.includes("wheelchair");
+      const crutches = aids.includes("crutches_or_walker");
+      const elevator = aids.includes("elevator");
+      const transfer = aids.includes("transfer_help");
+
+      const parts: string[] = [];
+      if (wheelchair) {
+        parts.push(
+          "Keep the wheelchair charged or with a spare battery, and stage a clear exit path wide enough for it",
+        );
+      }
+      if (crutches) {
+        parts.push(
+          "Keep crutches or a walker by the exit you will actually use, with a clear non-slip path",
+        );
+      }
+      if (elevator) {
+        parts.push(
+          "Plan a no-elevator route now — elevators fail in storms and outages",
+        );
+      }
+      if (transfer) {
+        parts.push(
+          "Name who helps with transfers and how to reach them if phones are down",
+        );
+      }
+      if (parts.length === 0) return null;
+
+      return ruleMatch(this.id, {
+        title: wheelchair
+          ? "Stage wheelchair exit gear and an accessible way out"
+          : crutches
+            ? "Stage crutches or walker on your real exit path"
+            : "Set mobility-access steps for this household",
+        body: `${parts.join(". ")}.`,
+        priority: "high",
+        category: "evacuate",
+        hazardKinds: fallbackKinds(officialHazards(ctx), [
+          "hurricane",
+          "flood",
+          "wildfire",
+          "winter_storm",
+        ]),
+        rationale: `Mobility aids selected: ${aids.join(", ")}.`,
+        horizon: "before_next_event",
+        official: false,
+        costClass: "zero",
+      });
+    },
+  },
+  {
     id: "household.meds_go_bag",
     evaluate(ctx) {
       if (isAllClear(ctx)) {

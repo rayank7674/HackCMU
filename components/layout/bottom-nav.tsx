@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useNavCollapse } from "@/components/layout/nav-collapse";
 
 export const STRESS_TEST_HREF = "/stress-test";
 
@@ -43,6 +44,7 @@ const hiddenPrefixes = ["/onboarding", "/dashboard"];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { collapsed, toggleCollapsed } = useNavCollapse();
 
   if (hiddenPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return null;
@@ -50,7 +52,18 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Main" className="sr-nav">
-      <p className="sr-nav-brand">StormReady</p>
+      <div className="sr-nav-top">
+        <p className="sr-nav-brand">{collapsed ? "SR" : "StormReady"}</p>
+        <button
+          type="button"
+          className="sr-nav-collapse"
+          aria-pressed={collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={toggleCollapsed}
+        >
+          {collapsed ? "»" : "«"}
+        </button>
+      </div>
       <ul className="sr-nav-list">
         {MAIN_NAV_TABS.map((tab) => {
           const active = tab.match(pathname);
@@ -61,10 +74,11 @@ export function BottomNav() {
                 href={tab.href}
                 aria-label={tab.href === STRESS_TEST_HREF ? "Stress Test" : tab.label}
                 aria-current={active ? "page" : undefined}
+                title={tab.label}
                 className={`sr-nav-link ${active ? "is-active" : ""}`}
               >
                 <Icon active={active} />
-                {tab.label}
+                <span className="sr-nav-link-label">{tab.label}</span>
               </Link>
             </li>
           );

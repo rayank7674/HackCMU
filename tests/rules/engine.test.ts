@@ -22,7 +22,7 @@ describe("rule catalog", () => {
     const ids = ALL_RULES.map((rule) => rule.id);
     expect(RULE_COUNT).toBe(ids.length);
     expect(RULE_COUNT).toBeGreaterThanOrEqual(20);
-    expect(RULE_COUNT).toBeLessThanOrEqual(30);
+    expect(RULE_COUNT).toBeLessThanOrEqual(35);
     expect(new Set(ids).size).toBe(ids.length);
   });
 });

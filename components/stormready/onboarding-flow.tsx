@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
-import { ChoiceGroup, Field, TriState } from "@/components/stormready/choice-field";
+import { ChoiceGroup, Field, MultiChoiceGroup, TriState } from "@/components/stormready/choice-field";
 import { LoadingCard, QueryState } from "@/components/stormready/query-state";
 import { fetchGeocode, type ResourceStatus } from "@/lib/stormready-api";
 import {
@@ -23,6 +23,7 @@ import {
   type BudgetClass,
   type HomeProfile,
   type HouseholdProfile,
+  type MobilityAid,
   type Unknownable,
 } from "@/lib/stormready";
 import { useProfile } from "@/lib/use-profile";
@@ -599,11 +600,30 @@ function ConstraintsStep({
       />
       <TriState
         legend="Mobility needs"
+        hint="Wheelchair, crutches, walker, or help with stairs and transfers."
         value={household.hasMobilityNeeds}
         onChange={(hasMobilityNeeds) =>
-          onChange({ ...household, hasMobilityNeeds })
+          onChange({
+            ...household,
+            hasMobilityNeeds,
+            mobilityAids:
+              hasMobilityNeeds === true
+                ? Array.isArray(household.mobilityAids)
+                  ? household.mobilityAids
+                  : []
+                : UNKNOWN,
+          })
         }
       />
+      {household.hasMobilityNeeds === true ? (
+        <MultiChoiceGroup
+          legend="What applies to this household?"
+          hint="Pick all that apply. These change exit and transport steps."
+          values={Array.isArray(household.mobilityAids) ? household.mobilityAids : []}
+          options={MOBILITY_AID_OPTIONS}
+          onChange={(mobilityAids) => onChange({ ...household, mobilityAids })}
+        />
+      ) : null}
       <TriState
         legend="Power-dependent medical device"
         value={household.hasPowerDependentMedicalDevice}
@@ -660,6 +680,13 @@ function BudgetStep({
     />
   );
 }
+
+const MOBILITY_AID_OPTIONS: { value: MobilityAid; label: string }[] = [
+  { value: "wheelchair", label: "Wheelchair" },
+  { value: "crutches_or_walker", label: "Crutches or walker" },
+  { value: "transfer_help", label: "Needs help transferring" },
+  { value: "elevator", label: "Depends on an elevator" },
+];
 
 function CountField({
   label,

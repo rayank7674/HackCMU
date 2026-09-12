@@ -9,9 +9,19 @@ type ModalProps = {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  /** Hide the default title row when children render their own header. */
+  hideTitle?: boolean;
+  panelClassName?: string;
 };
 
-export function Modal({ open, title, children, onClose }: ModalProps) {
+export function Modal({
+  open,
+  title,
+  children,
+  onClose,
+  hideTitle = false,
+  panelClassName,
+}: ModalProps) {
   useEffect(() => {
     if (!open) {
       return;
@@ -47,14 +57,28 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
-        className="relative z-10 w-full max-w-lg rounded-t-3xl border border-border bg-surface-elevated p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+        aria-labelledby={hideTitle ? undefined : "modal-title"}
+        aria-label={hideTitle ? title : undefined}
+        className={[
+          "relative z-10 w-full max-w-lg overflow-hidden rounded-t-3xl border border-border bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl",
+          panelClassName,
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" />
-        <h2 id="modal-title" className="text-lg font-semibold text-foreground">
-          {title}
-        </h2>
-        <div className="mt-3 text-sm leading-relaxed text-muted">{children}</div>
+        {hideTitle ? null : (
+          <h2 id="modal-title" className="text-lg font-semibold text-foreground">
+            {title}
+          </h2>
+        )}
+        <div
+          className={
+            hideTitle ? "text-sm leading-relaxed text-foreground" : "mt-3 text-sm leading-relaxed text-muted"
+          }
+        >
+          {children}
+        </div>
         <div className="mt-6">
           <Button variant="secondary" onClick={onClose}>
             Close

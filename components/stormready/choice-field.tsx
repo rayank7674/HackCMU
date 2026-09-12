@@ -59,6 +59,53 @@ export function ChoiceGroup<T extends string>({
   );
 }
 
+export function MultiChoiceGroup<T extends string>({
+  legend,
+  hint,
+  values,
+  options,
+  onChange,
+}: {
+  legend: string;
+  hint?: string;
+  values: T[];
+  options: { value: T; label: string }[];
+  onChange: (values: T[]) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+      {hint ? <p className="mt-0.5 text-xs text-muted">{hint}</p> : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((option) => {
+          const selected = values.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => {
+                if (selected) {
+                  onChange(values.filter((value) => value !== option.value));
+                } else {
+                  onChange([...values, option.value]);
+                }
+              }}
+              className={`min-h-11 rounded-2xl border px-3 py-2 text-sm font-medium transition ${
+                selected
+                  ? "border-accent-strong bg-accent-strong text-white"
+                  : "border-border bg-white text-foreground hover:bg-surface-elevated"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 export function TriState({
   legend,
   hint,

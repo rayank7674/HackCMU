@@ -1,15 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AuthControls } from "@/components/stormready/auth-controls";
 import { usePlanData } from "@/components/stormready/plan-data";
 import { LoadingCard } from "@/components/stormready/query-state";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
+import { STRESS_TEST_HREF } from "@/components/layout/bottom-nav";
+import { topChecklistAction } from "@/lib/plan-checklist";
 import {
   SEVERITY_RANK,
   formatLocation,
   formatRelativeTime,
+  formatSeverity,
+  householdSummary,
 } from "@/lib/stormready-format";
 import { useProfile } from "@/lib/use-profile";
 
@@ -34,7 +39,7 @@ export function HomeView() {
   const alert = [...(plan.alerts?.hazards ?? [])].sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity],
   )[0];
-  const topAction = plan.recommendations[0];
+  const stepOne = topChecklistAction(plan.recommendations);
   const lastUpdated =
     plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
 
@@ -43,12 +48,22 @@ export function HomeView() {
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
         StormReady
       </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">
-        {formatLocation(profile.home)}
-      </h1>
-      <p className="mt-2 text-sm text-muted">
-        Last updated {formatRelativeTime(lastUpdated)}
-      </p>
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            {formatLocation(profile.home)}
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Last updated {formatRelativeTime(lastUpdated)}
+          </p>
+        </div>
+        <Link
+          href="/onboarding"
+          className="shrink-0 rounded-xl border border-border bg-white px-3 py-2 text-sm font-semibold text-accent-strong hover:bg-surface-elevated"
+        >
+          Update home details
+        </Link>
+      </div>
 
       <div className="mt-6 grid gap-3 sr-card-grid">
         <Card eyebrow="Current alert" title={alertTitle(plan, alert?.headline)}>
@@ -59,30 +74,69 @@ export function HomeView() {
               : plan.alertsStatus === "loading"
                 ? "Looking up official products for your location."
                 : alert
-                  ? "From the last official check for your saved location."
+                  ? `${formatSeverity(alert.severity)}. From the last official check for your saved location.`
                   : plan.alerts?.allClear === true
                     ? "An official check reported no active products."
                     : "Alert status is not confirmed. This is not an all-clear."}
         </Card>
-        <Card eyebrow="Top action" title={actionTitle(plan, topAction?.title)}>
+        <Card
+          eyebrow="Step 1 · Top action"
+          title={actionTitle(plan, stepOne?.title)}
+        >
           {plan.recommendationsStatus === "error"
             ? "Recommended actions could not be loaded. StormReady will not invent a checklist."
             : plan.recommendationsStatus === "unavailable"
               ? "Actions will appear when the plan service is connected."
               : plan.recommendationsStatus === "loading"
                 ? "Building your plan from official alerts and your home details."
-                : topAction
-                  ? "Open your plan for timing, constraints, and why this matters."
+                : stepOne
+                  ? "Same as Step 1 on your plan. Open the plan for the full checklist and why."
                   : "No confirmed actions yet."}
         </Card>
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sr-cta">
         <Button href="/plan">Open your plan</Button>
-        <Button href="/onboarding" variant="secondary">
-          Update home details
-        </Button>
       </div>
+
+      <section className="mt-8">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+          Also useful
+        </p>
+        <div className="mt-3 grid gap-3 sr-card-grid">
+          <Card eyebrow="Map" title="See nearby alerts">
+            <p>
+              Check how official products relate to your area on the map.
+            </p>
+            <Link
+              href="/map"
+              className="mt-3 inline-flex text-sm font-semibold text-accent-strong underline-offset-2 hover:underline"
+            >
+              Open map
+            </Link>
+          </Card>
+          <Card eyebrow="Stress test" title="Practice a power outage">
+            <p>
+              Run a simulated outage to spot weak links before a real storm.
+            </p>
+            <Link
+              href={STRESS_TEST_HREF}
+              className="mt-3 inline-flex text-sm font-semibold text-accent-strong underline-offset-2 hover:underline"
+            >
+              Test my preparedness
+            </Link>
+          </Card>
+          <Card eyebrow="Household" title="What we know about this home">
+            <p>{householdSummary(profile.household)}</p>
+            <Link
+              href="/help"
+              className="mt-3 inline-flex text-sm font-semibold text-accent-strong underline-offset-2 hover:underline"
+            >
+              Official help links
+            </Link>
+          </Card>
+        </div>
+      </section>
     </main>
   );
 }

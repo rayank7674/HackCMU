@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
@@ -19,22 +19,26 @@ import {
 import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import {
   SEVERITY_RANK,
-  arrangePlanActions,
   asBudgetClass,
-  budgetFitLabel,
   formatCostClass,
   formatLocation,
-  formatPriority,
   formatRelativeTime,
   formatSeverity,
+  resolvePlanHorizon,
   shortReason,
 } from "@/lib/stormready-format";
+import {
+  checklistActions as pickChecklistActions,
+  importanceFromAction,
+  type ImportanceTone,
+} from "@/lib/plan-checklist";
 import {
   hazardFixtureFor,
   isKnown,
   tampaDemoInput,
   type ActiveHazard,
   type BudgetClass,
+  type HomeProfile,
   type Unknownable,
 } from "@/lib/stormready";
 import { useProfile } from "@/lib/use-profile";
@@ -47,7 +51,8 @@ import {
   type ResourceStatus,
 } from "@/lib/stormready-api";
 import { linksForCategory } from "@/lib/help/for-category";
-import type { OfficialLink } from "@/lib/help/content";
+import { PREPAREDNESS_LINKS, type OfficialLink } from "@/lib/help/content";
+import { regionalRisksForHome } from "@/lib/regional-risks";
 import {
   COST_UNITS_BY_CLASS,
   diffOptimizationResults,
@@ -59,13 +64,13 @@ import {
 } from "@/lib/optimization";
 
 const ALERT_UNAVAILABLE =
-  "Alert service is not connected yet. StormReady will not invent warnings or mark this area all-clear.";
+  "We could not reach the alert service yet. StormReady will not invent a warning or say the area is clear.";
 const ALERT_ERROR =
-  "Official alerts could not be loaded. StormReady will not invent warnings or mark this area all-clear.";
+  "Official alerts could not be loaded. StormReady will not invent a warning or say the area is clear.";
 const ACTION_UNAVAILABLE =
-  "The plan service is not connected yet, or it failed closed because official alerts are unavailable. StormReady will not invent a live checklist.";
+  "Your checklist is not available yet, often because alerts could not be confirmed. StormReady will not invent steps.";
 const ACTION_ERROR =
-  "Recommended actions could not be loaded. StormReady will not invent a live checklist.";
+  "Your checklist could not be loaded. StormReady will not invent steps.";
 
 const DEMO_SCENARIOS: { value: DemoScenario; label: string }[] = [
   { value: "quiet", label: "Quiet" },
@@ -78,14 +83,17 @@ const DEMO_SCENARIOS: { value: DemoScenario; label: string }[] = [
 type BudgetPreset = "zero" | "low" | "moderate" | "flexible" | "unconstrained";
 type TimePreset = "15" | "30" | "60" | "180" | "unconstrained";
 
+const CHECKLIST_STORAGE_KEY = "stormready:plan-checklist:v1";
+
 export function PlanView() {
   const { profile, hydrated } = useProfile();
   useCloudPlanSync();
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
-  const [ruleOpen, setRuleOpen] = useState(false);
+  const [checkedSteps, setCheckedSteps] = useState<Record<string, boolean>>({});
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [prioritizeOpen, setPrioritizeOpen] = useState(false);
+  const [situationOpen, setSituationOpen] = useState(false);
   const [mode, setMode] = useState<"live" | "demo">("live");
   const [scenario, setScenario] = useState<DemoScenario>("quiet");
   const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
@@ -126,12 +134,48 @@ export function PlanView() {
     () => pickPrimaryAlert(alerts?.hazards ?? []),
     [alerts],
   );
-  const topAction = recommendations[0] ?? null;
+
+  const checklistScope = `${profile.home?.id ?? ""}|${isDemo ? `demo:${scenario}` : "live"}`;
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      const raw = window.sessionStorage.getItem(CHECKLIST_STORAGE_KEY);
+      if (!raw) {
+        setCheckedSteps({});
+        return;
+      }
+      const parsed = JSON.parse(raw) as { scope?: string; checked?: Record<string, boolean> };
+      if (parsed.scope === checklistScope && parsed.checked) {
+        setCheckedSteps(parsed.checked);
+      } else {
+        setCheckedSteps({});
+      }
+    } catch {
+      setCheckedSteps({});
+    }
+  }, [hydrated, checklistScope]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.sessionStorage.setItem(
+        CHECKLIST_STORAGE_KEY,
+        JSON.stringify({ scope: checklistScope, checked: checkedSteps }),
+      );
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [hydrated, checklistScope, checkedSteps]);
+
+  function toggleStep(id: string) {
+    setCheckedSteps((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
 
   if (!hydrated) {
     return (
-      <main className="flex flex-1 flex-col">
-        <Header title="Your plan" />
+      <main className="flex flex-1 flex-col bg-background">
+        <Header title="PLAN" emphatic />
         <div className="px-5 py-8">
           <LoadingCard title="Your home" label="Loading your home…" lines={2} />
         </div>
@@ -141,10 +185,10 @@ export function PlanView() {
 
   if (!profile.home && !profile.household) {
     return (
-      <main className="flex flex-1 flex-col">
-        <Header title="Your plan" />
+      <main className="flex flex-1 flex-col bg-background">
+        <Header title="PLAN" emphatic />
         <div className="flex flex-1 flex-col px-5 pb-8 pt-6">
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             No plan on this device yet
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -161,6 +205,21 @@ export function PlanView() {
 
   const lastUpdated =
     alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
+  const locationLabel =
+    alerts && isKnown(alerts.locationLabel)
+      ? alerts.locationLabel
+      : formatLocation(profile.home);
+  const homeTitle = planHomeTitle(profile.home);
+  const homeMeta = planHomeMeta(profile.home);
+  const checklistActions = pickChecklistActions(recommendations, 3);
+  const checklistDone = checklistActions.filter((action) =>
+    Boolean(checkedSteps[action.id]),
+  ).length;
+  const checklistPercent =
+    checklistActions.length > 0
+      ? Math.round((checklistDone / checklistActions.length) * 100)
+      : 0;
+  const regionalRisks = regionalRisksForHome(profile.home);
 
   async function applyDemo(nextScenario: DemoScenario) {
     setDemoStatus("loading");
@@ -222,154 +281,102 @@ export function PlanView() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Your plan" />
-      <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
-        <ModeToggle
-          mode={mode}
-          scenario={scenario}
-          onLive={() => {
-            setMode("live");
-            setSessionRecs(null);
-            setSessionOptimization(null);
-            setPlanDelta(null);
-          }}
-          onDemo={async (next) => {
-            setMode("demo");
-            setScenario(next);
-            await applyDemo(next);
-          }}
-        />
+    <main className="flex min-h-full flex-1 flex-col bg-blue-wash">
+      <Header title="PLAN" emphatic />
 
+      {/* Colorful hero (screenshot 2 energy, StormReady blues) */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-deep via-blue-mid to-navy px-5 pb-16 pt-5 text-white">
+        <div
+          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-blue-sky/30"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-blue-pale/20"
+          aria-hidden
+        />
+        <h2 className="text-3xl font-semibold tracking-tight">{homeTitle}</h2>
+        {homeMeta ? (
+          <p className="mt-1 text-sm text-blue-pale/90">{homeMeta}</p>
+        ) : null}
+        <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-pale/85">
+          {recsStatus === "ready" && checklistActions.length > 0
+            ? `Checklist ${checklistPercent}% · ${formatRelativeTime(lastUpdated)}`
+            : `Updated ${formatRelativeTime(lastUpdated)}`}
+        </p>
+      </section>
+
+      <div className="relative z-10 -mt-5 flex min-w-0 flex-1 flex-col gap-4 rounded-t-[1.75rem] bg-blue-wash px-5 pb-8 pt-2">
         {isDemo ? (
           <p
             role="status"
             className="rounded-2xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs leading-relaxed text-foreground"
           >
-            DEMO — Tampa fixture, not live NWS. This is not official alerts for
-            your home.
+            Demo mode uses sample Tampa weather, not live alerts for your home.
           </p>
         ) : null}
 
-        <section>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-            Home summary
-          </p>
-          <h2 className="mt-1 text-lg font-semibold text-foreground">
-            {formatLocation(profile.home)}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            Current alert: {summarizeAlert(alertsStatus, alerts, primaryAlert)}
-          </p>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
-            Top action:{" "}
-            {recsStatus === "unavailable" || recsStatus === "error"
-              ? "Unavailable"
-              : topAction
-                ? topAction.title
-                : recsStatus === "loading"
-                  ? "Checking…"
-                  : "None confirmed"}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            Last updated {formatRelativeTime(lastUpdated)}
-          </p>
-          <Link
-            href="/onboarding"
-            className="mt-3 inline-block text-sm font-semibold text-accent-strong"
-          >
-            Update home details
-          </Link>
-          <Link
-            href="/stress-test"
-            className="mt-2 block text-sm font-semibold text-accent-strong"
-          >
-            Test my preparedness
-          </Link>
-        </section>
-
-        <SavePlanControl
-          snapshot={{
-            home: profile.home,
-            household: profile.household,
-            hazards: alerts ?? null,
-            recommendations,
-          }}
-          returnTo="/plan"
-        />
-
-        {!isDemo ? (
-          <QueryState
-            status={plan.alertsStatus}
-            title="Official alerts"
-            loadingLabel="Looking up products for your location."
-            errorMessage={ALERT_ERROR}
-            unavailableMessage={ALERT_UNAVAILABLE}
-          />
-        ) : null}
-        {alertsStatus === "ready" ? (
-          <AlertCard
-            alert={primaryAlert}
-            source={alerts?.provenance}
-            observedAt={alerts?.observedAt ?? null}
-            allClear={alerts?.allClear ?? "unknown"}
-            locationLabel={
-              alerts && isKnown(alerts.locationLabel)
-                ? alerts.locationLabel
-                : formatLocation(profile.home)
-            }
-          />
-        ) : null}
-
-        <ConditionsRow
+        {/* Flow: Situation first */}
+        <SituationStrip
           status={alertsStatus}
+          alert={primaryAlert}
           hazards={alerts?.hazards ?? []}
           allClear={alerts?.allClear ?? "unknown"}
+          locationLabel={locationLabel}
+          source={alerts?.provenance}
+          home={profile.home}
+          isDemo={isDemo}
+          liveAlertsStatus={plan.alertsStatus}
+          onOpen={() => setSituationOpen(true)}
         />
 
-        {recsStatus === "ready" && topAction ? (
-          <TopPriorityCard
-            action={topAction}
-            ruleOpen={ruleOpen}
-            onToggleRule={() => setRuleOpen((open) => !open)}
-            onWhy={() => setWhy(topAction)}
-          />
-        ) : null}
+        {/* Completion bar + checklist (screenshot 1) */}
+        <section className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
+          {recsStatus === "ready" && checklistActions.length > 0 ? (
+            <div className="mb-4">
+              <div className="flex items-end justify-between gap-3">
+                <p className="text-sm font-semibold text-navy">Plan progress</p>
+                <p className="text-sm font-semibold text-navy">{checklistPercent}%</p>
+              </div>
+              <div
+                className="mt-2 h-3 w-full overflow-hidden rounded-full bg-blue-pale"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={checklistPercent}
+                aria-label="Checklist completion"
+              >
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-deep to-blue-sky transition-[width] duration-300 ease-out"
+                  style={{ width: `${checklistPercent}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                {checklistDone} of {checklistActions.length} steps done
+              </p>
+            </div>
+          ) : null}
 
-        <div className="flex flex-col gap-2">
-          <Button variant="secondary" onClick={() => setPrioritizeOpen(true)}>
-            Help Me Prioritize
-          </Button>
-          {planDelta ? (
-            <p
-              role="status"
-              className="rounded-2xl border border-accent/30 bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-foreground"
-            >
-              <span className="font-semibold">PLAN UPDATED.</span> {planDelta.summary}
+          <div className="mb-3 flex items-center gap-3" role="separator" aria-label="Your checklist">
+            <div className="h-px flex-1 bg-blue-pale" />
+            <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-deep">
+              Your checklist
+            </p>
+            <div className="h-px flex-1 bg-blue-pale" />
+          </div>
+
+          {recsStatus === "ready" && checklistActions.length > 0 ? (
+            <p className="text-sm leading-relaxed text-muted">
+              Do these in order. Check each box when you finish. Tap{" "}
+              <span className="font-semibold text-foreground">Why?</span> for
+              the reason or official links.
             </p>
           ) : null}
-        </div>
 
-        {optimization && recsStatus === "ready" ? (
-          <WhyThisPlan optimization={optimization} onDetails={() => setDetailsOpen(true)} />
-        ) : null}
-
-        <section>
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-            Actions
-          </p>
-          {recsStatus === "ready" && recommendations.length > 0 ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted">
-              Grouped by when to act. Order comes from the optimizer (official
-              actions first). Cost badges are classes, not prices. Utility is
-              not a safety score.
-            </p>
-          ) : null}
           {!isDemo &&
           plan.recommendationsStatus === "unavailable" &&
           demoStatus === "idle" ? (
-            <div className="mt-2 space-y-3">
-              <UnavailableNote title="Recommended actions">
+            <div className="mt-3 space-y-3">
+              <UnavailableNote title="Checklist unavailable">
                 {ACTION_UNAVAILABLE}
               </UnavailableNote>
               <Button
@@ -379,14 +386,14 @@ export function PlanView() {
                   void applyDemo("quiet");
                 }}
               >
-                View Tampa quiet demo
+                Try the Tampa demo
               </Button>
             </div>
           ) : !isDemo &&
             plan.recommendationsStatus === "error" &&
             demoStatus === "idle" ? (
-            <div className="mt-2 space-y-3">
-              <ErrorNote title="Recommended actions">{ACTION_ERROR}</ErrorNote>
+            <div className="mt-3 space-y-3">
+              <ErrorNote title="Checklist unavailable">{ACTION_ERROR}</ErrorNote>
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -394,110 +401,204 @@ export function PlanView() {
                   void applyDemo("quiet");
                 }}
               >
-                View Tampa quiet demo
+                Try the Tampa demo
               </Button>
             </div>
           ) : recsStatus === "loading" ? (
-            <div className="mt-2">
+            <div className="mt-3">
               <LoadingCard
-                title={isDemo ? "Tampa demo" : "Recommended actions"}
-                label={isDemo ? "Loading Tampa demo…" : "Loading actions…"}
+                title="Your checklist"
+                label={isDemo ? "Loading Tampa demo…" : "Building your steps…"}
               />
             </div>
           ) : recsStatus === "error" || recsStatus === "unavailable" ? (
-            <div className="mt-2">
+            <div className="mt-3">
               <QueryState
                 status={recsStatus}
-                title={isDemo ? "Tampa demo unavailable" : "Recommended actions"}
+                title={isDemo ? "Demo unavailable" : "Checklist unavailable"}
                 loadingLabel="Loading…"
-                errorMessage="The plan could not be loaded. StormReady will not invent a checklist."
+                errorMessage="Your checklist could not be loaded. StormReady will not invent steps."
                 unavailableMessage={
                   isDemo
-                    ? "GET /api/recommendations?fixture=tampa is not on this branch yet."
+                    ? "The Tampa demo is not available on this deployment yet."
                     : ACTION_UNAVAILABLE
                 }
               />
             </div>
           ) : recommendations.length === 0 ? (
-            <Card className="mt-2" title="No actions returned">
-              The plan service responded without recommended actions. That is
-              not a fabricated checklist.
+            <Card className="mt-3" title="No steps yet">
+              Nothing came back for this checklist. That is not a made-up plan.
             </Card>
           ) : (
-            <div className="mt-2 space-y-3">
-              <ActionGroups
-                actions={recommendations}
-                budgetClass={householdBudget}
-                onWhy={setWhy}
-              />
-              {optimization ? (
-                <LeftOutActions optimization={optimization} />
-              ) : null}
-            </div>
+            <ol className="mt-4 space-y-3">
+              {checklistActions.map((action, index) => (
+                <li key={action.id}>
+                  <ActionCard
+                    action={action}
+                    rank={index + 1}
+                    budgetClass={householdBudget}
+                    dueBy={dueByLabel(action, primaryAlert, alertsStatus)}
+                    checked={Boolean(checkedSteps[action.id])}
+                    onToggle={() => toggleStep(action.id)}
+                    onWhy={() => setWhy(action)}
+                  />
+                </li>
+              ))}
+            </ol>
           )}
         </section>
+
+        <FuturePrepSection
+          risks={regionalRisks}
+          checkedSteps={checkedSteps}
+          onToggle={toggleStep}
+        />
+
+        <section className="space-y-2">
+          <Button variant="secondary" onClick={() => setPrioritizeOpen(true)}>
+            Adjust for my time &amp; budget
+          </Button>
+          {planDelta ? (
+            <p
+              role="status"
+              className="rounded-2xl border border-accent/30 bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-foreground"
+            >
+              <span className="font-semibold text-accent-strong">Updated.</span>{" "}
+              {planDelta.summary}
+            </p>
+          ) : null}
+        </section>
+
+        <details className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)]">
+          <summary className="cursor-pointer text-sm font-semibold text-foreground">
+            More options
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/onboarding"
+                className="text-sm font-semibold text-accent-strong"
+              >
+                Update home details
+              </Link>
+              <Link
+                href="/stress-test"
+                className="text-sm font-semibold text-accent-strong"
+              >
+                Test my preparedness
+              </Link>
+            </div>
+
+            <SavePlanControl
+              snapshot={{
+                home: profile.home,
+                household: profile.household,
+                hazards: alerts ?? null,
+                recommendations,
+              }}
+              returnTo="/plan"
+            />
+
+            <ModeToggle
+              mode={mode}
+              scenario={scenario}
+              onLive={() => {
+                setMode("live");
+                setSessionRecs(null);
+                setSessionOptimization(null);
+                setPlanDelta(null);
+              }}
+              onDemo={async (next) => {
+                setMode("demo");
+                setScenario(next);
+                await applyDemo(next);
+              }}
+            />
+
+            {optimization && recsStatus === "ready" ? (
+              <WhyThisPlan
+                optimization={optimization}
+                onDetails={() => setDetailsOpen(true)}
+              />
+            ) : null}
+
+            {optimization && recsStatus === "ready" ? (
+              <LeftOutActions optimization={optimization} />
+            ) : null}
+          </div>
+        </details>
       </div>
 
       <Modal
+        open={situationOpen}
+        title="What's happening"
+        onClose={() => setSituationOpen(false)}
+      >
+        <SituationDetails
+          status={alertsStatus}
+          alert={primaryAlert}
+          hazards={alerts?.hazards ?? []}
+          allClear={alerts?.allClear ?? "unknown"}
+          source={alerts?.provenance}
+          observedAt={alerts?.observedAt ?? null}
+          locationLabel={locationLabel}
+        />
+      </Modal>
+
+      <Modal
         open={why !== null}
-        title={why?.title ?? "Why this action"}
+        title={why ? `Why: ${why.title}` : "Why this step"}
+        hideTitle
+        panelClassName="bg-blue-wash"
         onClose={() => setWhy(null)}
       >
         {why ? (
-          <>
-            {isKnown(why.rationale) ? <p>{why.rationale}</p> : null}
-            {why.body ? (
-              <p className={isKnown(why.rationale) ? "mt-3" : ""}>{why.body}</p>
-            ) : null}
-            {!isKnown(why.rationale) && !why.body ? (
-              <p>No additional explanation was provided by the plan service.</p>
-            ) : null}
-            {typeof why.utilityScore === "number" ? (
-              <p className="mt-3 text-xs">
-                Preparedness utility {why.utilityScore.toFixed(2)} — ranking
-                weight only, not a safety score.
-              </p>
-            ) : null}
-          </>
+          <WhyActionPanel
+            action={why}
+            budgetClass={householdBudget}
+            dueBy={dueByLabel(why, primaryAlert, alertsStatus)}
+          />
         ) : null}
       </Modal>
 
       <Modal
         open={detailsOpen}
-        title="Optimization details"
+        title="How steps were chosen"
         onClose={() => setDetailsOpen(false)}
       >
         {optimization ? (
           <div className="max-h-[60vh] space-y-3 overflow-y-auto">
             <p>
-              Solver: {optimization.solver}. Objective: maximize preparedness
-              utility (not a safety percentage).
+              StormReady picks a short list that fits your time, transport, and
+              budget level. Official must-do items stay near the top.
+            </p>
+            <p className="text-xs text-muted">
+              Technical detail for reviewers: not needed for day-to-day use.
             </p>
             <p>
               Selected: {optimization.selectedIds.join(", ") || "none"}
             </p>
             <p>
-              Hard constraints:{" "}
+              Must-do IDs:{" "}
               {optimization.hardConstraintIds.join(", ") || "none"}
             </p>
-            <p className="text-xs font-semibold text-foreground">Selected</p>
+            <p className="text-xs font-semibold text-foreground">In your list</p>
             <ul className="space-y-1">
               {optimization.candidates
                 .filter((candidate) => candidate.selected)
                 .map((candidate) => (
                   <li key={candidate.id} className="text-xs">
-                    {candidate.ruleId}
-                    {candidate.hardConstraint ? " · hard" : ""}
+                    {candidate.title}
                   </li>
                 ))}
             </ul>
-            <p className="text-xs font-semibold text-foreground">Left out</p>
+            <p className="text-xs font-semibold text-foreground">Not in this list</p>
             <ul className="space-y-1">
               {optimization.candidates
                 .filter((candidate) => !candidate.selected)
                 .map((candidate) => (
                   <li key={candidate.id} className="text-xs">
-                    {candidate.ruleId}
+                    {candidate.title}
                     {leftOutReason(optimization, candidate.id)
                       ? ` · ${leftOutReason(optimization, candidate.id)}`
                       : ""}
@@ -506,41 +607,41 @@ export function PlanView() {
             </ul>
           </div>
         ) : (
-          <p>No optimizer output for this plan.</p>
+          <p>No ranking details for this plan.</p>
         )}
       </Modal>
 
       <Modal
         open={prioritizeOpen}
-        title="Help Me Prioritize"
+        title="Adjust for my time & budget"
         onClose={() => setPrioritizeOpen(false)}
       >
         <p className="mb-3 text-xs">
-          Session only — does not change your saved profile or require Auth0.
+          Changes apply for this visit only. Your saved home profile stays the same.
         </p>
         <div className="max-h-[55vh] space-y-4 overflow-y-auto">
           <ChoiceGroup
-            legend="Budget class (not a price)"
-            hint="Discrete knapsack units: no-cost, low, moderate, or higher."
+            legend="What can you spend?"
+            hint="Rough level only: not a dollar amount."
             value={budgetPreset}
             options={[
-              { value: "zero", label: "No-cost" },
+              { value: "zero", label: "Free only" },
               { value: "low", label: "Low" },
               { value: "moderate", label: "Moderate" },
               { value: "flexible", label: "Higher" },
-              { value: "unconstrained", label: "Unconstrained" },
+              { value: "unconstrained", label: "Any" },
             ]}
             onChange={setBudgetPreset}
           />
           <ChoiceGroup
-            legend="Time"
+            legend="How much time do you have?"
             value={timePreset}
             options={[
               { value: "15", label: "15 min" },
               { value: "30", label: "30 min" },
               { value: "60", label: "60 min" },
               { value: "180", label: "3 hours" },
-              { value: "unconstrained", label: "Unconstrained" },
+              { value: "unconstrained", label: "Any" },
             ]}
             onChange={setTimePreset}
           />
@@ -557,21 +658,236 @@ export function PlanView() {
         </div>
         {recalcStatus === "unavailable" ? (
           <p className="mt-3 text-xs text-danger">
-            Live alerts are unavailable, so StormReady will not invent a
-            recalculated plan. Switch to Demo or wait for NWS.
+            Live alerts are unavailable, so we will not invent a new checklist.
+            Switch to Demo or wait for official alerts.
           </p>
         ) : null}
         <div className="mt-4">
           <Button onClick={() => void recalculate()} disabled={recalcStatus === "loading"}>
             {recalcStatus === "loading" ? (
-              <Spinner label="Recalculating…" />
+              <Spinner label="Updating…" />
             ) : (
-              "Recalculate plan"
+              "Update my checklist"
             )}
           </Button>
         </div>
       </Modal>
     </main>
+  );
+}
+
+function SituationStrip({
+  status,
+  alert,
+  hazards,
+  allClear,
+  locationLabel,
+  source,
+  home,
+  isDemo,
+  liveAlertsStatus,
+  onOpen,
+}: {
+  status: ResourceStatus;
+  alert: ActiveHazard | null;
+  hazards: ActiveHazard[];
+  allClear: boolean | "unknown";
+  locationLabel: string;
+  source: string | undefined;
+  home: HomeProfile | null;
+  isDemo: boolean;
+  liveAlertsStatus: ResourceStatus;
+  onOpen: () => void;
+}) {
+  if (!isDemo && liveAlertsStatus === "loading") {
+    return <LoadingCard title="Situation" label="Checking official alerts…" lines={2} />;
+  }
+
+  if (!isDemo && (liveAlertsStatus === "error" || liveAlertsStatus === "unavailable")) {
+    return (
+      <QueryState
+        status={liveAlertsStatus}
+        title="Situation"
+        loadingLabel="Looking up alerts for your location."
+        errorMessage={ALERT_ERROR}
+        unavailableMessage={ALERT_UNAVAILABLE}
+      />
+    );
+  }
+
+  if (status === "loading") {
+    return <LoadingCard title="Situation" label="Checking official alerts…" lines={2} />;
+  }
+
+  if (status === "error" || status === "unavailable") {
+    return (
+      <QueryState
+        status={status}
+        title="Situation"
+        loadingLabel="Looking up alerts for your location."
+        errorMessage={ALERT_ERROR}
+        unavailableMessage={ALERT_UNAVAILABLE}
+      />
+    );
+  }
+
+  const tone = situationTone(alert, allClear);
+  const title = alert
+    ? alert.headline
+    : allClear === true
+      ? "No active alerts right now"
+      : "We could not confirm an all-clear";
+  const meta = alert
+    ? plainSeverity(alert.severity)
+    : allClear === true
+      ? `Checked for ${locationLabel}`
+      : "Empty is not the same as safe. We will not guess.";
+  const extraCount = Math.max(0, hazards.length - (alert ? 1 : 0));
+  const sourceLink = situationSourceLink(alert);
+  const areaNote = alertAreaRelation(home, alert, locationLabel, allClear);
+
+  return (
+    <section
+      className={`w-full min-w-0 rounded-3xl border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)] ${tone.border}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} aria-hidden />
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+              Situation
+            </p>
+          </div>
+          <p className="mt-1 break-words text-base font-semibold text-foreground">
+            {title}
+          </p>
+          <p className={`mt-1 text-sm font-medium ${tone.text}`}>{meta}</p>
+          <p className="mt-2 text-sm leading-snug text-navy">
+            <span className="font-semibold text-blue-deep">Alert area: </span>
+            {areaNote}
+          </p>
+          {extraCount > 0 ? (
+            <p className="mt-2 text-xs text-muted">
+              +{extraCount} more alert{extraCount === 1 ? "" : "s"}
+            </p>
+          ) : null}
+          <p className="mt-3 break-words text-xs text-muted">
+            Source:{" "}
+            <a
+              href={sourceLink.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-accent-strong underline-offset-2 hover:underline"
+            >
+              {sourceLink.label}
+            </a>
+            <span className="text-muted">
+              {" · "}
+              {sourceLabel(source, alert?.provenance)}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="shrink-0 rounded-xl bg-surface-elevated px-3 py-1.5 text-sm font-semibold text-accent-strong"
+        >
+          Details
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function SituationDetails({
+  status,
+  alert,
+  hazards,
+  allClear,
+  source,
+  observedAt,
+  locationLabel,
+}: {
+  status: ResourceStatus;
+  alert: ActiveHazard | null;
+  hazards: ActiveHazard[];
+  allClear: boolean | "unknown";
+  source: string | undefined;
+  observedAt: string | null;
+  locationLabel: string;
+}) {
+  if (status !== "ready") {
+    return (
+      <p>
+        Details appear when official alerts load. StormReady will not invent
+        warnings.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {alert ? (
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+            Main alert
+          </p>
+          <p className="mt-1 font-semibold text-foreground">{alert.headline}</p>
+          <p className="mt-1 text-sm text-muted">{plainSeverity(alert.severity)}</p>
+          {isKnown(alert.instruction) ? (
+            <p className="mt-3 text-sm leading-relaxed text-foreground">
+              {alert.instruction}
+            </p>
+          ) : null}
+        </div>
+      ) : allClear === true ? (
+        <p>
+          An official check reported no active alerts for {locationLabel}.
+        </p>
+      ) : (
+        <p>
+          No alerts are listed right now, and this is not an all-clear.
+          StormReady will not guess.
+        </p>
+      )}
+
+      {hazards.length > 0 ? (
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+            Active alerts
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {hazards.slice(0, 8).map((hazard) => (
+              <li
+                key={hazard.id}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${importanceChip(situationTone(hazard, false).level).chip}`}
+              >
+                {plainSeverity(hazard.severity)} · {hazard.kind.replace(/_/g, " ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <p className="text-xs text-muted">
+        Source:{" "}
+        <a
+          href={situationSourceLink(alert).href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-accent-strong underline-offset-2 hover:underline"
+        >
+          {situationSourceLink(alert).label}
+        </a>
+        {" · "}
+        {sourceLabel(source, alert?.provenance)} · {locationLabel}
+        {" · "}
+        {formatRelativeTime(
+          observedAt ??
+            (alert && isKnown(alert.onsetAt) ? alert.onsetAt : null),
+        )}
+      </p>
+    </div>
   );
 }
 
@@ -588,6 +904,9 @@ function ModeToggle({
 }) {
   return (
     <div className="space-y-2">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+        Live or demo
+      </p>
       <div className="flex gap-2">
         <button
           type="button"
@@ -595,11 +914,11 @@ function ModeToggle({
           onClick={onLive}
           className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
             mode === "live"
-              ? "border-accent-strong bg-accent-strong text-white"
+              ? "border-navy bg-navy text-white"
               : "border-border bg-white text-foreground"
           }`}
         >
-          LIVE
+          Live
         </button>
         <button
           type="button"
@@ -607,11 +926,11 @@ function ModeToggle({
           onClick={() => onDemo(scenario)}
           className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
             mode === "demo"
-              ? "border-accent-strong bg-accent-strong text-white"
+              ? "border-navy bg-navy text-white"
               : "border-border bg-white text-foreground"
           }`}
         >
-          DEMO
+          Demo
         </button>
       </div>
       {mode === "demo" ? (
@@ -623,7 +942,7 @@ function ModeToggle({
               onClick={() => onDemo(option.value)}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 scenario === option.value
-                  ? "bg-accent-strong text-white"
+                  ? "bg-navy text-white"
                   : "bg-surface-elevated text-foreground"
               }`}
             >
@@ -632,60 +951,260 @@ function ModeToggle({
           ))}
         </div>
       ) : (
-        <p className="text-[11px] text-muted">Current NWS path for your saved location.</p>
+        <p className="text-[11px] text-muted">
+          Uses official alerts for your saved location when available.
+        </p>
       )}
     </div>
   );
 }
 
-function TopPriorityCard({
+function WhyActionPanel({
   action,
-  ruleOpen,
-  onToggleRule,
-  onWhy,
+  budgetClass,
+  dueBy,
 }: {
   action: RecommendationView;
-  ruleOpen: boolean;
-  onToggleRule: () => void;
-  onWhy: () => void;
+  budgetClass: Unknownable<BudgetClass>;
+  dueBy: string;
 }) {
   const cost = asBudgetClass(action.costClass);
+  const reason = friendlyReason(action);
+  const rawDetail =
+    action.body &&
+    isKnown(action.rationale) &&
+    action.body.trim() &&
+    action.body !== action.rationale
+      ? action.body.trim()
+      : null;
+  const detail =
+    rawDetail && !jargonLooksSame(rawDetail, reason) ? rawDetail : null;
+  const links = linksForCategory(action.category);
+  const importance = importanceFromAction(action);
+  const chip = importanceChip(importance);
+
   return (
-    <Card eyebrow="Your Top Priority" title={action.title}>
-      <p className="text-foreground">{shortReason(action.rationale, action.body)}</p>
-      <p className="mt-2 text-xs">
-        Source: {sourceLabel(action.provenance)}
-        {action.official ? " · Official product" : ""}
-      </p>
-      <p className="mt-1 text-xs">
-        {cost ? `Cost class: ${formatCostClass(cost)}` : "Cost class: not listed"}
-        {typeof action.estimatedTimeMinutes === "number"
-          ? ` · About ${action.estimatedTimeMinutes} planning minutes`
-          : ""}
-      </p>
-      <p className="mt-1 text-xs">
-        Utility is a ranking weight for this checklist, not a safety score.
-      </p>
-      <div className="mt-3 flex gap-3">
+    <div className="-mx-1 space-y-3">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-deep via-blue-mid to-navy px-4 py-3 text-white shadow-[0_12px_28px_rgba(13,31,60,0.2)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
+          Why this step
+        </p>
+        <h3 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight">
+          {action.title}
+        </h3>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <span
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+              importance === "critical"
+                ? "bg-danger text-white"
+                : importance === "high"
+                  ? "bg-warning text-navy"
+                  : "bg-success text-white"
+            }`}
+          >
+            {chip.label}
+          </span>
+          <span className="inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-pale">
+            {dueBy}
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-white p-3.5 shadow-[0_8px_20px_rgba(13,31,60,0.06)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-mid">
+          In plain words
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-navy">{reason}</p>
+
+        {detail ? (
+          <>
+            <div className="my-3 h-px bg-border" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-deep">
+              More detail
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground">{detail}</p>
+          </>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {typeof action.estimatedTimeMinutes === "number" ? (
+            <span className="inline-flex rounded-full bg-blue-deep/10 px-2.5 py-1 text-[11px] font-semibold text-blue-deep">
+              ~{action.estimatedTimeMinutes} min
+            </span>
+          ) : null}
+          {cost ? (
+            <span className="inline-flex rounded-full bg-blue-pale px-2.5 py-1 text-[11px] font-semibold text-navy">
+              {plainCost(cost)}
+            </span>
+          ) : null}
+          {budgetClass !== "unknown" && cost ? (
+            <span className="inline-flex rounded-full bg-blue-sky/25 px-2.5 py-1 text-[11px] font-semibold text-blue-deep">
+              {fitsBudget(cost, budgetClass)
+                ? "Fits your budget"
+                : "May exceed budget"}
+            </span>
+          ) : null}
+          {action.official ? (
+            <span className="inline-flex rounded-full bg-danger/10 px-2.5 py-1 text-[11px] font-semibold text-danger">
+              Official guidance
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {links.length > 0 ? (
+        <div className="rounded-3xl border border-border bg-white p-3.5">
+          <ActionOfficialLinks links={links} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function jargonLooksSame(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function friendlyReason(action: RecommendationView): string {
+  const raw = shortReason(action.rationale, action.body);
+  if (!raw) {
+    return "This step fits your home and the latest official guidance we could confirm.";
+  }
+  const jargon =
+    /flood-family|non-warning|product\b|knapsack|optimizer|utility score|hard constraint/i;
+  if (jargon.test(raw) && action.body && action.body.trim() && action.body !== raw) {
+    return action.body.trim().split(/(?<=[.!?])\s+/)[0] ?? action.body.trim();
+  }
+  if (jargon.test(raw)) {
+    return "This step helps protect your household based on the current alert and your home details.";
+  }
+  return raw;
+}
+
+function FuturePrepSection({
+  risks,
+  checkedSteps,
+  onToggle,
+}: {
+  risks: ReturnType<typeof regionalRisksForHome>;
+  checkedSteps: Record<string, boolean>;
+  onToggle: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (risks.length === 0) return null;
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
+      <div className="bg-gradient-to-r from-navy via-blue-deep to-blue-mid px-4 py-4 text-white">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
+          Future preparedness
+        </p>
+        <h3 className="mt-1 text-lg font-semibold tracking-tight">
+          Even when it is quiet now
+        </h3>
+        <p className="mt-1 text-sm text-blue-pale/95">
+          Your area is still prone to these risks. Work these on a calm week so
+          you are ready before the next event.
+        </p>
         <button
           type="button"
-          onClick={onWhy}
-          className="text-sm font-semibold text-accent-strong"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          className="mt-3 rounded-xl bg-white/15 px-3 py-1.5 text-sm font-semibold text-white"
         >
-          Why?
-        </button>
-        <button
-          type="button"
-          onClick={onToggleRule}
-          className="text-sm font-semibold text-accent-strong"
-        >
-          {ruleOpen ? "Hide rule id" : "Show rule id"}
+          {open ? "Hide" : "Show checklist"}
         </button>
       </div>
-      {ruleOpen && isKnown(action.ruleId) ? (
-        <p className="mt-2 font-mono text-xs text-foreground">{action.ruleId}</p>
+
+      {open ? (
+        <div className="space-y-5 p-4">
+          {risks.map((risk) => {
+            const done = risk.items.filter((item) => checkedSteps[item.id]).length;
+            const pct = Math.round((done / risk.items.length) * 100);
+            return (
+              <div key={risk.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-navy">
+                      Prone to {risk.label.toLowerCase()}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">{risk.summary}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-blue-pale px-2.5 py-0.5 text-[11px] font-semibold text-blue-deep">
+                    {pct}%
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-pale">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-deep to-blue-sky transition-[width] duration-300"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <ul className="mt-3 space-y-2">
+                  {risk.items.map((item) => {
+                    const checked = Boolean(checkedSteps[item.id]);
+                    const id = `future-${item.id}`;
+                    return (
+                      <li key={item.id}>
+                        <label
+                          htmlFor={id}
+                          className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3 py-3 transition ${
+                            checked
+                              ? "border-blue-deep/30 bg-blue-pale/50"
+                              : "border-border bg-blue-wash/60"
+                          }`}
+                        >
+                          <input
+                            id={id}
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => onToggle(item.id)}
+                            className="peer sr-only"
+                          />
+                          <span
+                            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${
+                              checked
+                                ? "border-blue-deep bg-blue-deep text-white"
+                                : "border-[#c5cdd6] bg-white text-transparent"
+                            }`}
+                            aria-hidden
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                              <path
+                                d="M3.5 8.2 6.4 11l6.1-7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-sm font-semibold ${
+                                checked ? "text-muted line-through" : "text-navy"
+                              }`}
+                            >
+                              {item.title}
+                            </span>
+                            <span className="mt-0.5 block text-xs font-medium text-blue-deep">
+                              {item.dueBy}
+                            </span>
+                            <span className="mt-1 block text-xs leading-relaxed text-muted">
+                              {item.why}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       ) : null}
-    </Card>
+    </section>
   );
 }
 
@@ -699,37 +1218,31 @@ function WhyThisPlan({
   const used = optimization.constraintsUsed;
   const units = used.budgetUnits ?? used.budgetDollars ?? null;
   return (
-    <Card eyebrow="Why this plan?" title="Constraints used">
-      <p>
-        Cost class: {labelForCostUnits(units)}
+    <div className="rounded-2xl border border-border bg-surface-elevated p-3">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+        How this list was built
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-foreground">
+        Budget level: {labelForCostUnits(units)}
         {" · "}
         Time:{" "}
         {used.availableTimeMinutes === null
-          ? "unconstrained"
+          ? "open"
           : `${used.availableTimeMinutes} min`}
         {" · "}
         Transport: {used.transport}
       </p>
-      <p className="mt-2">
-        {optimization.hardCount} official/hard · {optimization.discretionaryCount}{" "}
-        discretionary · {optimization.planningCostUnits ?? optimization.planningCostDollars}{" "}
-        cost units · {optimization.planningMinutes} min
-      </p>
       {optimization.shortfall ? (
         <p className="mt-2 text-xs text-foreground">{optimization.shortfall}</p>
       ) : null}
-      <p className="mt-2 text-xs">
-        Cost classes are ranking units, not prices. Preparedness utility is not
-        a safety or survival score.
-      </p>
       <button
         type="button"
         onClick={onDetails}
         className="mt-3 text-sm font-semibold text-accent-strong"
       >
-        View optimization details
+        See more detail
       </button>
-    </Card>
+    </div>
   );
 }
 
@@ -751,24 +1264,24 @@ function overlayConstraints(
 
 function leftOutReason(optimization: OptimizationView, id: string): string | null {
   const rejected = optimization.rejected.find((item) => item.id === id);
-  if (!rejected || rejected.reasons.length === 0) return "Not in the 3–5 selected set";
+  if (!rejected || rejected.reasons.length === 0) return "Did not fit this short list";
   return rejected.reasons.map(humanRejection).join("; ");
 }
 
 function humanRejection(reason: string): string {
   switch (reason) {
     case "over_budget":
-      return "Above this cost class";
+      return "Above your budget level";
     case "over_time":
-      return "Needs more time than available";
+      return "Needs more time than you have";
     case "excluded_transport":
       return "Needs a car";
     case "skipped_backup_power":
-      return "Backup power already on the profile";
+      return "You already have backup power on your profile";
     case "over_surface_limit":
-      return "Plan already has 5 actions";
+      return "List already has enough steps";
     default:
-      return "Not in the 3–5 selected set";
+      return "Did not fit this short list";
   }
 }
 
@@ -776,17 +1289,17 @@ function LeftOutActions({ optimization }: { optimization: OptimizationView }) {
   const leftOut = optimization.candidates.filter((candidate) => !candidate.selected);
   if (leftOut.length === 0) return null;
   return (
-    <Card eyebrow="Not selected this round" title="Left-out actions">
+    <Card eyebrow="Not selected this round" title="Other matched ideas">
       <p className="mb-2 text-xs">
-        Matched rules that did not fit remaining cost-class, time, transport, or
-        the 3–5 action cap. Official / evacuate actions stay in the selected set.
+        These matched your home but did not fit this short list (time, budget,
+        transport, or the step limit).
       </p>
       <ul className="space-y-2">
         {leftOut.map((candidate) => (
           <li key={candidate.id} className="text-sm leading-snug text-foreground">
             {candidate.title}
             <span className="block text-xs text-muted">
-              {candidate.ruleId} · {leftOutReason(optimization, candidate.id)}
+              {leftOutReason(optimization, candidate.id)}
             </span>
             <ActionOfficialLinks links={linksForCategory(candidate.category)} />
           </li>
@@ -829,230 +1342,106 @@ function optimizationAsResult(
   };
 }
 
-function ActionGroups({
-  actions,
-  budgetClass,
-  onWhy,
-}: {
-  actions: RecommendationView[];
-  budgetClass: Unknownable<BudgetClass>;
-  onWhy: (action: RecommendationView) => void;
-}) {
-  const groups = arrangePlanActions(actions, budgetClass);
-  return (
-    <div className="space-y-5">
-      {groups.map((group) => (
-        <section key={group.horizon} aria-labelledby={`horizon-${group.horizon}`}>
-          <h3
-            id={`horizon-${group.horizon}`}
-            className="text-sm font-semibold text-foreground"
-          >
-            {group.label}
-          </h3>
-          <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-muted">
-            {group.horizon === "now"
-              ? "Do these first"
-              : group.horizon === "before_next_event"
-                ? "Prep before the next storm"
-                : "When you can"}
-          </p>
-          <ul className="mt-2 space-y-3">
-            {group.items.map((item, index) => (
-              <li key={item.id}>
-                <ActionCard
-                  action={item}
-                  rank={index + 1}
-                  budgetClass={budgetClass}
-                  onWhy={() => onWhy(item)}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function AlertCard({
-  alert,
-  source,
-  observedAt,
-  allClear,
-  locationLabel,
-}: {
-  alert: ActiveHazard | null;
-  source: string | undefined;
-  observedAt: string | null;
-  allClear: boolean | "unknown";
-  locationLabel: string;
-}) {
-  if (alert) {
-    return (
-      <Card eyebrow="Official alert" title={alert.headline}>
-        <p className="text-foreground">
-          {formatSeverity(alert.severity)}
-          {isKnown(alert.urgency) ? ` · ${alert.urgency}` : ""}
-        </p>
-        <p className="mt-2 text-xs">
-          Source: {sourceLabel(source, alert.provenance)} · {locationLabel}
-        </p>
-        <p className="mt-1 text-xs">
-          Issued / updated{" "}
-          {formatRelativeTime(
-            observedAt ?? (isKnown(alert.onsetAt) ? alert.onsetAt : null),
-          )}
-        </p>
-      </Card>
-    );
-  }
-
-  if (allClear === true) {
-    return (
-      <Card eyebrow="Official alert" title="No active official products">
-        <p>
-          An official check reported no active alerts for {locationLabel}.
-        </p>
-        <p className="mt-2 text-xs">
-          Source: {sourceLabel(source)} · {formatRelativeTime(observedAt)}
-        </p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card eyebrow="Official alert" title="Status not confirmed">
-      <p>
-        No official products are listed, and this is not an all-clear. StormReady
-        will not guess.
-      </p>
-      <p className="mt-2 text-xs">
-        Source: {sourceLabel(source)} · {formatRelativeTime(observedAt)}
-      </p>
-    </Card>
-  );
-}
-
-function ConditionsRow({
-  status,
-  hazards,
-  allClear,
-}: {
-  status: ResourceStatus;
-  hazards: ActiveHazard[];
-  allClear: boolean | "unknown";
-}) {
-  if (status === "loading") {
-    return <LoadingCard title="Conditions" label="Checking conditions…" lines={2} />;
-  }
-  if (status === "error") {
-    return (
-      <ErrorNote title="Conditions">
-        Compact conditions will appear when official alerts load. An empty list
-        is not treated as safe.
-      </ErrorNote>
-    );
-  }
-  if (status === "unavailable") {
-    return (
-      <UnavailableNote title="Conditions">
-        Compact conditions will appear when the alert service is connected.
-      </UnavailableNote>
-    );
-  }
-
-  if (hazards.length === 0) {
-    return (
-      <Card
-        eyebrow="Conditions"
-        title={allClear === true ? "Quiet" : "Unconfirmed"}
-      >
-        {allClear === true
-          ? "No active hazard products in the last official check."
-          : "Conditions are not confirmed. An empty list is not treated as safe."}
-      </Card>
-    );
-  }
-
-  return (
-    <Card eyebrow="Conditions" title="Active products">
-      <ul className="flex flex-wrap gap-2">
-        {hazards.slice(0, 6).map((hazard) => (
-          <li
-            key={hazard.id}
-            className="rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-foreground"
-          >
-            {formatSeverity(hazard.severity)} · {hazard.kind.replace(/_/g, " ")}
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
 function ActionCard({
   action,
   rank,
-  budgetClass,
+  budgetClass: _budgetClass,
+  dueBy,
+  checked,
+  onToggle,
   onWhy,
 }: {
   action: RecommendationView;
   rank: number;
   budgetClass: Unknownable<BudgetClass>;
+  dueBy: string;
+  checked: boolean;
+  onToggle: () => void;
   onWhy: () => void;
 }) {
-  const reason = shortReason(action.rationale, action.body);
-  const cost = asBudgetClass(action.costClass);
-  const fit = budgetFitLabel(action.costClass, budgetClass);
-  const rankBar = cost
-    ? cost === "zero"
-      ? "border-l-4 border-l-accent-strong"
-      : cost === "low"
-        ? "border-l-4 border-l-accent"
-        : cost === "moderate"
-          ? "border-l-4 border-l-warning"
-          : "border-l-4 border-l-border"
-    : "border-l-4 border-l-border";
+  const importance = importanceFromAction(action);
+  const chip = importanceChip(importance);
+  const checkboxId = `plan-step-${action.id}`;
 
   return (
-    <Card className={rankBar}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
-            {action.hardConstraint || action.official ? "Hard constraint" : "Optimizer"}{" "}
-            {rank}
-            {cost ? ` · ${formatCostClass(cost)}` : ""}
-            {typeof action.estimatedTimeMinutes === "number"
-              ? ` · ${action.estimatedTimeMinutes} min`
-              : ""}
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {action.title}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge tone={action.priority}>{formatPriority(action.priority)}</Badge>
-            {cost ? <Badge>{formatCostClass(cost)}</Badge> : null}
-            {fit ? (
-              <Badge tone={fit === "Above budget" ? "high" : undefined}>
-                {fit}
-              </Badge>
-            ) : null}
-            {action.official ? <Badge tone="critical">Official</Badge> : null}
+    <article
+      className={`rounded-3xl border border-border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.06)] ${chip.bar} ${
+        checked ? "bg-surface-elevated/60 opacity-80" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <label
+          htmlFor={checkboxId}
+          className="flex shrink-0 cursor-pointer items-start pt-0.5"
+        >
+          <input
+            id={checkboxId}
+            type="checkbox"
+            checked={checked}
+            onChange={onToggle}
+            aria-label={`Mark step ${rank} done: ${action.title}`}
+            className="peer sr-only"
+          />
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition ${
+              checked
+                ? "border-success bg-success text-white"
+                : "border-[#c5cdd6] bg-white text-transparent peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+            }`}
+            aria-hidden
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M3.5 8.2 6.4 11l6.1-7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        </label>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                Step {rank}
+                {checked ? " · Done" : ""}
+              </p>
+              <p
+                className={`mt-1 text-sm font-semibold ${
+                  checked ? "text-muted line-through" : "text-foreground"
+                }`}
+              >
+                {action.title}
+              </p>
+              <p className="mt-1.5 text-sm font-medium text-blue-deep">
+                {dueBy}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${chip.chip}`}
+                >
+                  {chip.label}
+                </span>
+                {typeof action.estimatedTimeMinutes === "number" ? (
+                  <span className="text-xs text-muted">
+                    About {action.estimatedTimeMinutes} min to do
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onWhy}
+              className="shrink-0 rounded-xl bg-surface-elevated px-3 py-1.5 text-sm font-semibold text-accent-strong"
+            >
+              Why?
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onWhy}
-          className="shrink-0 text-sm font-semibold text-accent-strong"
-        >
-          Why?
-        </button>
       </div>
-      {reason ? (
-        <p className="mt-3 text-sm leading-relaxed text-muted">{reason}</p>
-      ) : null}
-      <ActionOfficialLinks links={linksForCategory(action.category)} />
-    </Card>
+    </article>
   );
 }
 
@@ -1061,7 +1450,7 @@ function ActionOfficialLinks({ links }: { links: OfficialLink[] }) {
   if (shown.length === 0) return null;
 
   return (
-    <div className="mt-3">
+    <div className="mt-1">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
         Get local help
       </p>
@@ -1086,26 +1475,244 @@ function ActionOfficialLinks({ links }: { links: OfficialLink[] }) {
   );
 }
 
-function Badge({
-  children,
-  tone,
-}: {
-  children: string;
-  tone?: RecommendationView["priority"] | "high";
-}) {
-  const color =
-    tone === "critical"
-      ? "bg-danger/10 text-danger"
-      : tone === "high"
-        ? "bg-warning/10 text-warning"
-        : "bg-surface-elevated text-foreground";
-  return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${color}`}
-    >
-      {children}
-    </span>
-  );
+function importanceChip(tone: ImportanceTone) {
+  switch (tone) {
+    case "critical":
+      return {
+        label: "Urgent",
+        chip: "bg-danger/10 text-danger",
+        step: "bg-danger",
+        bar: "border-l-4 border-l-danger",
+      };
+    case "high":
+      return {
+        label: "Caution",
+        chip: "bg-warning/15 text-warning",
+        step: "bg-warning",
+        bar: "border-l-4 border-l-warning",
+      };
+    default:
+      return {
+        label: "Prep",
+        chip: "bg-blue-deep/10 text-blue-deep",
+        step: "bg-blue-deep",
+        bar: "border-l-4 border-l-blue-deep",
+      };
+  }
+}
+
+function situationTone(
+  alert: ActiveHazard | null,
+  allClear: boolean | "unknown",
+): {
+  level: ImportanceTone;
+  dot: string;
+  text: string;
+  border: string;
+} {
+  if (alert) {
+    if (alert.severity === "warning" || alert.severity === "emergency") {
+      return {
+        level: "critical",
+        dot: "bg-danger",
+        text: "text-danger",
+        border: "border-danger/35",
+      };
+    }
+    if (alert.severity === "watch" || alert.severity === "advisory") {
+      return {
+        level: "high",
+        dot: "bg-warning",
+        text: "text-warning",
+        border: "border-warning/40",
+      };
+    }
+  }
+  if (allClear === true) {
+    return {
+      level: "ok",
+      dot: "bg-success",
+      text: "text-success",
+      border: "border-success/30",
+    };
+  }
+  return {
+    level: "high",
+    dot: "bg-warning",
+    text: "text-warning",
+    border: "border-warning/35",
+  };
+}
+
+function plainSeverity(value: ActiveHazard["severity"]): string {
+  switch (value) {
+    case "emergency":
+      return "Emergency: act now";
+    case "warning":
+      return "Warning: take action";
+    case "watch":
+      return "Watch: get ready";
+    case "advisory":
+      return "Advisory: stay aware";
+    case "unknown":
+      return "Level not confirmed";
+    default:
+      return formatSeverity(value);
+  }
+}
+
+function plainCost(cost: BudgetClass): string {
+  switch (cost) {
+    case "zero":
+      return "Usually free";
+    case "low":
+      return "Usually low cost";
+    case "moderate":
+      return "May need a moderate spend";
+    case "flexible":
+      return "May need a higher spend";
+    default:
+      return formatCostClass(cost);
+  }
+}
+
+function fitsBudget(
+  cost: BudgetClass,
+  budget: Unknownable<BudgetClass>,
+): boolean {
+  if (budget === "unknown") return true;
+  const order: BudgetClass[] = ["zero", "low", "moderate", "flexible"];
+  return order.indexOf(cost) <= order.indexOf(budget);
+}
+
+function planHomeTitle(home: HomeProfile | null): string {
+  if (!home) return "Location not set";
+  if (isKnown(home.city) && isKnown(home.state)) return `${home.city}, ${home.state}`;
+  if (isKnown(home.city)) return home.city;
+  if (isKnown(home.postalCode)) return `ZIP ${home.postalCode}`;
+  if (isKnown(home.addressLine)) return home.addressLine;
+  return "Your home area";
+}
+
+function planHomeMeta(home: HomeProfile | null): string | null {
+  if (!home) return null;
+  const bits: string[] = [];
+  if (isKnown(home.addressLine) && (isKnown(home.city) || isKnown(home.postalCode))) {
+    bits.push(home.addressLine);
+  }
+  if (isKnown(home.postalCode) && !(isKnown(home.city) && isKnown(home.state))) {
+    // title already shows ZIP alone; skip duplicate
+  } else if (isKnown(home.postalCode) && isKnown(home.city)) {
+    bits.push(home.postalCode);
+  }
+  return bits.length ? bits.join(" · ") : null;
+}
+
+function alertAreaRelation(
+  home: HomeProfile | null,
+  alert: ActiveHazard | null,
+  locationLabel: string,
+  allClear: boolean | "unknown",
+): string {
+  if (!alert) {
+    if (allClear === true) {
+      return `No active alert polygons for ${locationLabel}.`;
+    }
+    return "Alert coverage for your address is not confirmed yet.";
+  }
+
+  const label = locationLabel.toLowerCase();
+  const county =
+    home?.location && isKnown(home.location.county)
+      ? home.location.county.toLowerCase()
+      : "";
+  const city = home && isKnown(home.city) ? home.city.toLowerCase() : "";
+  const state = home && isKnown(home.state) ? home.state.toLowerCase() : "";
+
+  if (county && label.includes(county)) {
+    return `Covers ${locationLabel} · includes your county. Alerts only apply inside the official zone.`;
+  }
+  if (city && label.includes(city)) {
+    return `Issued for ${locationLabel} · includes your city. Confirm your street is inside the zone.`;
+  }
+  if (state && (label.includes(state) || label.includes(`, ${state}`))) {
+    return `Regional alert for ${locationLabel}. May not cover every neighborhood · check the map.`;
+  }
+  return `Drawn for ${locationLabel}. Distance varies by zone · open Details / Weather.gov to confirm your address.`;
+}
+
+function situationSourceLink(alert: ActiveHazard | null): {
+  href: string;
+  label: string;
+} {
+  if (alert && isKnown(alert.nwsEventId) && /^https?:\/\//i.test(alert.nwsEventId)) {
+    return { href: alert.nwsEventId, label: "Official alert page" };
+  }
+  const weather = PREPAREDNESS_LINKS.find((link) => link.id === "weather-gov");
+  return {
+    href: weather?.href ?? "https://www.weather.gov/",
+    label: weather?.title ?? "Weather.gov / National Weather Service",
+  };
+}
+
+function dueByLabel(
+  action: RecommendationView,
+  alert: ActiveHazard | null,
+  alertsStatus: ResourceStatus,
+): string {
+  const horizon = resolvePlanHorizon(action.timeframe, action.horizon);
+  const urgent =
+    action.priority === "critical" ||
+    action.hardConstraint ||
+    action.official ||
+    horizon === "now";
+
+  if (alertsStatus !== "ready") {
+    if (urgent) return "Do today";
+    if (horizon === "long_term") return "Do within a week";
+    return "Do within 2 days";
+  }
+
+  const endsMs =
+    alert && isKnown(alert.endsAt) ? Date.parse(alert.endsAt) : Number.NaN;
+  const onsetMs =
+    alert && isKnown(alert.onsetAt) ? Date.parse(alert.onsetAt) : Number.NaN;
+  const now = Date.now();
+
+  if (!Number.isNaN(endsMs) && endsMs > now) {
+    const hoursLeft = (endsMs - now) / (1000 * 60 * 60);
+    if (urgent || hoursLeft <= 24) return "Do today";
+    if (hoursLeft <= 48) return "Do within 2 days";
+    if (hoursLeft <= 24 * 7) {
+      const days = Math.max(2, Math.ceil(hoursLeft / 24));
+      return `Do within ${days} days`;
+    }
+  }
+
+  if (!Number.isNaN(onsetMs) && onsetMs > now) {
+    const hoursUntil = (onsetMs - now) / (1000 * 60 * 60);
+    if (hoursUntil <= 24) return "Do today, before it starts";
+    if (hoursUntil <= 48) return "Do within 2 days";
+    if (hoursUntil <= 24 * 7) {
+      const days = Math.max(2, Math.ceil(hoursUntil / 24) - 1);
+      return `Do within ${days} days`;
+    }
+    return "Do within a week";
+  }
+
+  if (alert?.severity === "warning" || alert?.severity === "emergency") {
+    return urgent || horizon !== "long_term" ? "Do today" : "Do within 2 days";
+  }
+
+  if (alert?.severity === "watch" || alert?.severity === "advisory") {
+    if (urgent) return "Do today";
+    if (horizon === "long_term") return "Do within a week";
+    return "Do within 2 days";
+  }
+
+  if (urgent) return "Do today";
+  if (horizon === "long_term") return "Do within a week";
+  return "Do within 2 days";
 }
 
 function pickPrimaryAlert(hazards: ActiveHazard[]): ActiveHazard | null {
@@ -1115,21 +1722,9 @@ function pickPrimaryAlert(hazards: ActiveHazard[]): ActiveHazard | null {
   )[0];
 }
 
-function summarizeAlert(
-  status: ResourceStatus,
-  alerts: { allClear?: boolean | "unknown"; hazards?: ActiveHazard[] } | null | undefined,
-  alert: ActiveHazard | null,
-): string {
-  if (status === "unavailable" || status === "error") return "Unavailable";
-  if (status === "loading") return "Checking…";
-  if (alert) return alert.headline;
-  if (alerts?.allClear === true) return "No active official products";
-  return "Not confirmed";
-}
-
 function sourceLabel(source?: string, fallback?: string): string {
   const value = source ?? fallback;
-  if (value === "external_source") return "Official / external source";
-  if (value === "user_reported") return "User reported";
+  if (value === "external_source") return "Official weather source";
+  if (value === "user_reported") return "You reported this";
   return "Source not confirmed";
 }

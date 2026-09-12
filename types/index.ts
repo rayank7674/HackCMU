@@ -14,6 +14,7 @@ export type {
   HazardUrgency,
   HomeProfile,
   HouseholdProfile,
+  MobilityAid,
   PetType,
   Provenance,
   Recommendation,

@@ -8,6 +8,7 @@ import {
   type GeocodedLocation,
   type HomeProfile,
   type HouseholdProfile,
+  type MobilityAid,
   type PetType,
   type Provenance,
   type Unknownable,
@@ -93,6 +94,7 @@ export function createEmptyHouseholdProfile(
     seniorsCount: UNKNOWN,
     hasPregnancy: UNKNOWN,
     hasMobilityNeeds: UNKNOWN,
+    mobilityAids: UNKNOWN,
     hasSensoryOrCognitiveNeeds: UNKNOWN,
     hasPowerDependentMedicalDevice: UNKNOWN,
     hasPrescriptionMedications: UNKNOWN,
@@ -312,6 +314,7 @@ export function normalizeHouseholdProfile(
     seniorsCount: readUnknownableNumber(value.seniorsCount),
     hasPregnancy: readUnknownableBoolean(value.hasPregnancy),
     hasMobilityNeeds: readUnknownableBoolean(value.hasMobilityNeeds),
+    mobilityAids: readMobilityAids(value.mobilityAids),
     hasSensoryOrCognitiveNeeds: readUnknownableBoolean(
       value.hasSensoryOrCognitiveNeeds,
     ),
@@ -377,6 +380,13 @@ const PET_TYPES = [
   "other",
 ] as const satisfies readonly PetType[];
 
+const MOBILITY_AIDS = [
+  "wheelchair",
+  "crutches_or_walker",
+  "transfer_help",
+  "elevator",
+] as const satisfies readonly MobilityAid[];
+
 const BUDGET_CLASSES = [
   "zero",
   "low",
@@ -440,6 +450,16 @@ function readPetTypes(value: unknown): Unknownable<PetType[]> {
   // A parsed empty array means "confirmed no listed types" only when the
   // source actually stored []. Keep that distinct from unknown.
   return pets;
+}
+
+function readMobilityAids(value: unknown): Unknownable<MobilityAid[]> {
+  if (value === UNKNOWN || value === undefined || value === null) {
+    return UNKNOWN;
+  }
+  if (!Array.isArray(value)) return UNKNOWN;
+  return value.filter((item): item is MobilityAid =>
+    MOBILITY_AIDS.includes(item as MobilityAid),
+  );
 }
 
 function readProvenance(

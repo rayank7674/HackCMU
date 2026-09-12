@@ -5,6 +5,7 @@ import {
   type HazardKind,
   type HomeProfile,
   type HouseholdProfile,
+  type MobilityAid,
   type Unknownable,
 } from "@/types";
 import type { RuleContext } from "./types";
@@ -203,6 +204,16 @@ export function petsUnknown(household: HouseholdProfile): boolean {
 export function needsAccessHelp(household: HouseholdProfile): boolean {
   return (
     household.hasMobilityNeeds === true || household.canSelfEvacuate === false
+  );
+}
+
+export function hasMobilityAid(
+  household: HouseholdProfile,
+  aid: MobilityAid,
+): boolean {
+  return (
+    Array.isArray(household.mobilityAids) &&
+    household.mobilityAids.includes(aid)
   );
 }
 

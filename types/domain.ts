@@ -59,6 +59,13 @@ export type BackupPowerType =
 
 export type PetType = "dog" | "cat" | "bird" | "fish" | "other";
 
+/** Mobility aids / constraints collected when hasMobilityNeeds is yes. */
+export type MobilityAid =
+  | "wheelchair"
+  | "crutches_or_walker"
+  | "transfer_help"
+  | "elevator";
+
 /**
  * Household spending capacity for preparedness. Classes only — never invent
  * dollar amounts. `"unknown"` is not "flexible"; prefer no-cost / low-cost.
@@ -141,6 +148,11 @@ export type HouseholdProfile = {
 
   hasPregnancy: Unknownable<boolean>;
   hasMobilityNeeds: Unknownable<boolean>;
+  /**
+   * Follow-ups when hasMobilityNeeds is true. `"unknown"` means the follow-up
+   * was skipped; `[]` means none of the listed aids apply.
+   */
+  mobilityAids: Unknownable<MobilityAid[]>;
   hasSensoryOrCognitiveNeeds: Unknownable<boolean>;
   hasPowerDependentMedicalDevice: Unknownable<boolean>;
   hasPrescriptionMedications: Unknownable<boolean>;

@@ -147,6 +147,7 @@ export const TAMPA_DEMO_HOUSEHOLD: HouseholdProfile = {
   seniorsCount: 0,
   hasPregnancy: false,
   hasMobilityNeeds: false,
+  mobilityAids: UNKNOWN,
   hasSensoryOrCognitiveNeeds: false,
   hasPowerDependentMedicalDevice: false,
   hasPrescriptionMedications: true,

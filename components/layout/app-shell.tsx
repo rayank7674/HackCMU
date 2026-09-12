@@ -3,6 +3,10 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import {
+  NavCollapseProvider,
+  useNavCollapse,
+} from "@/components/layout/nav-collapse";
+import {
   ViewportModeProvider,
   ViewportToggle,
 } from "@/components/layout/viewport-mode";
@@ -14,15 +18,25 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   return (
     <ViewportModeProvider>
-      <div className="sr-stage">
-        <ViewportToggle />
-        <div className="sr-shell">
-          <div className="sr-main">
-            <div className="sr-main-inner">{children}</div>
-          </div>
-          <BottomNav />
-        </div>
-      </div>
+      <NavCollapseProvider>
+        <AppShellInner>{children}</AppShellInner>
+      </NavCollapseProvider>
     </ViewportModeProvider>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
+  const { collapsed } = useNavCollapse();
+
+  return (
+    <div className="sr-stage">
+      <ViewportToggle />
+      <div className={`sr-shell${collapsed ? " is-nav-collapsed" : ""}`}>
+        <div className="sr-main">
+          <div className="sr-main-inner">{children}</div>
+        </div>
+        <BottomNav />
+      </div>
+    </div>
   );
 }

@@ -249,7 +249,23 @@ export function householdSummary(household: HouseholdProfile | null): string {
     bits.push("power-dependent medical device");
   }
   if (household.hasMobilityNeeds === true) {
-    bits.push("mobility needs");
+    if (Array.isArray(household.mobilityAids) && household.mobilityAids.length > 0) {
+      bits.push(
+        household.mobilityAids
+          .map((aid) =>
+            aid === "wheelchair"
+              ? "wheelchair"
+              : aid === "crutches_or_walker"
+                ? "crutches/walker"
+                : aid === "transfer_help"
+                  ? "transfer help"
+                  : "elevator-dependent",
+          )
+          .join(", "),
+      );
+    } else {
+      bits.push("mobility needs");
+    }
   }
   if (isKnown(household.petCount) && household.petCount > 0) {
     bits.push(
