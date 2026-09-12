@@ -185,7 +185,7 @@ describe("fetchAlerts client parser", () => {
     }
   });
 
-  it("treats a 400 / timeout-style failure as unavailable, not all-clear", async () => {
+  it("treats a 5xx / timeout-style failure as error, not all-clear", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -211,7 +211,8 @@ describe("fetchAlerts client parser", () => {
     const result = await fetchAlerts({ postalCode: "33602" });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reason).toBe("unavailable");
+      // Phase 2 UX: 5xx/timeout is an error (not an all-clear or invented alerts).
+      expect(result.reason).toBe("error");
       expect(result.status).toBe(503);
     }
   });
