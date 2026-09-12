@@ -15,6 +15,15 @@ import {
   STRESS_MODELED_COPY,
   STRESS_ONBOARDING_COPY,
 } from "@/components/stormready/stress-view";
+import {
+  SIMPLE_POWER_OUTAGE_PRESET_ID,
+  STRESS_HEADLINE,
+  STRESS_NEXT_STEPS,
+  STRESS_RUN_POWER_OUTAGE,
+  STRESS_SCENE_DISCLAIMER,
+  STRESS_UPDATE_PLAN,
+  STRESS_WEAKEST_LINK,
+} from "@/lib/stress/copy";
 import { STRESS_PRESETS } from "@/lib/stress";
 
 const root = path.resolve(__dirname, "..");
@@ -74,6 +83,43 @@ describe("Stress Test copy", () => {
     expect(view.toLowerCase()).not.toMatch(/safety score:|safetyScore/);
     const cascade = readUi("components/stormready/stress-cascade.tsx");
     expect(cascade.toLowerCase()).not.toContain("forecast");
+  });
+
+  it("uses plain-language headlines and hides engine jargon from the main path", () => {
+    const view = readUi("components/stormready/stress-view.tsx");
+    expect(view).toContain("STRESS_HEADLINE");
+    expect(view).toContain("STRESS_WEAKEST_LINK");
+    expect(view).toContain("STRESS_NEXT_STEPS");
+    expect(view).toContain("STRESS_RUN_POWER_OUTAGE");
+    expect(view).toContain("STRESS_UPDATE_PLAN");
+    expect(STRESS_HEADLINE).toBe("What could go wrong?");
+    expect(STRESS_WEAKEST_LINK).toBe("Weakest link");
+    expect(STRESS_NEXT_STEPS).toBe("What to do next");
+    expect(STRESS_RUN_POWER_OUTAGE).toBe("Run a power outage");
+    expect(STRESS_UPDATE_PLAN).toBe("Update your plan");
+    expect(view).toContain("SIMPLE_POWER_OUTAGE_PRESET_ID");
+    expect(SIMPLE_POWER_OUTAGE_PRESET_ID).toBe("power-12h");
+    expect(view).toContain("StressScene");
+    expect(view.toLowerCase()).not.toContain("counterfactual");
+    expect(view).not.toContain("fortifyFromStress");
+    expect(view.toLowerCase()).not.toContain("min disruption");
+    expect(view).not.toContain("Find minimum breakdown");
+    expect(view).not.toContain("Show fortify list");
+  });
+
+  it("loads the 3D canvas client-only with a 2D fallback", () => {
+    const scene = readUi("components/stormready/stress-scene.tsx");
+    expect(scene).toContain("ssr: false");
+    expect(scene).toContain("StressSceneCanvas");
+    expect(scene).toContain("StressCascade");
+    expect(scene).toContain("canUseWebGL");
+    expect(scene).toContain("STRESS_SCENE_DISCLAIMER");
+    expect(STRESS_SCENE_DISCLAIMER.toLowerCase()).toMatch(/modeled household view/);
+    expect(scene.toLowerCase()).toMatch(/modeled 3d view|simulated/);
+    const canvas = readUi("components/stormready/stress-scene-canvas.tsx");
+    expect(canvas).toContain("@react-three/fiber");
+    expect(canvas.toLowerCase()).toMatch(/simulated scenario/);
+    expect(canvas.toLowerCase()).not.toContain("official infrastructure twin");
   });
 });
 
