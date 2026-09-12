@@ -31,7 +31,9 @@ npm run build
 
 1. Welcome at `/` — Get Started (Log In is a disabled placeholder).
 2. Onboarding at `/onboarding` — location, housing, home characteristics, assets, household constraints, immediate budget. Each step writes through `saveHomeProfile` / `saveHouseholdProfile`.
-3. Plan at `/plan` — saved location, official alert card, compact conditions, and 3–5 actions when those APIs exist.
+3. Plan at `/plan` — saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges — never dollar prices.
+
+Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. StormReady never fabricates alerts or an all-clear.
 
 Bottom navigation: Home / Plan / Map / Help / Profile. Map is a placeholder only (no Mapbox).
 
@@ -39,7 +41,7 @@ Bottom navigation: Home / Plan / Map / Help / Profile. Map is a placeholder only
 
 ## API routes the UI will use
 
-The UI calls these when present and fails closed if they 404 or return an unusable body. It never fabricates alerts or an all-clear.
+The UI calls these when present and fails closed if they 404 or return an unusable body. Transport failures (5xx / network) show an error state. It never fabricates alerts or an all-clear.
 
 | Route | Used for |
 | --- | --- |

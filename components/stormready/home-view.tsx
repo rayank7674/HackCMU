@@ -3,8 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { usePlanData } from "@/components/stormready/plan-data";
+import { LoadingCard } from "@/components/stormready/query-state";
 import {
   SEVERITY_RANK,
+  arrangePlanActions,
   formatLocation,
   formatRelativeTime,
 } from "@/lib/stormready-format";
@@ -18,7 +20,7 @@ export function HomeView() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col px-5 pb-8 pt-10">
-        <p className="text-sm text-muted">Loading…</p>
+        <LoadingCard title="StormReady" label="Loading…" lines={2} />
       </main>
     );
   }
@@ -30,7 +32,11 @@ export function HomeView() {
   const alert = [...(plan.alerts?.hazards ?? [])].sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity],
   )[0];
-  const topAction = plan.recommendations[0];
+  const topAction =
+    arrangePlanActions(
+      plan.recommendations,
+      profile.household?.budgetClass ?? "unknown",
+    )[0]?.items[0] ?? plan.recommendations[0];
   const lastUpdated =
     plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
 
@@ -48,20 +54,28 @@ export function HomeView() {
 
       <div className="mt-6 grid gap-3">
         <Card eyebrow="Current alert" title={alertTitle(plan, alert?.headline)}>
-          {plan.alertsUnavailable
-            ? "Official alerts are unavailable. StormReady will not invent a warning."
-            : alert
-              ? "From the last official check for your saved location."
-              : plan.alerts?.allClear === true
-                ? "An official check reported no active products."
-                : "Alert status is not confirmed. This is not an all-clear."}
+          {plan.alertsStatus === "error"
+            ? "Official alerts could not be loaded. StormReady will not invent a warning."
+            : plan.alertsStatus === "unavailable"
+              ? "Official alerts are unavailable. StormReady will not invent a warning."
+              : plan.alertsStatus === "loading"
+                ? "Looking up official products for your location."
+                : alert
+                  ? "From the last official check for your saved location."
+                  : plan.alerts?.allClear === true
+                    ? "An official check reported no active products."
+                    : "Alert status is not confirmed. This is not an all-clear."}
         </Card>
         <Card eyebrow="Top action" title={actionTitle(plan, topAction?.title)}>
-          {plan.recommendationsUnavailable
-            ? "Actions will appear when the plan service is connected."
-            : topAction
-              ? "Open your plan for priority, timing, and why this matters."
-              : "No confirmed actions yet."}
+          {plan.recommendationsStatus === "error"
+            ? "Recommended actions could not be loaded. StormReady will not invent a checklist."
+            : plan.recommendationsStatus === "unavailable"
+              ? "Actions will appear when the plan service is connected."
+              : plan.recommendationsStatus === "loading"
+                ? "Building your plan from official alerts and your home details."
+                : topAction
+                  ? "Open your plan for timing, budget rank, and why this matters."
+                  : "No confirmed actions yet."}
         </Card>
       </div>
 
@@ -119,8 +133,10 @@ function alertTitle(
   plan: ReturnType<typeof usePlanData>,
   headline?: string,
 ): string {
-  if (plan.alertsUnavailable) return "Unavailable";
-  if (plan.loading && !plan.alerts) return "Checking…";
+  if (plan.alertsStatus === "unavailable" || plan.alertsStatus === "error") {
+    return "Unavailable";
+  }
+  if (plan.alertsStatus === "loading") return "Checking…";
   if (headline) return headline;
   if (plan.alerts?.allClear === true) return "No active official products";
   return "Not confirmed";
@@ -130,7 +146,12 @@ function actionTitle(
   plan: ReturnType<typeof usePlanData>,
   title?: string,
 ): string {
-  if (plan.recommendationsUnavailable) return "Unavailable";
-  if (plan.loading && plan.recommendations.length === 0) return "Checking…";
+  if (
+    plan.recommendationsStatus === "unavailable" ||
+    plan.recommendationsStatus === "error"
+  ) {
+    return "Unavailable";
+  }
+  if (plan.recommendationsStatus === "loading") return "Checking…";
   return title ?? "None confirmed";
 }

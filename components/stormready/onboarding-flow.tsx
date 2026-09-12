@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
 import { ChoiceGroup, Field, TriState } from "@/components/stormready/choice-field";
-import { fetchGeocode } from "@/lib/stormready-api";
+import { LoadingCard, QueryState } from "@/components/stormready/query-state";
+import { fetchGeocode, type ResourceStatus } from "@/lib/stormready-api";
 import {
   BACKUP_POWER_OPTIONS,
   BUDGET_OPTIONS,
@@ -43,6 +44,7 @@ export function OnboardingFlow() {
   const { profile, hydrated, updateHome, updateHousehold } = useProfile();
   const { step, goTo, clear } = useOnboardingStep();
   const [busy, setBusy] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState<ResourceStatus>("idle");
   const [homeDraft, setHomeDraft] = useState<HomeProfile | null>(null);
   const [householdDraft, setHouseholdDraft] = useState<HouseholdProfile | null>(
     null,
@@ -73,8 +75,14 @@ export function OnboardingFlow() {
 
   const onContinueLocation = async () => {
     if (!canContinueLocation) return;
+    if (geocodeStatus === "error" || geocodeStatus === "unavailable") {
+      persistHome(home);
+      goTo(1);
+      return;
+    }
     persistHome(home);
     setBusy(true);
+    setGeocodeStatus("loading");
     const result = await fetchGeocode({
       addressLine: isKnown(home.addressLine) ? home.addressLine : undefined,
       postalCode: isKnown(home.postalCode) ? home.postalCode : undefined,
@@ -91,9 +99,13 @@ export function OnboardingFlow() {
           : result.data.postalCode,
         location: result.data.location,
       });
+      setGeocodeStatus("ready");
+      setBusy(false);
+      goTo(1);
+      return;
     }
+    setGeocodeStatus(result.reason);
     setBusy(false);
-    goTo(1);
   };
 
   const budget = household.budgetClass;
@@ -102,7 +114,13 @@ export function OnboardingFlow() {
     return (
       <main className="flex flex-1 flex-col">
         <Header title="Set up your home" backHref="/" />
-        <p className="px-5 py-8 text-sm text-muted">Loading your saved answers…</p>
+        <div className="px-5 py-8">
+          <LoadingCard
+            title="Set up your home"
+            label="Loading your saved answers…"
+            lines={2}
+          />
+        </div>
       </main>
     );
   }
@@ -126,7 +144,16 @@ export function OnboardingFlow() {
 
         <div className="mt-4 flex flex-1 flex-col gap-5">
           {step === 0 ? (
-            <LocationStep home={home} onChange={setHomeDraft} />
+            <LocationStep
+              home={home}
+              geocodeStatus={geocodeStatus}
+              onChange={(next) => {
+                setHomeDraft(next);
+                if (geocodeStatus !== "idle" && geocodeStatus !== "loading") {
+                  setGeocodeStatus("idle");
+                }
+              }}
+            />
           ) : null}
           {step === 1 ? (
             <HousingStep home={home} onChange={setHomeDraft} />
@@ -161,7 +188,11 @@ export function OnboardingFlow() {
         <div className="mt-8 flex flex-col gap-2">
           {step === 0 ? (
             <Button onClick={onContinueLocation} disabled={!canContinueLocation || busy}>
-              {busy ? "Checking location…" : "Continue"}
+              {busy
+                ? "Checking location…"
+                : geocodeStatus === "error" || geocodeStatus === "unavailable"
+                  ? "Continue without lookup"
+                  : "Continue"}
             </Button>
           ) : step === STEPS.length - 1 ? (
             <Button
@@ -217,9 +248,11 @@ export function OnboardingFlow() {
 
 function LocationStep({
   home,
+  geocodeStatus,
   onChange,
 }: {
   home: HomeProfile;
+  geocodeStatus: ResourceStatus;
   onChange: (home: HomeProfile) => void;
 }) {
   return (
@@ -282,6 +315,13 @@ function LocationStep({
           />
         </Field>
       </div>
+      <QueryState
+        status={geocodeStatus}
+        title="Location lookup"
+        loadingLabel="Checking this address…"
+        errorMessage="Location lookup failed. Your address is saved as you entered it. StormReady will not invent coordinates."
+        unavailableMessage="Location lookup is not connected yet. Your address is saved as you entered it. StormReady will not invent coordinates."
+      />
     </>
   );
 }

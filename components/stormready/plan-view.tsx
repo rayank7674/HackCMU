@@ -6,32 +6,56 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
-import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
+  ErrorNote,
+  LoadingCard,
+  QueryState,
+  Spinner,
+} from "@/components/stormready/query-state";
+import { UnavailableNote } from "@/components/stormready/unavailable-note";
+import {
   SEVERITY_RANK,
+  arrangePlanActions,
+  asBudgetClass,
+  budgetFitLabel,
   formatCostClass,
-  formatHorizon,
   formatLocation,
   formatPriority,
   formatRelativeTime,
   formatSeverity,
   shortReason,
 } from "@/lib/stormready-format";
-import { isKnown, type ActiveHazard } from "@/lib/stormready";
+import {
+  isKnown,
+  type ActiveHazard,
+  type BudgetClass,
+  type Unknownable,
+} from "@/lib/stormready";
 import { useProfile } from "@/lib/use-profile";
 import {
   fetchTampaDemo,
   type RecommendationView,
+  type ResourceStatus,
 } from "@/lib/stormready-api";
+
+const ALERT_UNAVAILABLE =
+  "Alert service is not connected yet. StormReady will not invent warnings or mark this area all-clear.";
+const ALERT_ERROR =
+  "Official alerts could not be loaded. StormReady will not invent warnings or mark this area all-clear.";
+const ACTION_UNAVAILABLE =
+  "The plan service is not connected yet, or it failed closed because official alerts are unavailable. StormReady will not invent a live checklist.";
+const ACTION_ERROR =
+  "Recommended actions could not be loaded. StormReady will not invent a live checklist.";
 
 export function PlanView() {
   const { profile, hydrated } = useProfile();
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
   const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
-  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoStatus, setDemoStatus] = useState<ResourceStatus>("idle");
 
+  const householdBudget = profile.household?.budgetClass ?? "unknown";
   const primaryAlert = useMemo(
     () => pickPrimaryAlert(plan.alerts?.hazards ?? []),
     [plan.alerts],
@@ -41,7 +65,9 @@ export function PlanView() {
     return (
       <main className="flex flex-1 flex-col">
         <Header title="Your plan" />
-        <p className="px-5 py-8 text-sm text-muted">Loading your home…</p>
+        <div className="px-5 py-8">
+          <LoadingCard title="Your home" label="Loading your home…" lines={2} />
+        </div>
       </main>
     );
   }
@@ -66,7 +92,8 @@ export function PlanView() {
     );
   }
 
-  const topAction = plan.recommendations[0] ?? null;
+  const arranged = arrangePlanActions(plan.recommendations, householdBudget);
+  const topAction = arranged[0]?.items[0] ?? plan.recommendations[0] ?? null;
   const lastUpdated =
     plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
 
@@ -86,11 +113,12 @@ export function PlanView() {
           </p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
             Top action:{" "}
-            {plan.recommendationsUnavailable
+            {plan.recommendationsStatus === "unavailable" ||
+            plan.recommendationsStatus === "error"
               ? "Unavailable"
               : topAction
                 ? topAction.title
-                : plan.loading
+                : plan.recommendationsStatus === "loading"
                   ? "Checking…"
                   : "None confirmed"}
           </p>
@@ -105,16 +133,14 @@ export function PlanView() {
           </Link>
         </section>
 
-        {plan.alertsUnavailable ? (
-          <UnavailableNote title="Official alerts">
-            Alert service is not connected yet. StormReady will not invent
-            warnings or mark this area all-clear.
-          </UnavailableNote>
-        ) : plan.loading && !plan.alerts ? (
-          <Card eyebrow="Official alerts" title="Checking…">
-            Looking up products for your location.
-          </Card>
-        ) : (
+        <QueryState
+          status={plan.alertsStatus}
+          title="Official alerts"
+          loadingLabel="Looking up products for your location."
+          errorMessage={ALERT_ERROR}
+          unavailableMessage={ALERT_UNAVAILABLE}
+        />
+        {plan.alertsStatus === "ready" ? (
           <AlertCard
             alert={primaryAlert}
             source={plan.alerts?.provenance}
@@ -126,10 +152,10 @@ export function PlanView() {
                 : formatLocation(profile.home)
             }
           />
-        )}
+        ) : null}
 
         <ConditionsRow
-          unavailable={plan.alertsUnavailable}
+          status={plan.alertsStatus}
           hazards={plan.alerts?.hazards ?? []}
           allClear={plan.alerts?.allClear ?? "unknown"}
         />
@@ -138,61 +164,82 @@ export function PlanView() {
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
             Actions
           </p>
-          {plan.recommendationsUnavailable && !demoRecs ? (
+          {plan.recommendationsStatus === "ready" &&
+          plan.recommendations.length > 0 ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              Grouped by when to act. Ranked by budget class
+              {isKnown(householdBudget)
+                ? ` — ${formatCostClass(householdBudget).toLowerCase()} first`
+                : " — no-cost first"}
+              . Badges are cost classes, not prices.
+            </p>
+          ) : null}
+          {plan.recommendationsStatus === "unavailable" &&
+          demoStatus === "idle" ? (
             <div className="mt-2 space-y-3">
               <UnavailableNote title="Recommended actions">
-                The plan service is not connected yet, or it failed closed
-                because official alerts are unavailable. StormReady will not
-                invent a live checklist.
+                {ACTION_UNAVAILABLE}
               </UnavailableNote>
-              <Button
-                variant="secondary"
-                disabled={demoBusy}
-                onClick={async () => {
-                  setDemoBusy(true);
-                  const result = await fetchTampaDemo("quiet");
-                  setDemoRecs(result.ok ? result.data.slice(0, 5) : []);
-                  setDemoBusy(false);
-                }}
-              >
-                {demoBusy ? "Loading Tampa demo…" : "View Tampa quiet demo"}
-              </Button>
+              <TampaDemoButton
+                busy={false}
+                onClick={() => loadTampaDemo(setDemoRecs, setDemoStatus)}
+              />
             </div>
-          ) : demoRecs && demoRecs.length > 0 ? (
+          ) : plan.recommendationsStatus === "error" && demoStatus === "idle" ? (
+            <div className="mt-2 space-y-3">
+              <ErrorNote title="Recommended actions">{ACTION_ERROR}</ErrorNote>
+              <TampaDemoButton
+                busy={false}
+                onClick={() => loadTampaDemo(setDemoRecs, setDemoStatus)}
+              />
+            </div>
+          ) : demoStatus === "loading" ? (
+            <div className="mt-2">
+              <LoadingCard
+                title="Tampa quiet demo"
+                label="Loading Tampa demo…"
+              />
+            </div>
+          ) : demoStatus === "ready" && demoRecs && demoRecs.length > 0 ? (
             <div className="mt-2 space-y-3">
               <p className="text-xs text-muted">
                 Tampa quiet-weather demo — not official alerts for your home.
               </p>
-              <ul className="space-y-3">
-                {demoRecs.map((item) => (
-                  <li key={item.id}>
-                    <ActionCard action={item} onWhy={() => setWhy(item)} />
-                  </li>
-                ))}
-              </ul>
+              <ActionGroups
+                actions={demoRecs}
+                budgetClass={householdBudget}
+                onWhy={setWhy}
+              />
             </div>
-          ) : plan.recommendationsUnavailable && demoRecs?.length === 0 ? (
+          ) : demoStatus === "error" ||
+            (demoStatus === "ready" && demoRecs?.length === 0) ||
+            demoStatus === "unavailable" ? (
             <div className="mt-2">
-              <UnavailableNote title="Tampa demo unavailable">
-                GET /api/recommendations?fixture=tampa is not on this branch
-                yet.
-              </UnavailableNote>
+              <QueryState
+                status={demoStatus === "ready" ? "unavailable" : demoStatus}
+                title="Tampa demo unavailable"
+                loadingLabel="Loading Tampa demo…"
+                errorMessage="The Tampa demo could not be loaded. StormReady will not invent a checklist."
+                unavailableMessage="GET /api/recommendations?fixture=tampa is not on this branch yet."
+              />
             </div>
-          ) : plan.loading && plan.recommendations.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">Loading actions…</p>
+          ) : plan.recommendationsStatus === "loading" ? (
+            <div className="mt-2">
+              <LoadingCard title="Recommended actions" label="Loading actions…" />
+            </div>
           ) : plan.recommendations.length === 0 ? (
             <Card className="mt-2" title="No actions returned">
               The plan service responded without recommended actions. That is
               not a fabricated checklist.
             </Card>
           ) : (
-            <ul className="mt-2 space-y-3">
-              {plan.recommendations.map((item) => (
-                <li key={item.id}>
-                  <ActionCard action={item} onWhy={() => setWhy(item)} />
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2">
+              <ActionGroups
+                actions={plan.recommendations}
+                budgetClass={householdBudget}
+                onWhy={setWhy}
+              />
+            </div>
           )}
         </section>
       </div>
@@ -205,7 +252,9 @@ export function PlanView() {
         {why ? (
           <>
             {isKnown(why.rationale) ? <p>{why.rationale}</p> : null}
-            {why.body ? <p className={isKnown(why.rationale) ? "mt-3" : ""}>{why.body}</p> : null}
+            {why.body ? (
+              <p className={isKnown(why.rationale) ? "mt-3" : ""}>{why.body}</p>
+            ) : null}
             {!isKnown(why.rationale) && !why.body ? (
               <p>No additional explanation was provided by the plan service.</p>
             ) : null}
@@ -214,6 +263,80 @@ export function PlanView() {
       </Modal>
     </main>
   );
+}
+
+function ActionGroups({
+  actions,
+  budgetClass,
+  onWhy,
+}: {
+  actions: RecommendationView[];
+  budgetClass: Unknownable<BudgetClass>;
+  onWhy: (action: RecommendationView) => void;
+}) {
+  const groups = arrangePlanActions(actions, budgetClass);
+  return (
+    <div className="space-y-5">
+      {groups.map((group) => (
+        <section key={group.horizon} aria-labelledby={`horizon-${group.horizon}`}>
+          <h3
+            id={`horizon-${group.horizon}`}
+            className="text-sm font-semibold text-foreground"
+          >
+            {group.label}
+          </h3>
+          <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-muted">
+            {group.horizon === "now"
+              ? "Do these first"
+              : group.horizon === "before_next_event"
+                ? "Prep before the next storm"
+                : "When you can"}
+          </p>
+          <ul className="mt-2 space-y-3">
+            {group.items.map((item, index) => (
+              <li key={item.id}>
+                <ActionCard
+                  action={item}
+                  rank={index + 1}
+                  budgetClass={budgetClass}
+                  onWhy={() => onWhy(item)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function TampaDemoButton({
+  busy,
+  onClick,
+}: {
+  busy: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button variant="secondary" disabled={busy} onClick={onClick}>
+      {busy ? <Spinner label="Loading Tampa demo…" /> : "View Tampa quiet demo"}
+    </Button>
+  );
+}
+
+async function loadTampaDemo(
+  setDemoRecs: (recs: RecommendationView[] | null) => void,
+  setDemoStatus: (status: ResourceStatus) => void,
+) {
+  setDemoStatus("loading");
+  const result = await fetchTampaDemo("quiet");
+  if (result.ok) {
+    setDemoRecs(result.data.slice(0, 5));
+    setDemoStatus("ready");
+    return;
+  }
+  setDemoRecs([]);
+  setDemoStatus(result.reason);
 }
 
 function AlertCard({
@@ -240,7 +363,10 @@ function AlertCard({
           Source: {sourceLabel(source, alert.provenance)} · {locationLabel}
         </p>
         <p className="mt-1 text-xs">
-          Issued / updated {formatRelativeTime(observedAt ?? (isKnown(alert.onsetAt) ? alert.onsetAt : null))}
+          Issued / updated{" "}
+          {formatRelativeTime(
+            observedAt ?? (isKnown(alert.onsetAt) ? alert.onsetAt : null),
+          )}
         </p>
       </Card>
     );
@@ -273,25 +399,39 @@ function AlertCard({
 }
 
 function ConditionsRow({
-  unavailable,
+  status,
   hazards,
   allClear,
 }: {
-  unavailable: boolean;
+  status: ResourceStatus;
   hazards: ActiveHazard[];
   allClear: boolean | "unknown";
 }) {
-  if (unavailable) {
+  if (status === "loading") {
+    return <LoadingCard title="Conditions" label="Checking conditions…" lines={2} />;
+  }
+  if (status === "error") {
     return (
-      <Card eyebrow="Conditions" title="Not available">
+      <ErrorNote title="Conditions">
+        Compact conditions will appear when official alerts load. An empty list
+        is not treated as safe.
+      </ErrorNote>
+    );
+  }
+  if (status === "unavailable") {
+    return (
+      <UnavailableNote title="Conditions">
         Compact conditions will appear when the alert service is connected.
-      </Card>
+      </UnavailableNote>
     );
   }
 
   if (hazards.length === 0) {
     return (
-      <Card eyebrow="Conditions" title={allClear === true ? "Quiet" : "Unconfirmed"}>
+      <Card
+        eyebrow="Conditions"
+        title={allClear === true ? "Quiet" : "Unconfirmed"}
+      >
         {allClear === true
           ? "No active hazard products in the last official check."
           : "Conditions are not confirmed. An empty list is not treated as safe."}
@@ -317,25 +457,47 @@ function ConditionsRow({
 
 function ActionCard({
   action,
+  rank,
+  budgetClass,
   onWhy,
 }: {
   action: RecommendationView;
+  rank: number;
+  budgetClass: Unknownable<BudgetClass>;
   onWhy: () => void;
 }) {
-  const horizon = formatHorizon(action.timeframe, action.horizon);
   const reason = shortReason(action.rationale, action.body);
-  const cost =
-    action.costClass && isKnown(action.costClass) ? action.costClass : null;
+  const cost = asBudgetClass(action.costClass);
+  const fit = budgetFitLabel(action.costClass, budgetClass);
+  const rankBar = cost
+    ? cost === "zero"
+      ? "border-l-4 border-l-accent-strong"
+      : cost === "low"
+        ? "border-l-4 border-l-accent"
+        : cost === "moderate"
+          ? "border-l-4 border-l-warning"
+          : "border-l-4 border-l-border"
+    : "border-l-4 border-l-border";
 
   return (
-    <Card>
+    <Card className={rankBar}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-foreground">{action.title}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+            Budget rank {rank}
+            {cost ? ` · ${formatCostClass(cost)}` : ""}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {action.title}
+          </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Badge tone={action.priority}>{formatPriority(action.priority)}</Badge>
-            {horizon ? <Badge>{horizon}</Badge> : null}
             {cost ? <Badge>{formatCostClass(cost)}</Badge> : null}
+            {fit ? (
+              <Badge tone={fit === "Above budget" ? "high" : undefined}>
+                {fit}
+              </Badge>
+            ) : null}
           </div>
         </div>
         <button
@@ -346,7 +508,9 @@ function ActionCard({
           Why?
         </button>
       </div>
-      {reason ? <p className="mt-3 text-sm leading-relaxed text-muted">{reason}</p> : null}
+      {reason ? (
+        <p className="mt-3 text-sm leading-relaxed text-muted">{reason}</p>
+      ) : null}
     </Card>
   );
 }
@@ -356,7 +520,7 @@ function Badge({
   tone,
 }: {
   children: string;
-  tone?: RecommendationView["priority"];
+  tone?: RecommendationView["priority"] | "high";
 }) {
   const color =
     tone === "critical"
@@ -365,7 +529,9 @@ function Badge({
         ? "bg-warning/10 text-warning"
         : "bg-surface-elevated text-foreground";
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${color}`}>
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${color}`}
+    >
       {children}
     </span>
   );
@@ -382,8 +548,10 @@ function summarizeAlert(
   plan: ReturnType<typeof usePlanData>,
   alert: ActiveHazard | null,
 ): string {
-  if (plan.alertsUnavailable) return "Unavailable";
-  if (plan.loading && !plan.alerts) return "Checking…";
+  if (plan.alertsStatus === "unavailable" || plan.alertsStatus === "error") {
+    return "Unavailable";
+  }
+  if (plan.alertsStatus === "loading") return "Checking…";
   if (alert) return alert.headline;
   if (plan.alerts?.allClear === true) return "No active official products";
   return "Not confirmed";
@@ -395,3 +563,4 @@ function sourceLabel(source?: string, fallback?: string): string {
   if (value === "user_reported") return "User reported";
   return "Source not confirmed";
 }
+
