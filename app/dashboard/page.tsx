@@ -1,6 +1,9 @@
 import { Header } from "@/components/layout/header";
 import { LobbyView } from "@/components/layout/lobby-view";
-import { placeholderMembers, placeholderStandings } from "@/types";
+import {
+  placeholderMembers,
+  placeholderStandings,
+} from "@/components/layout/legacy-rooms";
 
 type DashboardPageProps = {
   searchParams: Promise<{ intent?: string }>;

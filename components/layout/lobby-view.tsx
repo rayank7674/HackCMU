@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
-import type { Member, Standing } from "@/types";
+import type { Member, Standing } from "@/components/layout/legacy-rooms";
 
 type LobbyViewProps = {
   members: Member[];
