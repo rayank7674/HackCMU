@@ -83,6 +83,20 @@ export function StressScene({
   return (
     <div>
       <p className="mb-2 text-xs leading-relaxed">{STRESS_SCENE_DISCLAIMER}</p>
+      <ul className="mb-2 flex flex-wrap gap-3 text-[11px] text-muted" aria-label="Modeled colors">
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-danger" aria-hidden />
+          Fails in this model
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-warning" aria-hidden />
+          Strained
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted" aria-hidden />
+          Holding up
+        </li>
+      </ul>
       {webgl === false ? (
         fallback
       ) : (

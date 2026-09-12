@@ -26,8 +26,8 @@ export const SCENE_NODE_LAYOUT: Record<string, readonly [number, number, number]
 export const SCENE_LEVEL_COLOR: Record<DisruptionLevel, string> = {
   none: "#7a8ea3",
   constrained: "#c4a15a",
-  major: "#c4733a",
-  critical: "#9b3d3d",
+  major: "#c2410c",
+  critical: "#b42318",
 };
 
 export type StressSceneNode = {
