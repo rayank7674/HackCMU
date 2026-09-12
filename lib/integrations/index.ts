@@ -27,6 +27,22 @@ export {
 } from "./nws";
 
 export {
+  analyzeWithK2,
+  buildK2Prompt,
+  getK2Config,
+  isK2Configured,
+  k2ExtractRequestFromBody,
+  loadBundledPreparednessDocuments,
+  parseK2Items,
+  K2_DOCUMENT_DATA_NOTICE,
+  type K2AnalyzeInput,
+  type K2AnalyzeOk,
+  type K2AnalyzeResult,
+  type K2Document,
+  type K2ExtractedItem,
+} from "./k2";
+
+export {
   httpStatusForUnavailable,
   unavailable,
   unknownHazardState,

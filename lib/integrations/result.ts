@@ -1,11 +1,11 @@
 import { UNKNOWN, type HazardState, type Unknownable } from "@/lib/stormready";
 
 /**
- * Shared fail-closed result for geocode / NWS adapters.
+ * Shared fail-closed result for geocode / NWS / optional K2 adapters.
  * Callers must treat `status: "unavailable"` as unknown — never invent
- * coordinates, alerts, or an all-clear.
+ * coordinates, alerts, or an all-clear. K2 extracts are never official.
  */
-export type IntegrationService = "geocode" | "nws";
+export type IntegrationService = "geocode" | "nws" | "k2";
 
 export type IntegrationUnavailableReason =
   | "invalid_input"

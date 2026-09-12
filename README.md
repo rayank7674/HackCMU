@@ -63,6 +63,9 @@ The app builds and the anonymous path runs with **no Auth0 or Supabase env**. Wh
 | `NEXT_PUBLIC_SUPABASE_URL` | for persist | Save/load returns 503 without this |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | for persist | Public anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | recommended for persist | Server-only, after Auth0 verifies `sub`. Never expose to the browser |
+| `K2_API_KEY` | no | Optional K2 Horizon extract. Unused unless all three K2 vars are set |
+| `K2_API_BASE_URL` | no | OpenAI-compatible base (partner or self-hosted). No default production host |
+| `K2_MODEL` | no | Model id for that base. Extract is `ai_inferred` display only |
 
 Do not commit `.env` / `.env.local`.
 
@@ -118,6 +121,7 @@ The UI calls these when present and fails closed if they 404 or return an unusab
 | `POST` `/api/save-plan` | Cloud upsert of the local snapshot. 503 without Supabase; 401 without Auth0 `sub` |
 | `GET` `/api/load-plan` | Restore the latest saved snapshot for the Auth0 `sub` |
 | `GET` `/api/auth/login` | Start Auth0 login (501 when Auth0 env is missing) |
+| `POST` `/api/ai/k2` | Optional K2 Horizon extract of the bundled preparedness corpus (`{ task?: string }` only; no file uploads). 503 without `K2_API_KEY` / `K2_API_BASE_URL` / `K2_MODEL`. Items are `ai_inferred` display notes, never official alerts |
 
 If `recommend()` is exported from `@/lib/stormready` (rules-engine branch), the plan screen can use it when the route is missing. A 404 still shows unavailable copy and never invents live alerts.
 
