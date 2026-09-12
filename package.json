@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:profile-store": "npx --yes tsx scripts/profile-store.smoke.ts"
+    "test:profile-store": "npx --yes tsx scripts/profile-store.smoke.ts",
+    "test:integrations": "npx --yes tsx scripts/integrations.smoke.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
