@@ -16,9 +16,9 @@ import {
 /**
  * Anonymous localStorage profile store (no auth).
  *
- * Account strategy: the household plan lives only in this browser until a
- * later "Save My Plan" flow (Auth0 / Supabase) is added. Do not write
- * profiles to the network from this module.
+ * Account strategy: this module is the anonymous local store only. Cloud
+ * save/restore lives in lib/supabase/persist.ts and /api/save-plan. Do not
+ * write profiles to the network from this module.
  *
  * Unknown semantics: load/save never turn `"unknown"` into `false`, `0`,
  * `""`, or `[]`. Missing or blank keys become `"unknown"` so unanswered
@@ -240,7 +240,15 @@ function parsePersistedProfile(value: unknown): PersistedProfile {
   };
 }
 
-function normalizeHomeProfile(value: Record<string, unknown> | HomeProfile): HomeProfile {
+export function hydrateHomeProfile(value: unknown): HomeProfile | null {
+  return isRecord(value) ? normalizeHomeProfile(value) : null;
+}
+
+export function hydrateHouseholdProfile(value: unknown): HouseholdProfile | null {
+  return isRecord(value) ? normalizeHouseholdProfile(value) : null;
+}
+
+export function normalizeHomeProfile(value: Record<string, unknown> | HomeProfile): HomeProfile {
   const now = nowIso();
   const locationSource = isRecord(value.location) ? value.location : {};
 
@@ -273,7 +281,7 @@ function normalizeHomeProfile(value: Record<string, unknown> | HomeProfile): Hom
   };
 }
 
-function normalizeHouseholdProfile(
+export function normalizeHouseholdProfile(
   value: Record<string, unknown> | HouseholdProfile,
 ): HouseholdProfile {
   const now = nowIso();
