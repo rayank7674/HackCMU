@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET as getAlerts, POST as postAlerts } from "@/app/api/alerts/route";
 import { GET as getGeocode, POST as postGeocode } from "@/app/api/geocode/route";
+import { POST as postReverseGeocode } from "@/app/api/geocode/reverse/route";
+import { POST as postSiteFacts } from "@/app/api/site-facts/route";
 import { fetchAlerts } from "@/lib/stormready-api";
 import { UNKNOWN } from "@/lib/stormready";
 
@@ -74,6 +76,37 @@ describe("GET/POST /api/geocode", () => {
     expect(body.ok).toBe(false);
     expect(body.reason).toBe("invalid_input");
     expect(body.location.latitude).toBe(UNKNOWN);
+  });
+});
+
+describe("POST /api/geocode/reverse", () => {
+  it("rejects missing coordinates without inventing a street", async () => {
+    const response = await postReverseGeocode(
+      new Request("http://localhost/api/geocode/reverse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.location.latitude).toBe(UNKNOWN);
+  });
+});
+
+describe("POST /api/site-facts", () => {
+  it("rejects missing coordinates without claiming a flood zone", async () => {
+    const response = await postSiteFacts(
+      new Request("http://localhost/api/site-facts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitude: "north" }),
+      }),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
   });
 });
 

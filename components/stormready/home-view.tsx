@@ -6,6 +6,7 @@ import { AuthControls } from "@/components/stormready/auth-controls";
 import { usePlanData } from "@/components/stormready/plan-data";
 import { LoadingCard } from "@/components/stormready/query-state";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
+import { seasonFromHome } from "@/lib/integrations/season";
 import {
   SEVERITY_RANK,
   formatLocation,
@@ -34,24 +35,30 @@ export function HomeView() {
   const alert = [...(plan.alerts?.hazards ?? [])].sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity],
   )[0];
-  const topAction = plan.recommendations[0];
   const lastUpdated =
     plan.alerts?.observedAt ?? profile.updatedAt ?? profile.home?.updatedAt ?? null;
+  const season = seasonFromHome(profile.home);
 
   return (
     <main className="flex min-h-full flex-1 flex-col px-5 pb-8 pt-8">
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
-        StormReady
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-accent">
+        Now
       </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
         {formatLocation(profile.home)}
       </h1>
-      <p className="mt-2 text-sm text-muted">
+      {season.applicable ? (
+        <p className="mt-3 inline-flex w-fit rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-strong">
+          {season.label}
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs leading-relaxed text-muted">{season.sourceNote}</p>
+      <p className="mt-2 text-xs text-muted">
         Last updated {formatRelativeTime(lastUpdated)}
       </p>
 
-      <div className="mt-6 grid gap-3 sr-card-grid">
-        <Card eyebrow="Current alert" title={alertTitle(plan, alert?.headline)}>
+      <div className="mt-6">
+        <Card eyebrow="Official status" title={alertTitle(plan, alert?.headline)}>
           {plan.alertsStatus === "error"
             ? "Official alerts could not be loaded. StormReady will not invent a warning."
             : plan.alertsStatus === "unavailable"
@@ -64,21 +71,10 @@ export function HomeView() {
                     ? "An official check reported no active products."
                     : "Alert status is not confirmed. This is not an all-clear."}
         </Card>
-        <Card eyebrow="Top action" title={actionTitle(plan, topAction?.title)}>
-          {plan.recommendationsStatus === "error"
-            ? "Recommended actions could not be loaded. StormReady will not invent a checklist."
-            : plan.recommendationsStatus === "unavailable"
-              ? "Actions will appear when the plan service is connected."
-              : plan.recommendationsStatus === "loading"
-                ? "Building your plan from official alerts and your home details."
-                : topAction
-                  ? "Open your plan for timing, constraints, and why this matters."
-                  : "No confirmed actions yet."}
-        </Card>
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sr-cta">
-        <Button href="/plan">Open your plan</Button>
+        <Button href="/plan">See what to do</Button>
         <Button href="/onboarding" variant="secondary">
           Update home details
         </Button>
@@ -139,16 +135,3 @@ function alertTitle(
   return "Not confirmed";
 }
 
-function actionTitle(
-  plan: ReturnType<typeof usePlanData>,
-  title?: string,
-): string {
-  if (
-    plan.recommendationsStatus === "unavailable" ||
-    plan.recommendationsStatus === "error"
-  ) {
-    return "Unavailable";
-  }
-  if (plan.recommendationsStatus === "loading") return "Checking…";
-  return title ?? "None confirmed";
-}

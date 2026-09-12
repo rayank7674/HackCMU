@@ -47,3 +47,14 @@ export {
 } from "./fortify";
 export { STRESS_PATH, postStress } from "./client";
 export type { StressAction, StressRequest } from "./client";
+export {
+  HOUSE_HITS,
+  hitFromRecommendation,
+  hitIsInSeason,
+  parseHouseHit,
+  presetsForHit,
+  seasonForHome,
+  visibleHits,
+  type HouseHit,
+} from "./hits";
+export { scenarioIncludesLocalFeeder } from "./graph";

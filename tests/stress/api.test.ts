@@ -43,6 +43,30 @@ describe("POST /api/stress", () => {
     expect(body.forecast).toBe(false);
     expect(body.result.modeled).toBe(true);
     expect(body.result.disruptionLevel).toBeTruthy();
+    expect(body.graph.nodes.some((node: { id: string }) => node.id === "local_feeder")).toBe(
+      true,
+    );
+    expect(body.graph.nodes.some((node: { id: string }) => node.id === "roof")).toBe(true);
+  });
+
+  it("does not attach a modeled feeder on a water-only scenario", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/stress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "simulate",
+          home: makeHome(),
+          household: makeHousehold(),
+          scenario: { id: "water" },
+        }),
+      }),
+    );
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect(body.graph.nodes.some((node: { id: string }) => node.id === "local_feeder")).toBe(
+      false,
+    );
   });
 
   it("does not fortify without a hazard state (no invented all-clear)", async () => {

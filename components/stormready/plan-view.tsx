@@ -37,6 +37,7 @@ import {
   type BudgetClass,
   type Unknownable,
 } from "@/lib/stormready";
+import { hitFromRecommendation } from "@/lib/stress";
 import { useProfile } from "@/lib/use-profile";
 import {
   fetchRecommendations,
@@ -281,10 +282,12 @@ export function PlanView() {
             Update home details
           </Link>
           <Link
-            href="/stress-test"
+            href={`/stress-test?hit=${hitFromRecommendation(
+              topAction && isKnown(topAction.ruleId) ? topAction.ruleId : null,
+            )}`}
             className="mt-2 block text-sm font-semibold text-accent-strong"
           >
-            Test my preparedness
+            Test this house
           </Link>
         </section>
 

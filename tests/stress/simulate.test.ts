@@ -87,6 +87,25 @@ describe("simulate", () => {
     );
   });
 
+  it("starts a power outage at the modeled feeder when present", () => {
+    const graph = buildHouseholdGraph(home({ hasBackupPower: true }), household(), {
+      includeLocalFeeder: true,
+    });
+    const result = simulate(graph, presetById("power-12h")!);
+    const feeder = result.nodes.find((node) => node.id === "local_feeder");
+    const power = result.nodes.find((node) => node.id === "power");
+    expect(feeder?.capacity).toBe(0);
+    expect(power?.capacity).toBe(0);
+    expect(result.assumptions.join(" ")).toMatch(/not a real utility map/i);
+  });
+
+  it("does not claim a feeder on a non-power water scenario", () => {
+    const graph = buildHouseholdGraph(home(), household(), { includeLocalFeeder: false });
+    const result = simulate(graph, presetById("water")!);
+    expect(result.nodes.some((node) => node.id === "local_feeder")).toBe(false);
+    expect(result.assumptions.join(" ")).not.toMatch(/not a real utility map/i);
+  });
+
   it("is deterministic", () => {
     const graph = buildHouseholdGraph(home(), household());
     const scenario = presetById("wind-power")!;

@@ -4,27 +4,58 @@ import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import type { Mesh } from "three";
-import { SCENE_LEVEL_COLOR, type StressSceneModel, type StressSceneNode } from "@/lib/stress/scene";
+import {
+  SCENE_LEVEL_COLOR,
+  type HousePartTint,
+  type StressSceneModel,
+  type StressSceneNode,
+} from "@/lib/stress/scene";
 
-function HouseholdHouse({ level }: { level: StressSceneModel["houseLevel"] }) {
-  const roof = level === "none" || level === "constrained" ? "#1e4f86" : SCENE_LEVEL_COLOR[level];
+const HOUSE_PART_IDS = new Set(["roof", "openings", "lowest_floor", "pipes", "home"]);
+
+function partColor(parts: HousePartTint[], id: HousePartTint["id"], fallback: string): string {
+  const part = parts.find((item) => item.id === id);
+  if (!part || part.level === "none") return fallback;
+  return SCENE_LEVEL_COLOR[part.level];
+}
+
+function HouseholdHouse({
+  model,
+}: {
+  model: Pick<StressSceneModel, "houseLevel" | "houseParts" | "dwellingType" | "stories">;
+}) {
+  const stories = Math.max(1, model.stories);
+  const mobile = model.dwellingType === "mobile_home" || model.dwellingType === "manufactured_home";
+  const width = mobile ? 2.15 : 1.55;
+  const depth = mobile ? 0.95 : 1.28;
+  const storyH = mobile ? 0.72 : 0.95;
+  const bodyH = storyH * stories;
+  const roof = partColor(model.houseParts, "roof", "#1e4f86");
+  const openings = partColor(model.houseParts, "openings", "#d7e4f4");
+  const floor = partColor(model.houseParts, "lowest_floor", "#6f8aa6");
+  const pipes = partColor(model.houseParts, "pipes", "#5a6d82");
+
   return (
     <group>
-      <mesh position={[0, 0.55, 0]}>
-        <boxGeometry args={[1.55, 1.1, 1.28]} />
-        <meshStandardMaterial color="#6f8aa6" roughness={0.7} />
+      <mesh position={[0, bodyH / 2, 0]}>
+        <boxGeometry args={[width, bodyH, depth]} />
+        <meshStandardMaterial color={floor} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 1.32, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[1.22, 0.62, 4]} />
+      <mesh position={[0, bodyH + 0.28, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[mobile ? 0.55 : 1.22, mobile ? 0.28 : 0.62, mobile ? 8 : 4]} />
         <meshStandardMaterial color={roof} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 0.32, 0.66]}>
+      <mesh position={[0, 0.32, depth / 2 + 0.02]}>
         <boxGeometry args={[0.3, 0.48, 0.08]} />
         <meshStandardMaterial color="#10233d" />
       </mesh>
-      <mesh position={[0.38, 0.7, 0.65]}>
+      <mesh position={[width * 0.22, Math.min(0.7, bodyH * 0.55), depth / 2 + 0.01]}>
         <boxGeometry args={[0.26, 0.22, 0.05]} />
-        <meshStandardMaterial color="#d7e4f4" />
+        <meshStandardMaterial color={openings} />
+      </mesh>
+      <mesh position={[-width * 0.28, 0.18, depth / 2 + 0.08]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.55, 8]} />
+        <meshStandardMaterial color={pipes} />
       </mesh>
     </group>
   );
@@ -40,7 +71,7 @@ function DependencyOrb({ node }: { node: StressSceneNode }) {
     ref.current.scale.setScalar(pulse);
   });
 
-  if (node.id === "home") return null;
+  if (HOUSE_PART_IDS.has(node.id)) return null;
 
   return (
     <group position={node.position}>
@@ -66,17 +97,19 @@ function SceneContents({ model }: { model: StressSceneModel }) {
         <circleGeometry args={[4.8, 48]} />
         <meshStandardMaterial color="#c5d6e8" />
       </mesh>
-      <HouseholdHouse level={model.houseLevel} />
-      {model.edges.map((edge) => (
-        <Line
-          key={`${edge.from}-${edge.to}`}
-          points={[edge.fromPos, edge.toPos]}
-          color={edge.inCascade ? "#b42318" : "#7f93a8"}
-          lineWidth={edge.inCascade ? 4 : 1.5}
-          transparent
-          opacity={edge.inCascade ? 0.95 : 0.45}
-        />
-      ))}
+      <HouseholdHouse model={model} />
+      {model.edges
+        .filter((edge) => !HOUSE_PART_IDS.has(edge.from) && !HOUSE_PART_IDS.has(edge.to))
+        .map((edge) => (
+          <Line
+            key={`${edge.from}-${edge.to}`}
+            points={[edge.fromPos, edge.toPos]}
+            color={edge.inCascade ? "#b42318" : "#7f93a8"}
+            lineWidth={edge.inCascade ? 4 : 1.5}
+            transparent
+            opacity={edge.inCascade ? 0.95 : 0.45}
+          />
+        ))}
       {model.nodes.map((node) => (
         <DependencyOrb key={node.id} node={node} />
       ))}

@@ -24,6 +24,8 @@ import type {
  */
 
 export const GEOCODE_PATH = "/api/geocode";
+export const REVERSE_GEOCODE_PATH = "/api/geocode/reverse";
+export const SITE_FACTS_PATH = "/api/site-facts";
 export const ALERTS_PATH = "/api/alerts";
 export const RECOMMENDATIONS_PATH = "/api/recommendations";
 
@@ -55,6 +57,15 @@ export type GeocodeResult = {
   city: Unknownable<string>;
   state: Unknownable<string>;
   postalCode: Unknownable<string>;
+  matchKind?: "address" | "zcta";
+  addressLine?: Unknownable<string>;
+  matchedAddress?: Unknownable<string>;
+};
+
+export type SiteFactsView = {
+  floodZone: Unknownable<string>;
+  elevationFeet: Unknownable<number>;
+  notes: string[];
 };
 
 export type HazardSource = "live" | "unavailable" | "fixture";
@@ -129,6 +140,30 @@ export async function fetchGeocode(input: {
     return tryAlternateMethod(GEOCODE_PATH, "POST", input, parseGeocode);
   }
   return parseOrUnavailable(payload.data, parseGeocode);
+}
+
+export async function fetchReverseGeocode(input: {
+  latitude: number;
+  longitude: number;
+}): Promise<ApiResult<GeocodeResult>> {
+  const posted = await requestJson(REVERSE_GEOCODE_PATH, {
+    method: "POST",
+    body: input,
+  });
+  if (!posted.ok) return posted;
+  return parseOrUnavailable(posted.data, parseGeocode);
+}
+
+export async function fetchSiteFacts(input: {
+  latitude: number;
+  longitude: number;
+}): Promise<ApiResult<SiteFactsView>> {
+  const posted = await requestJson(SITE_FACTS_PATH, {
+    method: "POST",
+    body: input,
+  });
+  if (!posted.ok) return posted;
+  return parseOrUnavailable(posted.data, parseSiteFacts);
 }
 
 export async function fetchAlerts(input: {
@@ -353,11 +388,29 @@ function parseGeocode(value: unknown): GeocodeResult | null {
   const nwsCountyZone = readUnknownableString(
     source.nwsCountyZone ?? source.countyZone,
   );
-  const city = readUnknownableString(value.city ?? source.city);
-  const state = readUnknownableString(value.state ?? source.state);
-  const postalCode = readUnknownableString(
-    value.postalCode ?? source.postalCode ?? value.zip,
+  const city = readUnknownableString(
+    value.city ?? source.city ?? (isRecord(value.normalizedAddress) ? value.normalizedAddress.city : null),
   );
+  const state = readUnknownableString(
+    value.state ?? source.state ?? (isRecord(value.normalizedAddress) ? value.normalizedAddress.state : null),
+  );
+  const postalCode = readUnknownableString(
+    value.postalCode ??
+      source.postalCode ??
+      value.zip ??
+      (isRecord(value.normalizedAddress) ? value.normalizedAddress.postalCode : null),
+  );
+  const addressLine = readUnknownableString(
+    value.addressLine ??
+      (isRecord(value.normalizedAddress) ? value.normalizedAddress.addressLine : null),
+  );
+  const matchedAddress = readUnknownableString(
+    value.matchedAddress ??
+      (isRecord(value.normalizedAddress) ? value.normalizedAddress.matchedAddress : null),
+  );
+  const matchKind = value.matchKind === "zcta" || value.matchKind === "address"
+    ? value.matchKind
+    : undefined;
 
   const hasAnything =
     latitude !== "unknown" ||
@@ -385,7 +438,20 @@ function parseGeocode(value: unknown): GeocodeResult | null {
     city,
     state,
     postalCode,
+    matchKind,
+    addressLine,
+    matchedAddress,
   };
+}
+
+function parseSiteFacts(value: unknown): SiteFactsView | null {
+  if (!isRecord(value) || value.ok !== true) return null;
+  const floodZone = readUnknownableString(value.floodZone);
+  const elevationFeet = readCoord(value.elevationFeet);
+  const notes = Array.isArray(value.notes)
+    ? value.notes.filter((item): item is string => typeof item === "string")
+    : [];
+  return { floodZone, elevationFeet, notes };
 }
 
 function parseHazardState(value: unknown): HazardState | null {

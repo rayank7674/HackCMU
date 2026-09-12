@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyHomeProfile, createEmptyHouseholdProfile } from "@/lib/stormready";
 import { TAMPA_DEMO_HOME, TAMPA_DEMO_HOUSEHOLD } from "@/lib/fixtures/tampa-demo";
-import { buildHouseholdGraph } from "@/lib/stress/graph";
+import {
+  buildHouseholdGraph,
+  scenarioIncludesLocalFeeder,
+} from "@/lib/stress/graph";
+import { presetById } from "@/lib/stress/presets";
 
 function home(overrides: Partial<ReturnType<typeof createEmptyHomeProfile>> = {}) {
   return createEmptyHomeProfile({
@@ -94,5 +98,34 @@ describe("buildHouseholdGraph", () => {
     expect(graph.nodes.map((node) => node.id)).toEqual(
       expect.arrayContaining(["power", "road", "transport", "mobility"]),
     );
+  });
+
+  it("includes a roof node when roof age is old or unknown", () => {
+    const unknownRoof = buildHouseholdGraph(
+      home({ roofAgeYears: "unknown" }),
+      household(),
+    );
+    const oldRoof = buildHouseholdGraph(home({ roofAgeYears: 22 }), household());
+    const unknown = unknownRoof.nodes.find((node) => node.id === "roof");
+    const old = oldRoof.nodes.find((node) => node.id === "roof");
+    expect(unknown).toBeDefined();
+    expect(old).toBeDefined();
+    expect(unknown?.ownCapacity).toBeLessThan(90);
+    expect(old?.ownCapacity).toBeLessThan(unknown?.ownCapacity ?? 100);
+    expect(unknownRoof.assumptions.join(" ")).toMatch(/unknown is not treated as a new roof/i);
+  });
+
+  it("adds a modeled local feeder only on the power-outage path", () => {
+    const power = buildHouseholdGraph(home(), household(), { includeLocalFeeder: true });
+    const water = buildHouseholdGraph(home(), household(), { includeLocalFeeder: false });
+    expect(power.nodes.some((node) => node.id === "local_feeder")).toBe(true);
+    expect(power.edges.some((edge) => edge.from === "local_feeder" && edge.to === "power")).toBe(
+      true,
+    );
+    expect(power.assumptions.join(" ")).toMatch(/not a real utility map/i);
+    expect(water.nodes.some((node) => node.id === "local_feeder")).toBe(false);
+    expect(scenarioIncludesLocalFeeder(presetById("power-12h")!)).toBe(true);
+    expect(scenarioIncludesLocalFeeder(presetById("water")!)).toBe(false);
+    expect(scenarioIncludesLocalFeeder(presetById("flood-road")!)).toBe(false);
   });
 });
