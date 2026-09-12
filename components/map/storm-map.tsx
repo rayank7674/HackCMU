@@ -74,7 +74,7 @@ export function StormMap({
   const tiles = getMapTileLayer();
   const overlayPoints = overlayPointsAsLatLon(stressOverlay);
   const overlayKey = overlayPoints
-    .map((point) => `${point.id}:${point.latitude},${point.longitude}`)
+    .map((point) => `${point.latitude},${point.longitude}`)
     .join("|");
   const fitToOverlay = overlayPoints.length > 0;
 
