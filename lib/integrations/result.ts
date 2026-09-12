@@ -4,6 +4,9 @@ import { UNKNOWN, type HazardState, type Unknownable } from "@/lib/stormready";
  * Shared fail-closed result for geocode / NWS adapters.
  * Callers must treat `status: "unavailable"` as unknown — never invent
  * coordinates, alerts, or an all-clear.
+ *
+ * Grok explanations use a parallel shape in `./grok.ts` (`service: "grok"`)
+ * so geocode/nws unions stay unchanged.
  */
 export type IntegrationService = "geocode" | "nws";
 

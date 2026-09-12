@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { ChoiceGroup } from "@/components/stormready/choice-field";
 import { SavePlanControl } from "@/components/stormready/save-plan-control";
+import { AskStormReady } from "@/components/stormready/ask-stormready";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
@@ -341,6 +342,20 @@ export function PlanView() {
             >
               <span className="font-semibold">PLAN UPDATED.</span> {planDelta.summary}
             </p>
+          ) : null}
+          {recsStatus === "ready" && topAction ? (
+            <AskStormReady
+              optimization={optimization}
+              planDelta={planDelta}
+              officialHeadlines={
+                primaryAlert?.headline ? [primaryAlert.headline] : []
+              }
+              fallbackRationale={[
+                shortReason(topAction.rationale, topAction.body) ?? "",
+                ...(optimization?.notes ?? []),
+                planDelta?.summary ?? "",
+              ].filter(Boolean)}
+            />
           ) : null}
         </div>
 

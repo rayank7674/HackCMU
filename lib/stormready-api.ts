@@ -26,6 +26,7 @@ import type {
 export const GEOCODE_PATH = "/api/geocode";
 export const ALERTS_PATH = "/api/alerts";
 export const RECOMMENDATIONS_PATH = "/api/recommendations";
+export const EXPLAIN_PATH = "/api/ai/explain";
 
 export type ApiFailureReason = "unavailable" | "error";
 
@@ -200,6 +201,125 @@ export async function fetchRecommendations(
   return posted.ok
     ? { ok: false, reason: "unavailable", status: 200 }
     : posted;
+}
+
+export type ExplainIntent =
+  | "why_top_priority"
+  | "what_with_constraints"
+  | "why_plan_changed"
+  | "why_combination"
+  | "propose_scenario";
+
+export type ProposedStressScenario = {
+  id: string;
+  label: string;
+  disclaimer: string;
+  powerAvailability: number;
+  roadAccessibility: number;
+  transport: string;
+  waterAvailability: number;
+  outageHours: number | null;
+  hazardBoost: string | null;
+};
+
+export type ExplainOk = {
+  ok: true;
+  text: string | null;
+  intent: ExplainIntent;
+  proposedScenario: ProposedStressScenario | null;
+  proposedSource: "grok" | "heuristic" | null;
+};
+
+export type ExplainUnavailable = {
+  ok: false;
+  reason: "unavailable" | "error";
+  status: number | null;
+  message: string;
+  proposedScenario: ProposedStressScenario | null;
+  proposedSource: "grok" | "heuristic" | null;
+};
+
+export type ExplainResult = ExplainOk | ExplainUnavailable;
+
+export async function fetchExplain(input: {
+  intent: ExplainIntent;
+  payload: Record<string, unknown>;
+  constraints?: unknown;
+  diff?: unknown;
+}): Promise<ExplainResult> {
+  try {
+    const response = await fetch(EXPLAIN_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      cache: "no-store",
+    });
+    const parsed: unknown = await response.json().catch(() => null);
+    const record =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    const proposed = parseProposedScenario(record?.proposedScenario);
+    const proposedSource =
+      record?.proposedSource === "grok" || record?.proposedSource === "heuristic"
+        ? record.proposedSource
+        : proposed
+          ? "heuristic"
+          : null;
+    if (!response.ok || !record || record.ok === false) {
+      return {
+        ok: false,
+        reason: classifyRequestFailure(response.status),
+        status: response.status,
+        message:
+          typeof record?.message === "string"
+            ? record.message
+            : "AI explanation is unavailable.",
+        proposedScenario: proposed,
+        proposedSource,
+      };
+    }
+    return {
+      ok: true,
+      text: typeof record.text === "string" ? record.text : null,
+      intent: input.intent,
+      proposedScenario: proposed,
+      proposedSource,
+    };
+  } catch {
+    return {
+      ok: false,
+      reason: "error",
+      status: null,
+      message: "AI explanation is unavailable.",
+      proposedScenario: null,
+      proposedSource: null,
+    };
+  }
+}
+
+function parseProposedScenario(value: unknown): ProposedStressScenario | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.label !== "string") return null;
+  return {
+    id: typeof record.id === "string" ? record.id : "proposed",
+    label: record.label,
+    disclaimer:
+      typeof record.disclaimer === "string" ? record.disclaimer : "",
+    powerAvailability:
+      typeof record.powerAvailability === "number" ? record.powerAvailability : 100,
+    roadAccessibility:
+      typeof record.roadAccessibility === "number" ? record.roadAccessibility : 100,
+    transport:
+      typeof record.transport === "string" ? record.transport : "unchanged",
+    waterAvailability:
+      typeof record.waterAvailability === "number" ? record.waterAvailability : 100,
+    outageHours:
+      typeof record.outageHours === "number" ? record.outageHours : null,
+    hazardBoost:
+      typeof record.hazardBoost === "string" ? record.hazardBoost : null,
+  };
 }
 
 /** Explicit Tampa fixture only — never used as a silent stand-in for live alerts. */
