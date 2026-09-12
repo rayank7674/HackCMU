@@ -45,11 +45,9 @@ export default function ProfilePage() {
                 {formatLocation(profile.home)}
               </h2>
               {facts.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-sm leading-relaxed text-muted">
-                  {facts.map((fact) => (
-                    <li key={fact}>{fact}</li>
-                  ))}
-                </ul>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  {facts.join(" · ")}
+                </p>
               ) : null}
             </section>
 
