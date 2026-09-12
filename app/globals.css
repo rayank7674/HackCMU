@@ -196,6 +196,32 @@ body {
   background: linear-gradient(180deg, #d7e4f4 0%, #eef3f8 100%);
 }
 
+.sr-stress-compass {
+  pointer-events: none;
+  position: absolute;
+  inset: 0.4rem 0.55rem;
+  margin: 0;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #1e4f86;
+}
+
+.sr-stress-compass [data-dir="n"] {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sr-stress-compass [data-dir="s"] {
+  position: absolute;
+  bottom: 2.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .sr-stress-chips {
   pointer-events: none;
   position: absolute;

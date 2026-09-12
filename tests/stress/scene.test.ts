@@ -92,6 +92,22 @@ describe("stress scene mapping", () => {
     expect(phones?.shortLabel).toBe("Phones");
     expect(scene.edges.some((edge) => edge.inCascade && edge.from === "power")).toBe(true);
     expect(scene.houseLevel).toBe("none");
+    expect(scene.houseParts.map((part) => part.id)).toEqual([
+      "roof",
+      "openings",
+      "lowest_floor",
+      "pipes",
+    ]);
+  });
+
+  it("uses dwelling massing from the home profile, not the home node", () => {
+    const scene = buildStressScene(
+      sampleResult,
+      { edges: [] },
+      { dwellingType: "mobile_home", stories: 2 },
+    );
+    expect(scene.dwellingType).toBe("mobile_home");
+    expect(scene.stories).toBe(2);
   });
 
   it("skips edges whose endpoints are missing and places unknown ids on a ring", () => {

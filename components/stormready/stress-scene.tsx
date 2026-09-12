@@ -5,6 +5,9 @@ import dynamic from "next/dynamic";
 import { StressCascade } from "@/components/stormready/stress-cascade";
 import { STRESS_SCENE_DISCLAIMER, STRESS_WEBGL_FALLBACK } from "@/lib/stress/copy";
 import { buildStressScene, canUseWebGL, type StressSceneModel } from "@/lib/stress/scene";
+
+const HOUSE_PART_IDS = new Set(["roof", "openings", "lowest_floor", "pipes"]);
+import type { HomeProfile } from "@/lib/stormready";
 import type { DependencyEdge, NodeState, StressResult } from "@/lib/stress";
 
 const StressSceneCanvas = dynamic(
@@ -57,14 +60,16 @@ function CascadeFallback({
 export function StressScene({
   result,
   edges,
+  home = null,
 }: {
   result: StressResult;
   edges: Pick<DependencyEdge, "from" | "to">[];
+  home?: HomeProfile | null;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const model: StressSceneModel = useMemo(
-    () => buildStressScene(result, { edges }),
-    [edges, result],
+    () => buildStressScene(result, { edges }, home),
+    [edges, home, result],
   );
 
   useEffect(() => {
@@ -122,9 +127,13 @@ export function StressScene({
               <StressSceneCanvas model={model} />
             </SceneErrorBoundary>
           )}
+          <ul className="sr-stress-compass" aria-hidden>
+            <li data-dir="n">N</li>
+            <li data-dir="s">S</li>
+          </ul>
           <ul className="sr-stress-chips" aria-label="Modeled household systems">
             {model.nodes
-              .filter((node) => node.id !== "home")
+              .filter((node) => node.id !== "home" && !HOUSE_PART_IDS.has(node.id))
               .map((node) => (
                 <li key={node.id} className={node.failed ? "is-failed" : undefined}>
                   <span style={{ background: node.color }} aria-hidden />
@@ -134,6 +143,15 @@ export function StressScene({
           </ul>
         </div>
       )}
+      {webgl !== false ? (
+        <ul className="mt-3 space-y-1 text-xs text-muted" aria-label="Modeled house parts">
+          {model.houseParts
+            .filter((part) => part.level !== "none")
+            .map((part) => (
+              <li key={part.id}>{part.why}</li>
+            ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

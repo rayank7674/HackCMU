@@ -1,4 +1,4 @@
-import { buildHouseholdGraph } from "./graph";
+import { buildHouseholdGraph, scenarioIncludesLocalFeeder } from "./graph";
 import { rankDisruption, simulate } from "./propagate";
 import { BASELINE_SCENARIO } from "./presets";
 import { STRESS_DISCLAIMER } from "./presets";
@@ -111,9 +111,11 @@ export function findMinimumBreakdown(
   household: HouseholdProfile,
   bounds: SearchBounds = DEFAULT_BOUNDS,
 ): MinBreakdown {
-  const graph = buildHouseholdGraph(home, household);
   const found: BreakdownFound[] = [];
   for (const scenario of enumerate(bounds)) {
+    const graph = buildHouseholdGraph(home, household, {
+      includeLocalFeeder: scenarioIncludesLocalFeeder(scenario),
+    });
     const result = simulate(graph, scenario);
     if (rankDisruption(result.disruptionLevel) < 2) continue;
     found.push({
@@ -128,7 +130,12 @@ export function findMinimumBreakdown(
   if (!found[0]) {
     return {
       status: "no_breakdown",
-      result: simulate(graph, BASELINE_SCENARIO),
+      result: simulate(
+        buildHouseholdGraph(home, household, {
+          includeLocalFeeder: scenarioIncludesLocalFeeder(BASELINE_SCENARIO),
+        }),
+        BASELINE_SCENARIO,
+      ),
     };
   }
   return found[0];
@@ -139,9 +146,11 @@ export function findWorstCase(
   household: HouseholdProfile,
   bounds: SearchBounds = DEFAULT_BOUNDS,
 ): WorstCase {
-  const graph = buildHouseholdGraph(home, household);
   let best: BreakdownFound | null = null;
   for (const scenario of enumerate(bounds)) {
+    const graph = buildHouseholdGraph(home, household, {
+      includeLocalFeeder: scenarioIncludesLocalFeeder(scenario),
+    });
     const result = simulate(graph, scenario);
     const candidate: BreakdownFound = {
       status: "found",

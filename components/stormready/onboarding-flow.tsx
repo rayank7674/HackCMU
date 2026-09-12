@@ -6,7 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
 import { ChoiceGroup, Field, MultiChoiceGroup, TriState } from "@/components/stormready/choice-field";
 import { LoadingCard, QueryState } from "@/components/stormready/query-state";
-import { fetchGeocode, type ResourceStatus } from "@/lib/stormready-api";
+import {
+  fetchGeocode,
+  fetchReverseGeocode,
+  fetchSiteFacts,
+  type GeocodeResult,
+  type ResourceStatus,
+} from "@/lib/stormready-api";
+import {
+  applyConfirmedLocation,
+  applySiteFactsToHome,
+} from "@/lib/integrations";
+import { approximateHomeLocation } from "@/lib/map/location";
+import {
+  parseDeviceCoordinates,
+  shouldRequestGeolocation,
+} from "@/lib/layout/device-location";
 import {
   BACKUP_POWER_OPTIONS,
   BUDGET_OPTIONS,
@@ -46,6 +61,9 @@ export function OnboardingFlow() {
   const { step, goTo, clear } = useOnboardingStep();
   const [busy, setBusy] = useState(false);
   const [geocodeStatus, setGeocodeStatus] = useState<ResourceStatus>("idle");
+  const [gpsStatus, setGpsStatus] = useState<ResourceStatus>("idle");
+  const [pendingGps, setPendingGps] = useState<GeocodeResult | null>(null);
+  const [gpsMessage, setGpsMessage] = useState<string | null>(null);
   const [homeDraft, setHomeDraft] = useState<HomeProfile | null>(null);
   const [householdDraft, setHouseholdDraft] = useState<HouseholdProfile | null>(
     null,
@@ -70,12 +88,22 @@ export function OnboardingFlow() {
     router.push("/plan");
   };
 
+  const hasConfirmedCoords =
+    isKnown(home.location.latitude) && isKnown(home.location.longitude);
   const canContinueLocation =
-    (isKnown(home.addressLine) && home.addressLine.trim() !== "") ||
-    (isKnown(home.postalCode) && home.postalCode.trim() !== "");
+    !pendingGps &&
+    ((isKnown(home.addressLine) && home.addressLine.trim() !== "") ||
+      (isKnown(home.postalCode) && home.postalCode.trim() !== "") ||
+      hasConfirmedCoords);
 
   const onContinueLocation = async () => {
     if (!canContinueLocation) return;
+    if (pendingGps) return;
+    if (hasConfirmedCoords) {
+      persistHome(home);
+      goTo(1);
+      return;
+    }
     if (geocodeStatus === "error" || geocodeStatus === "unavailable") {
       persistHome(home);
       goTo(1);
@@ -91,7 +119,7 @@ export function OnboardingFlow() {
       state: isKnown(home.state) ? home.state : undefined,
     });
     if (result.ok) {
-      persistHome({
+      const located: HomeProfile = {
         ...home,
         city: isKnown(home.city) ? home.city : result.data.city,
         state: isKnown(home.state) ? home.state : result.data.state,
@@ -99,7 +127,28 @@ export function OnboardingFlow() {
           ? home.postalCode
           : result.data.postalCode,
         location: result.data.location,
-      });
+      };
+      persistHome(located);
+      if (
+        isKnown(located.location.latitude) &&
+        isKnown(located.location.longitude)
+      ) {
+        const facts = await fetchSiteFacts({
+          latitude: located.location.latitude,
+          longitude: located.location.longitude,
+        });
+        if (facts.ok) {
+          persistHome(
+            applySiteFactsToHome(located, {
+              ok: true,
+              status: "ok",
+              floodZone: facts.data.floodZone,
+              elevationFeet: facts.data.elevationFeet,
+              notes: facts.data.notes,
+            }),
+          );
+        }
+      }
       setGeocodeStatus("ready");
       setBusy(false);
       goTo(1);
@@ -107,6 +156,86 @@ export function OnboardingFlow() {
     }
     setGeocodeStatus(result.reason);
     setBusy(false);
+  };
+
+  const requestDeviceLocation = () => {
+    if (!shouldRequestGeolocation("user_click")) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGpsStatus("unavailable");
+      setGpsMessage("This device cannot share a location. Type an address or ZIP instead.");
+      return;
+    }
+    setGpsStatus("loading");
+    setGpsMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const coords = parseDeviceCoordinates(position.coords);
+        if (!coords) {
+          setGpsStatus("error");
+          setGpsMessage("The device location was not a usable coordinate. Type an address instead.");
+          return;
+        }
+        const reversed = await fetchReverseGeocode(coords);
+        if (!reversed.ok) {
+          setGpsStatus(reversed.reason);
+          setGpsMessage(
+            "Census could not reverse-geocode this point. No street was invented. You can still type an address.",
+          );
+          return;
+        }
+        setPendingGps(reversed.data);
+        setGpsStatus("ready");
+      },
+      () => {
+        setGpsStatus("unavailable");
+        setGpsMessage(
+          "Location permission was denied or unavailable. Type an address or ZIP instead.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 0 },
+    );
+  };
+
+  const confirmDeviceLocation = async () => {
+    if (!pendingGps || !isKnown(pendingGps.location.latitude) || !isKnown(pendingGps.location.longitude)) {
+      return;
+    }
+    const next = applyConfirmedLocation(home, {
+      ok: true,
+      status: "ok",
+      location: pendingGps.location,
+      matchKind: pendingGps.matchKind === "zcta" ? "zcta" : "address",
+      query: {},
+      normalizedAddress: {
+        matchedAddress: pendingGps.matchedAddress ?? pendingGps.addressLine ?? "unknown",
+        addressLine:
+          pendingGps.matchKind === "zcta"
+            ? home.addressLine
+            : (pendingGps.addressLine ?? home.addressLine),
+        city: pendingGps.city,
+        state: pendingGps.state,
+        postalCode: pendingGps.postalCode,
+      },
+    });
+    persistHome(next);
+    setGpsStatus("ready");
+    const facts = await fetchSiteFacts({
+      latitude: pendingGps.location.latitude,
+      longitude: pendingGps.location.longitude,
+    });
+    if (facts.ok) {
+      persistHome(
+        applySiteFactsToHome(next, {
+          ok: true,
+          status: "ok",
+          floodZone: facts.data.floodZone,
+          elevationFeet: facts.data.elevationFeet,
+          notes: facts.data.notes,
+        }),
+      );
+    }
+    setPendingGps(null);
+    setGpsMessage("Location confirmed. Census match only — not a rooftop survey.");
   };
 
   const budget = household.budgetClass;
@@ -148,6 +277,16 @@ export function OnboardingFlow() {
             <LocationStep
               home={home}
               geocodeStatus={geocodeStatus}
+              gpsStatus={gpsStatus}
+              gpsMessage={gpsMessage}
+              pendingGps={pendingGps}
+              onRequestDeviceLocation={requestDeviceLocation}
+              onConfirmDeviceLocation={() => void confirmDeviceLocation()}
+              onDiscardDeviceLocation={() => {
+                setPendingGps(null);
+                setGpsStatus("idle");
+                setGpsMessage(null);
+              }}
               onChange={(next) => {
                 setHomeDraft(next);
                 if (geocodeStatus !== "idle" && geocodeStatus !== "loading") {
@@ -250,18 +389,89 @@ export function OnboardingFlow() {
 function LocationStep({
   home,
   geocodeStatus,
+  gpsStatus,
+  gpsMessage,
+  pendingGps,
+  onRequestDeviceLocation,
+  onConfirmDeviceLocation,
+  onDiscardDeviceLocation,
   onChange,
 }: {
   home: HomeProfile;
   geocodeStatus: ResourceStatus;
+  gpsStatus: ResourceStatus;
+  gpsMessage: string | null;
+  pendingGps: GeocodeResult | null;
+  onRequestDeviceLocation: () => void;
+  onConfirmDeviceLocation: () => void;
+  onDiscardDeviceLocation: () => void;
   onChange: (home: HomeProfile) => void;
 }) {
+  const approx =
+    pendingGps &&
+    isKnown(pendingGps.location.latitude) &&
+    isKnown(pendingGps.location.longitude)
+      ? approximateHomeLocation(
+          pendingGps.location.latitude,
+          pendingGps.location.longitude,
+        )
+      : null;
+
   return (
     <>
       <p className="text-sm leading-relaxed text-muted">
         We use this to look up official alerts for your area. Nothing is sent to
-        an account.
+        an account. Location sharing is optional.
       </p>
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onRequestDeviceLocation}
+          disabled={gpsStatus === "loading"}
+        >
+          {gpsStatus === "loading" ? "Finding this device…" : "Use this device’s location (optional)"}
+        </Button>
+        <p className="text-xs leading-relaxed text-muted">
+          StormReady will not read your location until you tap this. You can type
+          an address instead.
+        </p>
+      </div>
+      {pendingGps ? (
+        <div className="rounded-3xl border border-border bg-surface p-4">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+            Confirm this place
+          </p>
+          <p className="mt-2 text-sm font-semibold text-foreground">
+            {pendingGps.matchKind === "zcta"
+              ? "Census returned an area point, not a street"
+              : (pendingGps.matchedAddress ??
+                pendingGps.addressLine ??
+                "Matched location")}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            Approximate pin near{" "}
+            {approx
+              ? `${approx.latitude.toFixed(3)}, ${approx.longitude.toFixed(3)}`
+              : "this device"}
+            . Offset on purpose — not your exact address.
+          </p>
+          {pendingGps.matchKind === "zcta" ? (
+            <p className="mt-2 text-xs text-muted">
+              No street was invented. Add a street if you want a tighter match.
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-col gap-2">
+            <Button type="button" onClick={onConfirmDeviceLocation}>
+              Yes, use this location
+            </Button>
+            <Button type="button" variant="ghost" onClick={onDiscardDeviceLocation}>
+              Discard and type an address
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {gpsMessage ? <p className="text-xs leading-relaxed text-muted">{gpsMessage}</p> : null}
       <Field label="Street address" hint="Optional if you enter a ZIP code.">
         <input
           className={inputClassName}

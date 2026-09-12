@@ -5,6 +5,7 @@ import {
   BASELINE_SCENARIO,
   STRESS_PRESETS,
   buildHouseholdGraph,
+  scenarioIncludesLocalFeeder,
   compareCounterfactual,
   counterfactualBackupPower,
   customScenario,
@@ -111,7 +112,9 @@ export async function POST(request: Request) {
     isRecord(body.household) ? body.household : {}
   ) as unknown as HouseholdProfile;
   const scenario = parseScenario(body.scenario) ?? BASELINE_SCENARIO;
-  const graph = buildHouseholdGraph(home, household);
+  const graph = buildHouseholdGraph(home, household, {
+    includeLocalFeeder: scenarioIncludesLocalFeeder(scenario),
+  });
 
   if (action === "simulate") {
     const result = simulate(graph, scenario);

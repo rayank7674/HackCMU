@@ -13,10 +13,8 @@ export type OfficialLink = {
 
 export const HOW_STORMREADY_WORKS = [
   "You answer a few questions about this home and household. No account is required to finish a plan.",
-  "When location services are connected, StormReady looks up official weather alerts. If those services are missing, you will see unavailable copy — never an invented warning or all-clear.",
-  "Your plan lists a short set of actions, grouped by when to act, with no-cost steps first. It never shows dollar prices.",
-  "Home and household details stay in this browser. Optional Save My Plan stores a copy to your account after you sign in, when that service is connected.",
-  "The Map tab shows an approximate home marker and a few official resource examples. It is not a live emergency GIS.",
+  "Official alerts stay fail-closed: if a lookup is down you see unavailable — never an invented warning or all-clear. Optional Save My Plan stores a copy after you sign in.",
+  "The Map tab is an approximate locator with official examples, not a live emergency GIS.",
 ] as const;
 
 export const PREPAREDNESS_LINKS: OfficialLink[] = [
@@ -47,10 +45,10 @@ export const PREPAREDNESS_LINKS: OfficialLink[] = [
 ];
 
 export const LOCAL_HELP_INTRO =
-  "Search for your city or county emergency-management office, call 211, or contact the American Red Cross. Those organizations publish current shelter and local-help information.";
+  "Numbers below come from the address on this device plus national official lines. StormReady will not invent a local office if your county is unknown.";
 
 export const LOCAL_HELP_EXAMPLE_NOTE =
-  "Florida and Tampa-area links below are examples because this demo is set in Tampa. They are not an exhaustive list for every place.";
+  "Florida and Tampa-area links appear only when this home is in Florida. They are examples, not an exhaustive list for every place.";
 
 export const LOCAL_HELP_LINKS: OfficialLink[] = [
   {
@@ -77,13 +75,17 @@ export const LOCAL_HELP_LINKS: OfficialLink[] = [
     description:
       "How to receive official alerts and where to look up your local emergency-management office.",
   },
+];
+
+/** Shown only when the saved home is in Florida / Tampa. Labeled examples. */
+export const REGIONAL_EXAMPLE_LINKS: OfficialLink[] = [
   {
     id: "florida-dem",
     title: "Florida Division of Emergency Management",
     href: "https://www.floridadisaster.org/",
     source: "Florida Division of Emergency Management (example)",
     description:
-      "State preparedness, shelter information, and disaster resources for Florida. Example for this demo, not a national list.",
+      "State preparedness, shelter information, and disaster resources for Florida. Example for this address, not a national list.",
   },
   {
     id: "hillsborough-em",
@@ -91,7 +93,7 @@ export const LOCAL_HELP_LINKS: OfficialLink[] = [
     href: "https://www.hillsboroughcounty.org/en/residents/public-safety/emergency-management",
     source: "Hillsborough County (Tampa-area example)",
     description:
-      "County emergency-management office for the Tampa demo area. Search your own county if you live elsewhere.",
+      "County emergency-management office for this Tampa-area address. Search your own county if you live elsewhere.",
   },
   {
     id: "211-tampa",
@@ -99,7 +101,7 @@ export const LOCAL_HELP_LINKS: OfficialLink[] = [
     href: "https://www.211tampabay.org/",
     source: "211 Tampa Bay Cares (example)",
     description:
-      "Local 211 for the Tampa Bay area. Use 211.org to find the service that covers your ZIP.",
+      "Local 211 for the Tampa Bay area. Use 211.org to find the service that covers another ZIP.",
   },
 ];
 
@@ -137,7 +139,7 @@ export const SAFETY_DISCLAIMER =
   "StormReady is not a substitute for official orders. If emergency management, law enforcement, or the National Weather Service tells you to evacuate or shelter, follow those instructions over anything in this app.";
 
 export const DATA_AND_TRUST = [
-  "StormReady does not invent alerts. An empty list is not an all-clear unless an official check says so.",
+  "StormReady does not invent alerts or local phone books. An empty list is not an all-clear unless an official check says so.",
   "Home and household details stay in this browser until you choose Save My Plan.",
 ] as const;
 

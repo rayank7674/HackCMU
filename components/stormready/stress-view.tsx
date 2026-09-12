@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,7 +31,18 @@ import {
   friendlyDisruptionLabel,
   friendlyDisruptionSentence,
 } from "@/lib/stress/copy";
-import { STRESS_PRESETS, postStress, type StressRequest } from "@/lib/stress";
+import {
+  HOUSE_HITS,
+  STRESS_PRESETS,
+  hitIsInSeason,
+  parseHouseHit,
+  postStress,
+  presetsForHit,
+  seasonForHome,
+  visibleHits,
+  type HouseHit,
+  type StressRequest,
+} from "@/lib/stress";
 import type {
   DependencyGraph,
   DisruptionLevel,
@@ -197,9 +208,13 @@ function disruptionLabel(level: DisruptionLevel): string {
 
 export function StressView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedHit = parseHouseHit(searchParams.get("hit"));
   const { profile, hydrated } = useProfile();
   const presets = STRESS_PRESETS;
-  const [presetId, setPresetId] = useState(SIMPLE_POWER_OUTAGE_PRESET_ID);
+  const [pickedHit, setPickedHit] = useState<HouseHit | null>(null);
+  const [showAllHits, setShowAllHits] = useState(false);
+  const [presetOverride, setPresetOverride] = useState<string | null>(null);
   const [simulateStatus, setSimulateStatus] = useState<ResourceStatus>("idle");
   const [simulateError, setSimulateError] = useState<string | null>(null);
   const [simulated, setSimulated] = useState<SimulatePayload | null>(null);
@@ -215,10 +230,26 @@ export function StressView() {
   const hasProfile = Boolean(profile.home);
   const home = profile.home;
   const household = profile.household;
-  const scenario = useMemo(
-    () => presets.find((item) => item.id === presetId) ?? presets[0],
-    [presetId, presets],
+  const season = useMemo(() => seasonForHome(home), [home]);
+  const availableHits = useMemo(
+    () => visibleHits(season, showAllHits),
+    [season, showAllHits],
   );
+  const hit = pickedHit ?? requestedHit;
+  const hitPresets = useMemo(
+    () => (hit ? presetsForHit(hit, presets) : []),
+    [hit, presets],
+  );
+  const presetId =
+    (presetOverride && hitPresets.some((item) => item.id === presetOverride)
+      ? presetOverride
+      : null) ??
+    hitPresets[0]?.id ??
+    SIMPLE_POWER_OUTAGE_PRESET_ID;
+  const scenario = useMemo(() => {
+    const fromHit = hitPresets.find((item) => item.id === presetId);
+    return fromHit ?? hitPresets[0] ?? presets.find((item) => item.id === presetId) ?? presets[0];
+  }, [hitPresets, presetId, presets]);
 
   useEffect(() => {
     if (hydrated && !hasProfile) {
@@ -229,8 +260,8 @@ export function StressView() {
   useEffect(() => {
     if (!hydrated || !home) return;
     let cancelled = false;
-    setHazardsStatus("loading");
-    (async () => {
+    void (async () => {
+      setHazardsStatus("loading");
       const result = await fetchAlerts({
         addressLine: isKnown(home.addressLine) ? home.addressLine : undefined,
         postalCode: isKnown(home.postalCode) ? home.postalCode : undefined,
@@ -262,7 +293,7 @@ export function StressView() {
         ? presets.find((item) => item.id === nextPresetId)
         : null) ?? nextPreset;
     if (!chosen) return;
-    if (nextPresetId) setPresetId(nextPresetId);
+    if (nextPresetId) setPresetOverride(nextPresetId);
     setSimulateStatus("loading");
     setSimulateError(null);
     const payload = await runStress({
@@ -379,56 +410,103 @@ export function StressView() {
         <h2 className="text-lg font-semibold text-foreground">{STRESS_HEADLINE}</h2>
         <p className="text-sm leading-relaxed text-muted">{STRESS_MODELED_COPY}</p>
 
-        <Card eyebrow="Simple start" title="Try a power outage">
+        <Card eyebrow="What hits this house" title="Pick a modeled impact">
           <p className="text-sm leading-relaxed">
-            See how a modeled 12-hour outage can ripple through this home — phones,
-            food, and staying in place. Simulated only.
+            Start with how this dwelling is stressed. Season filters hide
+            off-season hits unless you show all. Simulated planning only.
           </p>
-          {scenario ? (
-            <p className="mt-2 text-xs leading-relaxed text-muted">{scenario.disclaimer}</p>
-          ) : null}
-          <div className="mt-3">
-            <Button
-              onClick={() => void runSimulate(home, scenario, SIMPLE_POWER_OUTAGE_PRESET_ID)}
-              disabled={simulateStatus === "loading"}
-            >
-              {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_POWER_OUTAGE}
-            </Button>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            {season.label}. {season.sourceNote}
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {HOUSE_HITS.filter((item) => availableHits.includes(item.id)).map((item) => {
+              const selected = hit === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setPickedHit(item.id);
+                    setSimulated(null);
+                    setSimulateStatus("idle");
+                    setPresetOverride(null);
+                  }}
+                  className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-sm font-medium transition ${
+                    selected
+                      ? "border-accent-strong bg-accent-strong text-white"
+                      : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                  }`}
+                >
+                  <span className="block">{item.label}</span>
+                  <span className={`mt-0.5 block text-xs font-normal ${selected ? "text-white/80" : "text-muted"}`}>
+                    {item.body}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <details className="mt-4 rounded-2xl border border-border bg-white px-3 py-2">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground">
-              Try a different scenario
-            </summary>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {presets.map((item) => {
-                const selected = item.id === presetId;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setPresetId(item.id)}
-                    className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
-                      selected
-                        ? "border-accent-strong bg-accent-strong text-white"
-                        : "border-border bg-white text-foreground hover:bg-surface-elevated"
-                    }`}
+          {!showAllHits && HOUSE_HITS.some((item) => !hitIsInSeason(item.id, season)) ? (
+            <button
+              type="button"
+              onClick={() => setShowAllHits(true)}
+              className="mt-3 text-sm font-semibold text-accent-strong"
+            >
+              Show all seasonal hits
+            </button>
+          ) : null}
+          {hit && scenario ? (
+            <>
+              <p className="mt-3 text-xs leading-relaxed text-muted">{scenario.disclaimer}</p>
+              {hitPresets.length > 1 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {hitPresets.map((item) => {
+                    const selected = item.id === presetId;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setPresetOverride(item.id)}
+                        className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
+                          selected
+                            ? "border-accent-strong bg-accent-strong text-white"
+                            : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div className="mt-3 flex flex-col gap-2">
+                {hit === "power" ? (
+                  <Button
+                    onClick={() =>
+                      void runSimulate(home, scenario, SIMPLE_POWER_OUTAGE_PRESET_ID)
+                    }
+                    disabled={simulateStatus === "loading"}
                   >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3">
-              <Button
-                variant="secondary"
-                onClick={() => void runSimulate(home)}
-                disabled={simulateStatus === "loading"}
-              >
-                {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_THIS_SCENARIO}
-              </Button>
-            </div>
-          </details>
+                    {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_POWER_OUTAGE}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => void runSimulate(home, scenario)}
+                    disabled={simulateStatus === "loading"}
+                  >
+                    {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_THIS_SCENARIO}
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : null}
+          {hit ? null : (
+            <p className="mt-3 text-xs leading-relaxed text-muted">
+              Choose what hits this house before the cascade loads. StormReady
+              will not invent a result.
+            </p>
+          )}
         </Card>
 
         {simulateStatus === "loading" ? (
@@ -466,7 +544,7 @@ export function StressView() {
             </Card>
 
             <Card eyebrow="Household view" title="How one break can cascade">
-              <StressScene result={result} edges={graph?.edges ?? []} />
+              <StressScene result={result} edges={graph?.edges ?? []} home={home} />
               <p className="mt-3 text-xs">
                 <Link href="/map" className="font-semibold text-accent-strong">
                   {STRESS_SEE_ON_MAP}

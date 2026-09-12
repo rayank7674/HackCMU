@@ -3,9 +3,9 @@
 import type { DependencyEdge, DisruptionLevel, NodeState } from "@/lib/stress";
 
 export const STRESS_CASCADE_COLUMNS: readonly (readonly string[])[] = [
-  ["power", "water", "road"],
-  ["home", "elevator", "charging"],
-  ["transport", "mobility"],
+  ["local_feeder", "power", "water", "road"],
+  ["roof", "openings", "lowest_floor", "pipes", "home"],
+  ["elevator", "charging", "transport", "mobility"],
   ["communication", "food", "healthcare", "shelter"],
 ];
 

@@ -41,6 +41,7 @@ import {
   type HomeProfile,
   type Unknownable,
 } from "@/lib/stormready";
+import { hitFromRecommendation } from "@/lib/stress";
 import { useProfile } from "@/lib/use-profile";
 import {
   fetchRecommendations,
@@ -212,6 +213,7 @@ export function PlanView() {
   const homeTitle = planHomeTitle(profile.home);
   const homeMeta = planHomeMeta(profile.home);
   const checklistActions = pickChecklistActions(recommendations, 3);
+  const stepOne = checklistActions[0];
   const checklistDone = checklistActions.filter((action) =>
     Boolean(checkedSteps[action.id]),
   ).length;
@@ -482,10 +484,12 @@ export function PlanView() {
                 Update home details
               </Link>
               <Link
-                href="/stress-test"
+                href={`/stress-test?hit=${hitFromRecommendation(
+                  stepOne && isKnown(stepOne.ruleId) ? stepOne.ruleId : null,
+                )}`}
                 className="text-sm font-semibold text-accent-strong"
               >
-                Test my preparedness
+                Test this house
               </Link>
             </div>
 
