@@ -23,7 +23,7 @@ export async function GET() {
       status: "unavailable",
       reason: "invalid_input",
       message:
-        "POST /api/explain/inspect to extract ai_inferred facts. StormReady will not invent a K2 host or alerts.",
+        "POST /api/explain/inspect to extract ai_inferred facts. FaultLine will not invent a K2 host or alerts.",
       service: "k2",
       inventedPolicy: false,
     },

@@ -35,7 +35,7 @@ export async function elevenLabsSpeak(text: unknown): Promise<TtsResult> {
     return aiUnavailable(
       "elevenlabs",
       "invalid_input",
-      "Read My Plan needs already-approved text within the length limit. StormReady will not invent narration.",
+      "Read My Plan needs already-approved text within the length limit. FaultLine will not invent narration.",
     );
   }
 

@@ -64,19 +64,19 @@ export function AskStormReady({
         "message" in body &&
         typeof body.message === "string"
           ? body.message
-          : "Ask StormReady is unavailable. StormReady will not invent an explanation.";
+          : "Ask FaultLine is unavailable. FaultLine will not invent an explanation.";
       setState({ status: "unavailable", message });
     } catch {
       setState({
         status: "unavailable",
         message:
-          "Ask StormReady could not be reached. StormReady will not invent an explanation.",
+          "Ask FaultLine could not be reached. FaultLine will not invent an explanation.",
       });
     }
   }
 
   return (
-    <Card eyebrow="Ask StormReady" title={TASK_LABELS[task]}>
+    <Card eyebrow="Ask FaultLine" title={TASK_LABELS[task]}>
       <p className="mb-3">
         Grok will restate the structured JSON only. It does not write safety
         policy, alerts, or an all-clear.
@@ -86,7 +86,7 @@ export function AskStormReady({
         onClick={() => void onAsk()}
         disabled={state.status === "loading"}
       >
-        {state.status === "loading" ? "Asking…" : "Ask StormReady"}
+        {state.status === "loading" ? "Asking…" : "Ask FaultLine"}
       </Button>
       {state.status === "loading" ? (
         <div className="mt-3">

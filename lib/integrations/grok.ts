@@ -20,7 +20,7 @@ export async function grokComplete(
     return aiUnavailable(
       "grok",
       "xai_not_configured",
-      "XAI_API_KEY is not set. Ask StormReady stays unavailable instead of inventing an explanation.",
+      "XAI_API_KEY is not set. Ask FaultLine stays unavailable instead of inventing an explanation.",
     );
   }
 

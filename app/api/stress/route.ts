@@ -172,7 +172,7 @@ export async function POST(request: Request) {
         status: "unavailable",
         reason: "hazard_state_missing",
         message:
-          "Fortify needs a HazardState. Fail closed - StormReady will not invent alerts or an all-clear.",
+          "Fortify needs a HazardState. Fail closed - FaultLine will not invent alerts or an all-clear.",
       },
       { status: 400 },
     );

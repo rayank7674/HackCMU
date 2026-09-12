@@ -128,11 +128,11 @@ export function layoutStressCascade(
 
 function fillFor(level: DisruptionLevel, inCascade: boolean): string {
   if (inCascade && (level === "major" || level === "critical")) {
-    return "color-mix(in srgb, var(--danger) 18%, white)";
+    return "color-mix(in srgb, var(--danger) 18%, var(--surface))";
   }
-  if (inCascade) return "color-mix(in srgb, var(--accent) 16%, white)";
+  if (inCascade) return "color-mix(in srgb, var(--accent) 16%, var(--surface))";
   if (level === "critical" || level === "major") {
-    return "color-mix(in srgb, var(--warning) 12%, white)";
+    return "color-mix(in srgb, var(--warning) 12%, var(--surface))";
   }
   return "var(--surface)";
 }
@@ -147,10 +147,12 @@ export function StressCascade({
   nodes,
   edges,
   cascadePath,
+  weakestId,
 }: {
   nodes: NodeState[];
   edges: Pick<DependencyEdge, "from" | "to">[];
   cascadePath: string[];
+  weakestId?: string;
 }) {
   const layout = layoutStressCascade(nodes, edges, cascadePath);
 
@@ -178,12 +180,17 @@ export function StressCascade({
             y1={edge.y1}
             x2={edge.x2}
             y2={edge.y2}
+            className={edge.inCascade ? "sr-cascade-edge" : undefined}
             stroke={edge.inCascade ? "var(--accent-strong)" : "var(--border)"}
             strokeWidth={edge.inCascade ? 2.2 : 1.2}
           />
         ))}
         {layout.nodes.map((node) => (
-          <g key={node.id} transform={`translate(${node.x} ${node.y})`}>
+          <g
+            key={node.id}
+            className={`sr-cascade-node${node.id === weakestId ? " is-weakest" : ""}`}
+            transform={`translate(${node.x} ${node.y})`}
+          >
             <rect
               width={node.width}
               height={node.height}

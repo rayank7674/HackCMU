@@ -1,15 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import {
   NavCollapseProvider,
   useNavCollapse,
 } from "@/components/layout/nav-collapse";
-import {
-  ViewportModeProvider,
-  ViewportToggle,
-} from "@/components/layout/viewport-mode";
+import { useAppAccess } from "@/lib/use-app-access";
 
 type AppShellProps = {
   children: ReactNode;
@@ -17,25 +15,32 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <ViewportModeProvider>
-      <NavCollapseProvider>
-        <AppShellInner>{children}</AppShellInner>
-      </NavCollapseProvider>
-    </ViewportModeProvider>
+    <NavCollapseProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </NavCollapseProvider>
   );
 }
 
 function AppShellInner({ children }: { children: ReactNode }) {
   const { collapsed } = useNavCollapse();
+  const pathname = usePathname();
+  const { inApp } = useAppAccess();
+  const hideChrome =
+    !inApp ||
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/dashboard");
 
   return (
     <div className="sr-stage">
-      <ViewportToggle />
-      <div className={`sr-shell${collapsed ? " is-nav-collapsed" : ""}`}>
+      <div
+        className={`sr-shell${collapsed && !hideChrome ? " is-nav-collapsed" : ""}`}
+      >
         <div className="sr-main">
-          <div className="sr-main-inner">{children}</div>
+          <div key={pathname} className="sr-main-inner sr-page-enter">
+            {children}
+          </div>
         </div>
-        <BottomNav />
+        {hideChrome ? null : <BottomNav />}
       </div>
     </div>
   );

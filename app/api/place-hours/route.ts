@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       configured: false,
       hours: [],
       disclaimer:
-        "GOOGLE_PLACES_API_KEY is not set. Posted hours are not available. StormReady will not model open/closed.",
+        "GOOGLE_PLACES_API_KEY is not set. Posted hours are not available. FaultLine will not model open/closed.",
     });
   }
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       hours: [],
       error: nearby.error,
       disclaimer:
-      "Google Places did not return hours. StormReady will not invent open/closed.",
+      "Google Places did not return hours. FaultLine will not invent open/closed.",
     });
   }
 

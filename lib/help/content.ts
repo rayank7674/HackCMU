@@ -11,11 +11,13 @@ export type OfficialLink = {
   description: string;
 };
 
-export const HOW_STORMREADY_WORKS = [
+export const HOW_FAULTLINE_WORKS = [
   "You answer a few questions about this home and household. No account is required to finish a plan.",
   "Official alerts stay fail-closed: if a lookup is down you see unavailable - never an invented warning or all-clear. Optional Save My Plan stores a copy after you sign in.",
   "The Map tab is an approximate locator with official examples, not a live emergency GIS.",
 ] as const;
+
+export const HOW_STORMREADY_WORKS = HOW_FAULTLINE_WORKS;
 
 export const PREPAREDNESS_LINKS: OfficialLink[] = [
   {
@@ -45,7 +47,7 @@ export const PREPAREDNESS_LINKS: OfficialLink[] = [
 ];
 
 export const LOCAL_HELP_INTRO =
-  "Numbers below come from the address on this device plus national official lines. StormReady will not invent a local office if your county is unknown.";
+  "Numbers below come from the address on this device plus national official lines. FaultLine will not invent a local office if your county is unknown.";
 
 export const LOCAL_HELP_EXAMPLE_NOTE =
   "Florida and Tampa-area links appear only when this home is in Florida. They are examples, not an exhaustive list for every place.";
@@ -106,7 +108,7 @@ export const REGIONAL_EXAMPLE_LINKS: OfficialLink[] = [
 ];
 
 export const FINANCIAL_ASSISTANCE_INTRO =
-  "After a federally declared disaster, households may be eligible for assistance. StormReady cannot determine eligibility and never promises that you will qualify. Apply only on official government sites.";
+  "After a federally declared disaster, households may be eligible for assistance. FaultLine cannot determine eligibility and never promises that you will qualify. Apply only on official government sites.";
 
 export const FINANCIAL_LINKS: OfficialLink[] = [
   {
@@ -136,10 +138,10 @@ export const FINANCIAL_LINKS: OfficialLink[] = [
 ];
 
 export const SAFETY_DISCLAIMER =
-  "StormReady is not a substitute for official orders. If emergency management, law enforcement, or the National Weather Service tells you to evacuate or shelter, follow those instructions over anything in this app.";
+  "FaultLine is not a substitute for official orders. If emergency management, law enforcement, or the National Weather Service tells you to evacuate or shelter, follow those instructions over anything in this app.";
 
 export const DATA_AND_TRUST = [
-  "StormReady does not invent alerts or local phone books. An empty list is not an all-clear unless an official check says so.",
+  "FaultLine does not invent alerts or local phone books. An empty list is not an all-clear unless an official check says so.",
   "Home and household details stay in this browser until you choose Save My Plan.",
 ] as const;
 

@@ -19,7 +19,7 @@ export async function k2Complete(
     return aiUnavailable(
       "k2",
       "k2_not_configured",
-      "K2_API_KEY, K2_API_BASE_URL, and K2_MODEL must all be set. StormReady will not invent a K2 host.",
+      "K2_API_KEY, K2_API_BASE_URL, and K2_MODEL must all be set. FaultLine will not invent a K2 host.",
     );
   }
 

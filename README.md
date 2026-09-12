@@ -1,4 +1,4 @@
-# StormReady
+# FaultLine
 
 Anonymous household preparedness: **Your home. Your risk. Your plan.**
 
@@ -37,11 +37,11 @@ npm run build
 2. Onboarding at `/onboarding` - location, housing, home characteristics, assets, household constraints, immediate budget. Each step writes through `saveHomeProfile` / `saveHouseholdProfile`.
 3. Plan at `/plan` - saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges - never dollar prices. **Save My Plan** starts Auth0 login when env is set.
 
-Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. StormReady never fabricates alerts or an all-clear.
+Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. FaultLine never fabricates alerts or an all-clear.
 
 Bottom navigation: Home / Plan / Map / Help / Profile.
 
-**Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only - apply on official sites; StormReady never promises eligibility.
+**Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only - apply on official sites; FaultLine never promises eligibility.
 
 **Map** is a Leaflet view: approximate home marker when geocode coordinates exist, otherwise a Tampa demo center. Nearby grocery / food / utilities, pharmacy, clinic, and mapped shelter points come from OpenStreetMap. Pin green/red is posted hours for right now when `GOOGLE_PLACES_API_KEY` is set on the server (Places API New). Without the key, the map still works and does not guess open/closed. OpenStreetMap tiles are the default so the map works with **no Mapbox token**. Optional `NEXT_PUBLIC_MAPBOX_TOKEN` swaps in Mapbox tiles.
 
@@ -123,7 +123,7 @@ The UI calls these when present and fails closed if they 404 or return an unusab
 
 If `recommend()` is exported from `@/lib/stormready` (rules-engine branch), the plan screen can use it when the route is missing. A 404 still shows unavailable copy and never invents live alerts.
 
-`GET`/`POST` `/api/core-logic` is leftover skeleton and is not on the StormReady user path.
+`GET`/`POST` `/api/core-logic` is leftover skeleton and is not on the FaultLine user path.
 
 Cloud save/restore is opt-in and gated: **503** `supabase_not_configured` when public Supabase env is missing; **401** `auth_not_configured` / `unauthenticated` when Auth0 `sub` is missing. See [`supabase/README.md`](./supabase/README.md).
 

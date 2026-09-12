@@ -20,7 +20,7 @@ export const OVERPASS_ENDPOINTS = [
 ] as const;
 
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
-const OSM_USER_AGENT = "StormReady/1.0 (hackcmu; household-preparedness)";
+const OSM_USER_AGENT = "FaultLine/1.0 (hackcmu; household-preparedness)";
 const OVERPASS_TIMEOUT_MS = 12_000;
 const NOMINATIM_TIMEOUT_MS = 10_000;
 

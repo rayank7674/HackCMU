@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useNavCollapse } from "@/components/layout/nav-collapse";
+import { BrandLink } from "@/components/layout/brand-link";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { useAppAccess } from "@/lib/use-app-access";
 
 export const STRESS_TEST_HREF = "/stress-test";
 
 export const MAIN_NAV_TABS = [
   {
-    href: "/plan",
+    href: "/home",
     label: "Home",
     icon: HomeIcon,
-    match: (path: string) => path === "/" || path.startsWith("/plan"),
+    match: (path: string) =>
+      path === "/home" || path === "/" || path.startsWith("/plan"),
   },
   {
     href: "/map",
@@ -44,24 +48,33 @@ const hiddenPrefixes = ["/onboarding", "/dashboard"];
 export function BottomNav() {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useNavCollapse();
+  const { inApp } = useAppAccess();
 
   if (hiddenPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+    return null;
+  }
+
+  if (!inApp) {
     return null;
   }
 
   return (
     <nav aria-label="Main" className="sr-nav">
       <div className="sr-nav-top">
-        <p className="sr-nav-brand">{collapsed ? "SR" : "StormReady"}</p>
+        <BrandLink className="sr-nav-brand" collapsed={collapsed} />
+        <ThemeToggle />
         <button
           type="button"
-          className="sr-nav-collapse"
+          className="sr-nav-collapse sr-motion-button"
           aria-pressed={collapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={toggleCollapsed}
         >
           <ChevronIcon pointsRight={collapsed} />
         </button>
+      </div>
+      <div className="sr-nav-theme-mobile">
+        <ThemeToggle />
       </div>
       <ul className="sr-nav-list">
         {MAIN_NAV_TABS.map((tab) => {

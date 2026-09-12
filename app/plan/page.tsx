@@ -1,5 +1,5 @@
-import { PlanView } from "@/components/stormready/plan-view";
+import { redirect } from "next/navigation";
 
 export default function PlanPage() {
-  return <PlanView />;
+  redirect("/home");
 }

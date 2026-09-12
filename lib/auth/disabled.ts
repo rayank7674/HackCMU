@@ -27,7 +27,7 @@ function authDisabledHtml(): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in - StormReady</title>
+  <title>Sign in - FaultLine</title>
   <style>
     body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; background: #f4f7fb; color: #1a2a3a; }
     main { max-width: 28rem; margin: 4rem auto; padding: 0 1.25rem; }
@@ -40,7 +40,7 @@ function authDisabledHtml(): string {
   <main>
     <h1>Sign in is not connected</h1>
     <p>${escapeHtml(AUTH_DISABLED_MESSAGE)}</p>
-    <p><a href="/">Back to StormReady</a></p>
+    <p><a href="/">Back to FaultLine</a></p>
   </main>
 </body>
 </html>`;

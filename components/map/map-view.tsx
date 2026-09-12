@@ -133,7 +133,7 @@ export function MapView() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-3 px-5 pb-8 pt-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-3 px-5 pb-8 pt-4">
       {!hydrated ? (
         <Card title="Map">Loading this device…</Card>
       ) : view.hasHomeLocation ? (
@@ -158,7 +158,7 @@ export function MapView() {
         </Card>
       )}
 
-      <div className="sr-map-frame relative z-0 overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
+      <div className="sr-map-frame relative z-0 min-h-[28rem] overflow-hidden rounded-2xl border border-border bg-surface">
         {hydrated ? (
           <StormMap
             center={view.center}
@@ -185,7 +185,7 @@ export function MapView() {
       {placesStatus === "error" ? (
         <UnavailableNote title="Nearby access">
           OpenStreetMap did not return grocery, pharmacy, or hospital points.
-          StormReady will not invent them.
+          FaultLine will not invent them.
           <div className="mt-3">
             <Button
               type="button"
@@ -222,14 +222,14 @@ export function MapView() {
       ) : null}
       {hoursStatus === "error" || hoursStatus === "unavailable" ? (
         <UnavailableNote title="Open or closed now">
-          Posted hours did not load. StormReady will not guess whether a place
+          Posted hours did not load. FaultLine will not guess whether a place
           is open.
         </UnavailableNote>
       ) : null}
       {hoursStatus === "ready" && hoursConfigured === false ? (
         <UnavailableNote title="Open or closed now">
           Posted hours are off until a server-only{" "}
-          <code>GOOGLE_PLACES_API_KEY</code> is set. StormReady will not model
+          <code>GOOGLE_PLACES_API_KEY</code> is set. FaultLine will not model
           or guess open/closed.
         </UnavailableNote>
       ) : null}

@@ -23,7 +23,7 @@ export type ReinforcementPlace = {
   sells: string;
   latitude: number;
   longitude: number;
-  /** Public listing snapshot - not a StormReady score or endorsement. */
+  /** Public listing snapshot - not a FaultLine score or endorsement. */
   example: true;
 };
 

@@ -27,7 +27,7 @@ export function EvidencePanel({
           facts,
           disclaimer:
             disclaimer ??
-            "These claims are ai_inferred. They are not official alerts or StormReady rules.",
+            "These claims are ai_inferred. They are not official alerts or FaultLine rules.",
         }
       : { status: "idle" },
   );
@@ -49,7 +49,7 @@ export function EvidencePanel({
         const nextDisclaimer =
           "disclaimer" in body && typeof body.disclaimer === "string"
             ? body.disclaimer
-            : "These claims are ai_inferred. They are not official alerts or StormReady rules.";
+            : "These claims are ai_inferred. They are not official alerts or FaultLine rules.";
         setState({
           status: "ok",
           facts: nextFacts,
@@ -63,13 +63,13 @@ export function EvidencePanel({
         "message" in body &&
         typeof body.message === "string"
           ? body.message
-          : "Document inspection is unavailable. StormReady will not invent facts, rules, or alerts.";
+          : "Document inspection is unavailable. FaultLine will not invent facts, rules, or alerts.";
       setState({ status: "unavailable", message });
     } catch {
       setState({
         status: "unavailable",
         message:
-          "Document inspection could not be reached. StormReady will not invent facts.",
+          "Document inspection could not be reached. FaultLine will not invent facts.",
       });
     }
   }

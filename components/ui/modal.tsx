@@ -60,7 +60,7 @@ export function Modal({
         aria-labelledby={hideTitle ? undefined : "modal-title"}
         aria-label={hideTitle ? title : undefined}
         className={[
-          "relative z-10 w-full max-w-lg overflow-hidden rounded-t-3xl border border-border bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl",
+          "relative z-10 w-full max-w-lg overflow-hidden rounded-t-2xl border border-border bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl",
           panelClassName,
         ]
           .filter(Boolean)

@@ -108,7 +108,7 @@ export function toAuth0Issuer(value: string): string {
 /** Relative in-app path only. Rejects protocol-relative and absolute URLs. */
 export function safeReturnTo(
   value: string | null | undefined,
-  fallback = "/plan",
+  fallback = "/home",
 ): string {
   if (!value) return fallback;
   if (!value.startsWith("/") || value.startsWith("//")) return fallback;
@@ -149,7 +149,7 @@ export function toAbsoluteReturnTo(
   }
 }
 
-export function loginHref(returnTo = "/plan"): string {
+export function loginHref(returnTo = "/home"): string {
   const params = new URLSearchParams({ returnTo: safeReturnTo(returnTo) });
   return `${AUTH0_LOGIN_PATH}?${params.toString()}`;
 }
