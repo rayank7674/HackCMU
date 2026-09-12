@@ -20,6 +20,29 @@ describe("POST /api/recommendations", () => {
     expect(body.recommendations.length).toBeGreaterThanOrEqual(3);
     expect(body.recommendations.length).toBeLessThanOrEqual(5);
     expect(body.ruleCount).toBeGreaterThanOrEqual(20);
+    expect(body.optimization.solver).toBe("knapsack_dp");
+  });
+
+  it("passes constraints through to the optimizer", async () => {
+    const input = {
+      ...tampaDemoInput("quiet"),
+      constraints: {
+        budgetDollars: 0,
+        availableTimeMinutes: 15,
+        transport: "none",
+      },
+    };
+    const response = await POST(
+      new Request("http://localhost/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    );
+    const body = await response.json();
+    expect(body.optimization.constraintsUsed.budgetDollars).toBe(0);
+    expect(body.optimization.constraintsUsed.availableTimeMinutes).toBe(15);
+    expect(body.optimization.constraintsUsed.transport).toBe("none");
   });
 
   it("returns a safe empty list with an explicit reason when hazards are missing", async () => {

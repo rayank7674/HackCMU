@@ -25,7 +25,7 @@ function parseScenario(value: string | null): DemoScenario {
 /**
  * UI contract (Phase 1):
  *   POST /api/recommendations
- *   { home, household?, hazards, hazardSource? }
+ *   { home, household?, hazards, hazardSource?, constraints? }
  *
  * `hazardSource: "unavailable"` or a missing/unconfirmed HazardState fails
  * closed with `status: "unavailable"` and an empty list — never an invented
@@ -53,6 +53,7 @@ export async function POST(request: Request) {
     household: body.household ?? null,
     hazards: body.hazards ?? null,
     hazardSource: body.hazardSource,
+    constraints: body.constraints,
   };
 
   const result = recommend(input);

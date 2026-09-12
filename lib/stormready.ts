@@ -114,6 +114,23 @@ export type {
 } from "./recommendations";
 
 export {
+  optimizePreparednessPlan,
+  toPreparednessActions,
+  diffOptimizationResults,
+  resolveOptimizationConstraints,
+  planningDollarsForHousehold,
+  planningMinutesFor,
+} from "./optimization";
+
+export type {
+  OptimizationConstraints,
+  OptimizationDiff,
+  OptimizationResult,
+  PreparednessAction,
+  TransportMode,
+} from "./optimization";
+
+export {
   TAMPA_DEMO_HOME,
   TAMPA_DEMO_HOUSEHOLD,
   TAMPA_QUIET_WEATHER,

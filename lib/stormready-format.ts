@@ -190,11 +190,15 @@ export function sortActionsByBudget<T extends PlanActionLike>(
   });
 }
 
-/** Group 3–5 plan actions under now / before_next_event / long_term. */
+/** Group 3–5 plan actions under now / before_next_event / long_term.
+ * Preserves incoming (optimizer) order within each horizon.
+ * `householdBudget` is unused; kept for call-site compatibility.
+ */
 export function arrangePlanActions<T extends PlanActionLike>(
   actions: T[],
   householdBudget: Unknownable<BudgetClass>,
 ): HorizonGroup<T>[] {
+  void householdBudget;
   const buckets: Record<RecommendationHorizon, T[]> = {
     now: [],
     before_next_event: [],
@@ -206,7 +210,7 @@ export function arrangePlanActions<T extends PlanActionLike>(
   }
 
   return PLAN_HORIZONS.flatMap((horizon) => {
-    const items = sortActionsByBudget(buckets[horizon], householdBudget);
+    const items = buckets[horizon];
     if (items.length === 0) return [];
     return [{ horizon, label: PLAN_HORIZON_LABELS[horizon], items }];
   });

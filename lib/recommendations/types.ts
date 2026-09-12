@@ -6,6 +6,13 @@ import type {
   Recommendation,
   RecommendationHorizon,
 } from "@/types";
+import type {
+  ConstraintEffect,
+  CostEstimateConfidence,
+  CostEstimateSource,
+  OptimizationConstraints,
+  OptimizationResult,
+} from "@/lib/optimization/types";
 
 export type HazardSource = "live" | "unavailable" | "fixture";
 
@@ -18,12 +25,25 @@ export type RecommendationInput = {
    * The engine then fails closed — it does not invent an all-clear.
    */
   hazardSource?: HazardSource;
+  /** Optional knapsack caps from Help Me Prioritize (session-only). */
+  constraints?: Partial<OptimizationConstraints>;
 };
 
 export type RankedRecommendation = Recommendation & {
   horizon: RecommendationHorizon;
   official: boolean;
   costClass: BudgetClass;
+  hardConstraint?: boolean;
+  estimatedTimeMinutes?: number;
+  estimatedCostRange?: { min: number; max: number };
+  /** Preparedness utility 0–1 — not a safety or survival score. */
+  utilityScore?: number;
+  hazardRelevance?: number;
+  householdFit?: number;
+  urgency?: number;
+  costEstimateSource?: CostEstimateSource;
+  costEstimateConfidence?: CostEstimateConfidence;
+  constraintEffects?: ConstraintEffect[];
 };
 
 export type EngineStatus = "ok" | "unavailable";
@@ -38,6 +58,8 @@ export type EngineResult = {
   recommendations: RankedRecommendation[];
   matchedRuleIds: string[];
   ruleCount: number;
+  /** Null when the engine fails closed. */
+  optimization: OptimizationResult | null;
 };
 
 export const ENGINE_REASONS = {

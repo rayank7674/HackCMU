@@ -3,9 +3,14 @@ import {
   createEmptyHouseholdProfile,
 } from "@/lib/profile-store";
 import type { HazardState, HomeProfile, HouseholdProfile } from "@/types";
+import {
+  optimizePreparednessPlan,
+  resolveOptimizationConstraints,
+  toPreparednessActions,
+} from "@/lib/optimization";
 import { ALL_RULES, RULE_COUNT } from "../rules";
-import type { RuleContext, RuleMatch } from "../rules/types";
-import { selectTopMatches, toRankedRecommendation } from "./ranking";
+import type { RuleContext } from "../rules/types";
+import { toRankedRecommendationFromAction } from "./ranking";
 import {
   ENGINE_REASONS,
   type EngineResult,
@@ -19,6 +24,7 @@ function unavailable(reason: string): EngineResult {
     recommendations: [],
     matchedRuleIds: [],
     ruleCount: RULE_COUNT,
+    optimization: null,
   };
 }
 
@@ -95,16 +101,21 @@ export function recommend(input: RecommendationInput): EngineResult {
   if (!ctx) return unavailable(ENGINE_REASONS.hazardStateMissing);
 
   const matches = evaluateRules(ctx);
-  const top = selectTopMatches(matches, ctx);
+  const candidates = toPreparednessActions(matches, ctx);
+  const constraints = resolveOptimizationConstraints(input.constraints, ctx);
+  const optimization = optimizePreparednessPlan(candidates, constraints, {
+    hasBackupPower: ctx.home.hasBackupPower === true,
+  });
   const allClear =
     ctx.hazards.allClear === true && ctx.hazards.hazards.length === 0;
 
   return {
     status: "ok",
     reason: allClear ? ENGINE_REASONS.allClear : ENGINE_REASONS.activeHazards,
-    recommendations: top.map(toRankedRecommendation),
+    recommendations: optimization.selected.map(toRankedRecommendationFromAction),
     matchedRuleIds: matches.map((match) => match.ruleId).sort(),
     ruleCount: RULE_COUNT,
+    optimization,
   };
 }
 
@@ -133,6 +144,9 @@ export function isRecommendationInput(value: unknown): value is RecommendationIn
     value.hazardSource !== "unavailable" &&
     value.hazardSource !== "fixture"
   ) {
+    return false;
+  }
+  if (value.constraints !== undefined && !isRecord(value.constraints)) {
     return false;
   }
   return true;

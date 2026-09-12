@@ -1,0 +1,370 @@
+import { MAX_SURFACED, MIN_SURFACED } from "@/lib/recommendations/ranking";
+import type { RecommendationPriority } from "@/types";
+import { PLANNING_ASSUMPTION_DISCLAIMER } from "./planning-values";
+import type {
+  ConstraintEffect,
+  OptimizationConstraints,
+  OptimizationResult,
+  PreparednessAction,
+  RejectedAction,
+  RejectionReason,
+} from "./types";
+
+const PRIORITY_RANK: Record<RecommendationPriority, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+const UTIL_SCALE = 10_000;
+const TRANSPORT_READINESS_BOOST = 0.2;
+
+function cloneAction(action: PreparednessAction): PreparednessAction {
+  return {
+    ...action,
+    hazardKinds: [...action.hazardKinds],
+    constraintEffects: [...action.constraintEffects],
+    estimatedCostRange: { ...action.estimatedCostRange },
+  };
+}
+
+function addEffect(action: PreparednessAction, effect: ConstraintEffect): void {
+  if (!action.constraintEffects.includes(effect)) {
+    action.constraintEffects.push(effect);
+  }
+}
+
+function compareHard(a: PreparednessAction, b: PreparednessAction): number {
+  const priority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
+  if (priority !== 0) return priority;
+  if (a.official !== b.official) return a.official ? -1 : 1;
+  return a.ruleId.localeCompare(b.ruleId);
+}
+
+function compareUtility(a: PreparednessAction, b: PreparednessAction): number {
+  if (b.utility !== a.utility) return b.utility - a.utility;
+  return a.ruleId.localeCompare(b.ruleId);
+}
+
+function scaledUtility(action: PreparednessAction): number {
+  return Math.round(action.utility * UTIL_SCALE);
+}
+
+function packState(k: number, b: number, t: number): string {
+  return `${k}:${b}:${t}`;
+}
+
+function unpackState(state: string): { k: number; b: number; t: number } {
+  const [k, b, t] = state.split(":").map(Number);
+  return { k, b, t };
+}
+
+/**
+ * Exact 0/1 knapsack over remaining budget, time, and cardinality.
+ * Unconstrained dimensions are treated as zero-weight.
+ */
+function knapsackSelect(
+  items: PreparednessAction[],
+  budgetCap: number | null,
+  timeCap: number | null,
+  maxItems: number,
+): PreparednessAction[] {
+  if (items.length === 0 || maxItems <= 0) return [];
+
+  const budgetLimited = budgetCap !== null;
+  const timeLimited = timeCap !== null;
+
+  if (!budgetLimited && !timeLimited) {
+    return [...items].sort(compareUtility).slice(0, maxItems);
+  }
+
+  const B = budgetLimited ? Math.max(0, Math.floor(budgetCap)) : 0;
+  const T = timeLimited ? Math.max(0, Math.floor(timeCap)) : 0;
+  const K = Math.max(0, maxItems);
+
+  const costOf = (item: PreparednessAction) =>
+    budgetLimited ? item.estimatedCostDollars : 0;
+  const timeOf = (item: PreparednessAction) =>
+    timeLimited ? item.estimatedTimeMinutes : 0;
+
+  const util = new Map<string, number>();
+  const parent = new Map<string, { prev: string; item: number }>();
+  util.set(packState(0, 0, 0), 0);
+
+  const ordered = [...items].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+
+  for (let i = 0; i < ordered.length; i++) {
+    const item = ordered[i];
+    const c = costOf(item);
+    const tm = timeOf(item);
+    const u = scaledUtility(item);
+    if (c > B || tm > T) continue;
+
+    const snapshot = [...util.entries()];
+    for (const [state, current] of snapshot) {
+      const { k, b, t } = unpackState(state);
+      if (k >= K) continue;
+      const nextB = b + c;
+      const nextT = t + tm;
+      if (nextB > B || nextT > T) continue;
+      const next = packState(k + 1, nextB, nextT);
+      const nextUtil = current + u;
+      const existing = util.get(next);
+      if (existing === undefined || nextUtil > existing) {
+        util.set(next, nextUtil);
+        parent.set(next, { prev: state, item: i });
+      }
+    }
+  }
+
+  let bestState = packState(0, 0, 0);
+  let bestUtil = 0;
+  for (const [state, value] of util) {
+    if (value > bestUtil) {
+      bestUtil = value;
+      bestState = state;
+    }
+  }
+
+  const picked: PreparednessAction[] = [];
+  let cursor: string | undefined = bestState;
+  while (cursor !== undefined && parent.has(cursor)) {
+    const step = parent.get(cursor);
+    if (!step) break;
+    picked.push(ordered[step.item]);
+    cursor = step.prev;
+  }
+
+  return picked.sort(compareUtility);
+}
+
+function actionFitsRemaining(
+  action: PreparednessAction,
+  leftoverBudget: number | null,
+  leftoverTime: number | null,
+): boolean {
+  if (leftoverBudget !== null && action.estimatedCostDollars > leftoverBudget) {
+    return false;
+  }
+  if (leftoverTime !== null && action.estimatedTimeMinutes > leftoverTime) {
+    return false;
+  }
+  return true;
+}
+
+export function optimizePreparednessPlan(
+  candidates: PreparednessAction[],
+  constraints: OptimizationConstraints,
+  options: { hasBackupPower: boolean },
+): OptimizationResult {
+  const working = candidates.map(cloneAction);
+  const rejected = new Map<string, RejectionReason[]>();
+
+  const markRejected = (action: PreparednessAction, reason: RejectionReason) => {
+    const list = rejected.get(action.id) ?? [];
+    if (!list.includes(reason)) list.push(reason);
+    rejected.set(action.id, list);
+  };
+
+  const eligible: PreparednessAction[] = [];
+
+  for (const action of working) {
+    if (options.hasBackupPower === true && action.generatorAcquisition) {
+      addEffect(action, "skipped_backup_power");
+      markRejected(action, "skipped_backup_power");
+      continue;
+    }
+
+    const noCar =
+      constraints.transport === "none" || constraints.transport === "limited";
+
+    if (noCar && action.transportReadiness) {
+      action.utility = Math.min(1, action.utility + TRANSPORT_READINESS_BOOST);
+      addEffect(action, "boosted_transport_readiness");
+    }
+
+    if (
+      noCar &&
+      action.requiresTransportation &&
+      !action.hardConstraint
+    ) {
+      addEffect(action, "excluded_transport");
+      markRejected(action, "excluded_transport");
+      continue;
+    }
+
+    eligible.push(action);
+  }
+
+  const hard = eligible
+    .filter((action) => action.hardConstraint)
+    .sort(compareHard);
+  const discretionary = eligible
+    .filter((action) => !action.hardConstraint)
+    .sort(compareUtility);
+
+  const selectedHard: PreparednessAction[] = [];
+  for (const action of hard) {
+    addEffect(action, "hard_constraint");
+    selectedHard.push(action);
+  }
+
+  const hardCost = selectedHard.reduce(
+    (sum, action) => sum + action.estimatedCostDollars,
+    0,
+  );
+  const hardTime = selectedHard.reduce(
+    (sum, action) => sum + action.estimatedTimeMinutes,
+    0,
+  );
+
+  const leftoverBudget =
+    constraints.budgetDollars === null
+      ? null
+      : Math.max(0, constraints.budgetDollars - hardCost);
+  const leftoverTime =
+    constraints.availableTimeMinutes === null
+      ? null
+      : Math.max(0, constraints.availableTimeMinutes - hardTime);
+
+  const hardKept =
+    selectedHard.length > MAX_SURFACED
+      ? selectedHard.slice(0, MAX_SURFACED)
+      : selectedHard;
+  for (const extra of selectedHard.slice(MAX_SURFACED)) {
+    markRejected(extra, "over_surface_limit");
+  }
+
+  const slots = Math.max(0, MAX_SURFACED - hardKept.length);
+  const knapsackPicks = knapsackSelect(
+    discretionary,
+    leftoverBudget,
+    leftoverTime,
+    slots,
+  );
+
+  let remainingBudget = leftoverBudget;
+  let remainingTime = leftoverTime;
+  const selectedDisc: PreparednessAction[] = [];
+
+  const consume = (action: PreparednessAction) => {
+    selectedDisc.push(action);
+    if (remainingBudget !== null) {
+      remainingBudget = Math.max(0, remainingBudget - action.estimatedCostDollars);
+    }
+    if (remainingTime !== null) {
+      remainingTime = Math.max(0, remainingTime - action.estimatedTimeMinutes);
+    }
+    addEffect(action, "fits_remaining_budget");
+    addEffect(action, "fits_remaining_time");
+  };
+
+  for (const action of knapsackPicks) {
+    if (hardKept.length + selectedDisc.length >= MAX_SURFACED) break;
+    if (!actionFitsRemaining(action, remainingBudget, remainingTime)) {
+      if (remainingBudget !== null && action.estimatedCostDollars > remainingBudget) {
+        markRejected(action, "over_budget");
+      }
+      if (
+        remainingTime !== null &&
+        action.estimatedTimeMinutes > remainingTime
+      ) {
+        markRejected(action, "over_time");
+      }
+      continue;
+    }
+    consume(action);
+  }
+
+  const pickedIds = new Set([
+    ...hardKept.map((action) => action.id),
+    ...selectedDisc.map((action) => action.id),
+  ]);
+
+  if (hardKept.length + selectedDisc.length < MIN_SURFACED) {
+    const fillers = discretionary
+      .filter((action) => !pickedIds.has(action.id))
+      .sort(compareUtility);
+
+    for (const action of fillers) {
+      if (hardKept.length + selectedDisc.length >= MIN_SURFACED) break;
+      if (hardKept.length + selectedDisc.length >= MAX_SURFACED) break;
+      if (!actionFitsRemaining(action, remainingBudget, remainingTime)) {
+        continue;
+      }
+      if (
+        remainingBudget === 0 &&
+        action.estimatedCostDollars > 0
+      ) {
+        continue;
+      }
+      addEffect(action, "fill_to_minimum");
+      consume(action);
+      pickedIds.add(action.id);
+    }
+  }
+
+  const selected = [...hardKept, ...selectedDisc.sort(compareUtility)];
+
+  for (const action of discretionary) {
+    if (pickedIds.has(action.id)) continue;
+    const reasons: RejectionReason[] = [];
+    if (!actionFitsRemaining(action, leftoverBudget, leftoverTime)) {
+      if (leftoverBudget !== null && action.estimatedCostDollars > leftoverBudget) {
+        reasons.push("over_budget");
+      }
+      if (leftoverTime !== null && action.estimatedTimeMinutes > leftoverTime) {
+        reasons.push("over_time");
+      }
+    }
+    if (reasons.length === 0) reasons.push("not_selected");
+    for (const reason of reasons) markRejected(action, reason);
+  }
+
+  const rejectedList: RejectedAction[] = [...rejected.entries()]
+    .map(([id, reasons]) => {
+      const action = working.find((item) => item.id === id);
+      return {
+        id,
+        ruleId: action?.ruleId ?? id,
+        reasons,
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  return {
+    solver: "knapsack_dp",
+    objective: "maximize_preparedness_utility",
+    selected,
+    selectedIds: selected.map((action) => action.id),
+    rejected: rejectedList,
+    candidates: working
+      .slice()
+      .sort((a, b) => a.ruleId.localeCompare(b.ruleId))
+      .map((action) => ({
+        id: action.id,
+        ruleId: action.ruleId,
+        title: action.title,
+        hardConstraint: action.hardConstraint,
+        official: action.official,
+        selected: pickedIds.has(action.id),
+        utility: action.utility,
+        estimatedCostDollars: action.estimatedCostDollars,
+        estimatedTimeMinutes: action.estimatedTimeMinutes,
+      })),
+    hardConstraintIds: hardKept.map((action) => action.id),
+    constraintsUsed: { ...constraints },
+    planningCostDollars: selected.reduce(
+      (sum, action) => sum + action.estimatedCostDollars,
+      0,
+    ),
+    planningMinutes: selected.reduce(
+      (sum, action) => sum + action.estimatedTimeMinutes,
+      0,
+    ),
+    hardCount: hardKept.length,
+    discretionaryCount: selected.filter((action) => !action.hardConstraint).length,
+    notes: [PLANNING_ASSUMPTION_DISCLAIMER],
+  };
+}
