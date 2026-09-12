@@ -88,6 +88,7 @@ async function respond(input: AlertsInput) {
           message:
             "Geocode succeeded without usable coordinates. Alerts were not requested.",
           service: "geocode",
+          hazards: unknownHazardState(),
         },
         { status: 404 },
       );
@@ -139,9 +140,22 @@ function inputFromSearchParams(params: URLSearchParams): AlertsInput {
 }
 
 function inputFromRecord(value: Record<string, unknown>): AlertsInput {
+  const location =
+    value.location !== null &&
+    typeof value.location === "object" &&
+    !Array.isArray(value.location)
+      ? (value.location as Record<string, unknown>)
+      : null;
   return {
-    latitude: asNumber(value.latitude ?? value.lat),
-    longitude: asNumber(value.longitude ?? value.lon ?? value.lng),
+    latitude: asNumber(value.latitude ?? value.lat ?? location?.latitude ?? location?.lat),
+    longitude: asNumber(
+      value.longitude ??
+        value.lon ??
+        value.lng ??
+        location?.longitude ??
+        location?.lon ??
+        location?.lng,
+    ),
     geocodeQuery: {
       address: asString(value.address) ?? asString(value.q),
       addressLine: asString(value.addressLine) ?? asString(value.street),

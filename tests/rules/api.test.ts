@@ -82,6 +82,35 @@ describe("POST /api/recommendations", () => {
     expect(body.ok).toBe(false);
     expect(body.reason).toBe("invalid_request");
   });
+
+  it("rejects an empty body", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "",
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.ok).toBe(false);
+    expect(body.recommendations).toEqual([]);
+  });
+
+  it("fails closed on an empty JSON object (no invented all-clear)", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("unavailable");
+    expect(body.reason).toBe(ENGINE_REASONS.profileMissing);
+    expect(body.recommendations).toEqual([]);
+  });
 });
 
 describe("GET /api/recommendations", () => {
@@ -110,5 +139,39 @@ describe("GET /api/recommendations", () => {
     const body = await response.json();
     expect(body.recommendations[0]?.official).toBe(true);
     expect(body.hazards.allClear).toBe(false);
+  });
+
+  it("does not serve the Tampa demo without an explicit fixture", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/recommendations"),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.status).toBe("unavailable");
+    expect(body.reason).toBe("missing_fixture");
+    expect(body.fixture).toBeUndefined();
+    expect(body.recommendations).toEqual([]);
+  });
+
+  it("does not invent an evacuation warning from scenario=evac alone", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/recommendations?scenario=evac"),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.recommendations).toEqual([]);
+    expect(body.hazards).toBeUndefined();
+  });
+
+  it("rejects an unknown fixture instead of falling back to Tampa", async () => {
+    const response = await GET(
+      new Request("http://localhost/api/recommendations?fixture=miami"),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(400);
+    expect(body.reason).toBe("unknown_fixture");
+    expect(body.recommendations).toEqual([]);
   });
 });

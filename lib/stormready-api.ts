@@ -83,12 +83,14 @@ export async function fetchGeocode(input: {
 }
 
 export async function fetchAlerts(input: {
+  addressLine?: string;
   postalCode?: string;
   city?: string;
   state?: string;
   location?: GeocodedLocation | null;
 }): Promise<ApiResult<HazardState>> {
   const params = new URLSearchParams();
+  if (input.addressLine) params.set("addressLine", input.addressLine);
   if (input.postalCode) params.set("postalCode", input.postalCode);
   if (input.city) params.set("city", input.city);
   if (input.state) params.set("state", input.state);
@@ -105,7 +107,20 @@ export async function fetchAlerts(input: {
 
   const payload = await requestJson(`${ALERTS_PATH}?${params.toString()}`);
   if (!payload.ok) {
-    return tryAlternateMethod(ALERTS_PATH, "POST", input, parseHazardState);
+    return tryAlternateMethod(
+      ALERTS_PATH,
+      "POST",
+      {
+        addressLine: input.addressLine,
+        postalCode: input.postalCode,
+        city: input.city,
+        state: input.state,
+        latitude: loc && isKnown(loc.latitude) ? loc.latitude : undefined,
+        longitude: loc && isKnown(loc.longitude) ? loc.longitude : undefined,
+        location: input.location,
+      },
+      parseHazardState,
+    );
   }
   return parseOrUnavailable(payload.data, parseHazardState);
 }

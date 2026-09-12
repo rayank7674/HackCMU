@@ -255,6 +255,32 @@ describe("API-unavailable / missing hazard inputs", () => {
     expect(result.recommendations).toEqual([]);
   });
 
+  it("fails closed when allClear is missing (empty list is not all-clear)", () => {
+    const hazards = makeHazards([], true);
+    const result = recommend({
+      home: makeHome(),
+      household: makeHousehold(),
+      hazards: {
+        ...hazards,
+        allClear: undefined as unknown as typeof hazards.allClear,
+      },
+    });
+    expect(result.status).toBe("unavailable");
+    expect(result.reason).toBe(ENGINE_REASONS.hazardStateUnconfirmed);
+    expect(result.recommendations).toEqual([]);
+  });
+
+  it("fails closed when allClear is false but the hazard list is empty", () => {
+    const result = recommend({
+      home: makeHome(),
+      household: makeHousehold(),
+      hazards: makeHazards([], false),
+    });
+    expect(result.status).toBe("unavailable");
+    expect(result.reason).toBe(ENGINE_REASONS.hazardStateInconsistent);
+    expect(result.recommendations).toEqual([]);
+  });
+
   it("fails closed when the home profile is missing", () => {
     const result = recommend({
       home: null,

@@ -29,7 +29,8 @@ function parseScenario(value: string | null): DemoScenario {
  *
  * `hazardSource: "unavailable"` or a missing/unconfirmed HazardState fails
  * closed with `status: "unavailable"` and an empty list — never an invented
- * official alert. Quiet weather for judging: GET ?fixture=tampa.
+ * official alert. Quiet weather for judging: GET ?fixture=tampa only.
+ * A bare GET is unavailable — never a silent Tampa all-clear.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
   const fixture = url.searchParams.get("fixture");
   const scenario = parseScenario(url.searchParams.get("scenario"));
 
-  if (fixture === "tampa" || fixture === null || fixture === "") {
+  if (fixture === "tampa") {
     const input = tampaDemoInput(scenario);
     const result = recommend(input);
     return NextResponse.json({
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
     {
       ok: false,
       status: "unavailable",
-      reason: "unknown_fixture",
+      reason: fixture == null || fixture === "" ? "missing_fixture" : "unknown_fixture",
       recommendations: [],
     },
     { status: 400 },
