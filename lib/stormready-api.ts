@@ -16,6 +16,13 @@ import type {
   OptimizationConstraints,
   OptimizationResult,
 } from "@/lib/optimization";
+import type {
+  MinBreakdown,
+  StressResult,
+  StressScenario,
+  WorstCase,
+} from "@/lib/stress";
+import type { StressActionName } from "@/lib/stress/run";
 
 /**
  * Fail-closed client for routes that may land on parallel branches.
@@ -26,6 +33,7 @@ import type {
 export const GEOCODE_PATH = "/api/geocode";
 export const ALERTS_PATH = "/api/alerts";
 export const RECOMMENDATIONS_PATH = "/api/recommendations";
+export const STRESS_PATH = "/api/stress";
 
 export type ApiFailureReason = "unavailable" | "error";
 
@@ -200,6 +208,48 @@ export async function fetchRecommendations(
   return posted.ok
     ? { ok: false, reason: "unavailable", status: 200 }
     : posted;
+}
+
+export type StressRequestBody = {
+  home: HomeProfile | null;
+  household: HouseholdProfile | null;
+  scenario?: StressScenario | string;
+  action: StressActionName;
+  constraints?: Partial<OptimizationConstraints>;
+  hazards?: HazardState | null;
+};
+
+export type StressFortifyAction = {
+  id: string;
+  title: string;
+  costClass?: string;
+  official?: boolean;
+  hardConstraint?: boolean;
+  estimatedCostUnits?: number;
+};
+
+export type StressPayload = {
+  modeled: true;
+  forecast: false;
+  action: StressActionName;
+  result: StressResult | null;
+  breakdown: MinBreakdown | WorstCase | null;
+  optimization: (OptimizationView & { selected: StressFortifyAction[] }) | null;
+};
+
+export async function fetchStress(
+  input: StressRequestBody,
+): Promise<ApiResult<StressPayload>> {
+  const posted = await requestJson(STRESS_PATH, {
+    method: "POST",
+    body: input,
+  });
+  if (!posted.ok) return posted;
+  return parseStressPayload(posted.data) ?? {
+    ok: false,
+    reason: "unavailable",
+    status: 200,
+  };
 }
 
 /** Explicit Tampa fixture only — never used as a silent stand-in for live alerts. */
@@ -655,6 +705,130 @@ function parseOptimization(value: unknown): OptimizationView | null {
           ];
         })
       : [],
+  };
+}
+
+function parseStressPayload(value: unknown): ApiResult<StressPayload> | null {
+  if (!isRecord(value)) return null;
+  if (value.ok === false || value.status === "unavailable") {
+    return { ok: false, reason: "unavailable", status: 200 };
+  }
+  if (value.modeled !== true || value.forecast === true) return null;
+  if (
+    value.action !== "simulate" &&
+    value.action !== "min" &&
+    value.action !== "worst" &&
+    value.action !== "fortify"
+  ) {
+    return null;
+  }
+  const result = parseStressResult(value.result);
+  if (value.action === "simulate" && !result) return null;
+  return {
+    ok: true,
+    data: {
+      modeled: true,
+      forecast: false,
+      action: value.action,
+      result,
+      breakdown: isRecord(value.breakdown)
+        ? (value.breakdown as MinBreakdown | WorstCase)
+        : null,
+      optimization: parseFortifyPlan(value.optimization),
+    },
+  };
+}
+
+function parseFortifyPlan(
+  value: unknown,
+): (OptimizationView & { selected: StressFortifyAction[] }) | null {
+  const view = parseOptimization(value);
+  if (!view || !isRecord(value)) return null;
+  const selected = Array.isArray(value.selected)
+    ? value.selected.flatMap((item) => {
+        if (!isRecord(item) || typeof item.id !== "string") return [];
+        const title =
+          typeof item.title === "string" && item.title.trim() !== ""
+            ? item.title
+            : view.candidates.find((candidate) => candidate.id === item.id)
+                ?.title ?? item.id;
+        return [
+          {
+            id: item.id,
+            title,
+            costClass:
+              typeof item.costClass === "string" ? item.costClass : undefined,
+            official: item.official === true,
+            hardConstraint: item.hardConstraint === true,
+            estimatedCostUnits:
+              typeof item.estimatedCostUnits === "number"
+                ? item.estimatedCostUnits
+                : undefined,
+          },
+        ];
+      })
+    : view.candidates
+        .filter((candidate) => candidate.selected)
+        .map((candidate) => ({
+          id: candidate.id,
+          title: candidate.title,
+          official: candidate.official,
+          hardConstraint: candidate.hardConstraint,
+          estimatedCostUnits: candidate.estimatedCostUnits,
+        }));
+  return { ...view, selected };
+}
+
+function parseStressResult(value: unknown): StressResult | null {
+  if (!isRecord(value)) return null;
+  if (value.modeled !== true || value.forecast === true) return null;
+  if (
+    value.disruptionLevel !== "none" &&
+    value.disruptionLevel !== "constrained" &&
+    value.disruptionLevel !== "major" &&
+    value.disruptionLevel !== "critical"
+  ) {
+    return null;
+  }
+  if (!isRecord(value.scenario)) return null;
+  const cascadePath = Array.isArray(value.cascadePath)
+    ? value.cascadePath.filter((id): id is string => typeof id === "string")
+    : [];
+  const assumptions = Array.isArray(value.assumptions)
+    ? value.assumptions.filter((item): item is string => typeof item === "string")
+    : [];
+  const nodes = Array.isArray(value.nodes)
+    ? value.nodes.filter(isRecord).map((node) => ({
+        id: typeof node.id === "string" ? node.id : "",
+        type: (typeof node.type === "string" ? node.type : "home") as StressResult["nodes"][number]["type"],
+        label: typeof node.label === "string" ? node.label : "",
+        source: (typeof node.source === "string" ? node.source : "modeled") as StressResult["nodes"][number]["source"],
+        capacity: typeof node.capacity === "number" ? node.capacity : 0,
+        level: (typeof node.level === "string" ? node.level : "none") as StressResult["nodes"][number]["level"],
+      }))
+    : [];
+  const firstBreak =
+    isRecord(value.firstBreak) && typeof value.firstBreak.id === "string"
+      ? (value.firstBreak as StressResult["firstBreak"])
+      : null;
+  return {
+    scenario: value.scenario as StressResult["scenario"],
+    modeled: true,
+    forecast: false,
+    disruptionLevel: value.disruptionLevel,
+    householdAccess:
+      typeof value.householdAccess === "number" ? value.householdAccess : 0,
+    firstBreak,
+    cascadePath,
+    affected: Array.isArray(value.affected)
+      ? (value.affected as StressResult["affected"])
+      : [],
+    nodes,
+    assumptions,
+    provenanceNote:
+      typeof value.provenanceNote === "string"
+        ? value.provenanceNote
+        : "Dependencies are modeled. This is not official NWS or utility data.",
   };
 }
 

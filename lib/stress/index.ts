@@ -45,3 +45,16 @@ export {
   counterfactualBackupPower,
   fortifyFromStress,
 } from "./fortify";
+export { cascadeSteps, provenanceLabel } from "./cascade";
+export type { CascadeStep } from "./cascade";
+export {
+  parseStressAction,
+  parseStressScenario,
+  runStress,
+} from "./run";
+export type {
+  StressActionName,
+  StressRunFail,
+  StressRunOk,
+  StressRunResult,
+} from "./run";

@@ -40,7 +40,11 @@ export {
 } from "./candidates";
 
 export { optimizePreparednessPlan } from "./solve";
-export { diffOptimizationResults } from "./diff";
+export {
+  diffOptimizationResults,
+  titleForOptimizationId,
+  titlesForOptimizationIds,
+} from "./diff";
 export {
   inferTransport,
   resolveOptimizationConstraints,

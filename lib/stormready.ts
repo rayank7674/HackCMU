@@ -117,6 +117,7 @@ export {
   optimizePreparednessPlan,
   toPreparednessActions,
   diffOptimizationResults,
+  titleForOptimizationId,
   resolveOptimizationConstraints,
   planningDollarsForHousehold,
   planningMinutesFor,
@@ -137,6 +138,7 @@ export {
   findMinimumBreakdown,
   findWorstCase,
   fortifyFromStress,
+  runStress,
   STRESS_PRESETS,
   BASELINE_SCENARIO,
 } from "./stress";

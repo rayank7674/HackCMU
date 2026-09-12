@@ -3,11 +3,17 @@ import type { OptimizationDiff, OptimizationResult } from "./types";
 
 function summarize(diff: Omit<OptimizationDiff, "summary">): string {
   const bits: string[] = [];
-  if (diff.addedIds.length > 0) {
-    bits.push(`Added ${diff.addedIds.join(", ")}`);
+  if (diff.addedTitles.length > 0) {
+    bits.push(`Added ${diff.addedTitles.join(", ")}`);
   }
-  if (diff.removedIds.length > 0) {
-    bits.push(`Removed ${diff.removedIds.join(", ")}`);
+  if (diff.removedTitles.length > 0) {
+    bits.push(`Removed ${diff.removedTitles.join(", ")}`);
+  }
+  if (diff.promotedTitles.length > 0) {
+    bits.push(`Promoted ${diff.promotedTitles.join(", ")}`);
+  }
+  if (diff.demotedTitles.length > 0) {
+    bits.push(`Demoted ${diff.demotedTitles.join(", ")}`);
   }
   const budget = diff.constraintChanges.budgetUnits;
   if (budget.from !== budget.to) {
@@ -37,6 +43,40 @@ function formatTime(value: number | null): string {
   return `${value} min`;
 }
 
+function sameIdSet(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const set = new Set(left);
+  return right.every((id) => set.has(id));
+}
+
+/**
+ * Human title for a selected / candidate id. Falls back to the id only
+ * when neither list has a title — UI should not dump raw rule ids first.
+ */
+export function titleForOptimizationId(
+  result: OptimizationResult,
+  id: string,
+): string {
+  const selected = result.selected.find((item) => item.id === id);
+  if (selected && selected.title.trim() !== "") return selected.title;
+  const candidate = result.candidates.find((item) => item.id === id);
+  if (candidate && candidate.title.trim() !== "") return candidate.title;
+  return id;
+}
+
+export function titlesForOptimizationIds(
+  results: OptimizationResult[],
+  ids: string[],
+): string[] {
+  return ids.map((id) => {
+    for (const result of results) {
+      const title = titleForOptimizationId(result, id);
+      if (title !== id) return title;
+    }
+    return id;
+  });
+}
+
 export function diffOptimizationResults(
   before: OptimizationResult,
   after: OptimizationResult,
@@ -45,6 +85,17 @@ export function diffOptimizationResults(
   const afterSet = new Set(after.selectedIds);
   const addedIds = after.selectedIds.filter((id) => !beforeSet.has(id));
   const removedIds = before.selectedIds.filter((id) => !afterSet.has(id));
+  const sharedIds = after.selectedIds.filter((id) => beforeSet.has(id));
+  const promotedIds = sharedIds.filter((id) => {
+    const beforeRank = before.selectedIds.indexOf(id);
+    const afterRank = after.selectedIds.indexOf(id);
+    return afterRank < beforeRank;
+  });
+  const demotedIds = sharedIds.filter((id) => {
+    const beforeRank = before.selectedIds.indexOf(id);
+    const afterRank = after.selectedIds.indexOf(id);
+    return afterRank > beforeRank;
+  });
   const sameMembers =
     addedIds.length === 0 &&
     removedIds.length === 0 &&
@@ -60,10 +111,21 @@ export function diffOptimizationResults(
   const toUnits =
     after.constraintsUsed.budgetUnits ?? after.constraintsUsed.budgetDollars ?? null;
 
+  const sources = [after, before];
   const diff: OptimizationDiff = {
     addedIds,
     removedIds,
+    promotedIds,
+    demotedIds,
+    addedTitles: titlesForOptimizationIds(sources, addedIds),
+    removedTitles: titlesForOptimizationIds(sources, removedIds),
+    promotedTitles: titlesForOptimizationIds(sources, promotedIds),
+    demotedTitles: titlesForOptimizationIds(sources, demotedIds),
     reordered,
+    hardConstraintsUnchanged: sameIdSet(
+      before.hardConstraintIds,
+      after.hardConstraintIds,
+    ),
     beforeIds: [...before.selectedIds],
     afterIds: [...after.selectedIds],
     constraintChanges: {
@@ -85,4 +147,3 @@ export function diffOptimizationResults(
   diff.summary = summarize(diff);
   return diff;
 }
-

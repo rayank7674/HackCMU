@@ -334,14 +334,10 @@ export function PlanView() {
           <Button variant="secondary" onClick={() => setPrioritizeOpen(true)}>
             Help Me Prioritize
           </Button>
-          {planDelta ? (
-            <p
-              role="status"
-              className="rounded-2xl border border-accent/30 bg-surface-elevated px-3 py-2 text-xs leading-relaxed text-foreground"
-            >
-              <span className="font-semibold">PLAN UPDATED.</span> {planDelta.summary}
-            </p>
-          ) : null}
+          <Button variant="secondary" href="/stress">
+            Test my preparedness
+          </Button>
+          {planDelta ? <PlanUpdatedCard diff={planDelta} /> : null}
         </div>
 
         {optimization && recsStatus === "ready" ? (
@@ -679,6 +675,59 @@ function TopPriorityCard({
       {ruleOpen && isKnown(action.ruleId) ? (
         <p className="mt-2 font-mono text-xs text-foreground">{action.ruleId}</p>
       ) : null}
+    </Card>
+  );
+}
+
+function PlanUpdatedCard({ diff }: { diff: OptimizationDiff }) {
+  const budget = diff.constraintChanges.budgetUnits;
+  const time = diff.constraintChanges.availableTimeMinutes;
+  const transport = diff.constraintChanges.transport;
+  const constraintBits: string[] = [];
+  if (budget.from !== budget.to) {
+    constraintBits.push(
+      `Cost class ${labelForCostUnits(budget.from)} → ${labelForCostUnits(budget.to)}`,
+    );
+  }
+  if (time.from !== time.to) {
+    constraintBits.push(
+      `Time ${time.from === null ? "unconstrained" : `${time.from} min`} → ${
+        time.to === null ? "unconstrained" : `${time.to} min`
+      }`,
+    );
+  }
+  if (transport.from !== transport.to) {
+    constraintBits.push(`Transport ${transport.from} → ${transport.to}`);
+  }
+
+  return (
+    <Card eyebrow="PLAN UPDATED" title="What changed">
+      {constraintBits.length > 0 ? (
+        <p className="text-foreground">{constraintBits.join(" · ")}</p>
+      ) : (
+        <p className="text-foreground">Constraints unchanged.</p>
+      )}
+      <ul className="mt-2 space-y-1 text-sm text-foreground">
+        {diff.promotedTitles.map((title) => (
+          <li key={`up-${title}`}>↑ {title}</li>
+        ))}
+        {diff.demotedTitles.map((title) => (
+          <li key={`down-${title}`}>↓ {title}</li>
+        ))}
+        {diff.addedTitles.map((title) => (
+          <li key={`add-${title}`}>+ {title}</li>
+        ))}
+        {diff.removedTitles.map((title) => (
+          <li key={`rm-${title}`}>− {title}</li>
+        ))}
+      </ul>
+      {diff.hardConstraintsUnchanged ? (
+        <p className="mt-2 text-xs">Official/hard actions unchanged</p>
+      ) : null}
+      <p className="mt-2 text-xs">
+        Rank shifts use action titles, not raw rule ids. Cost class is knapsack
+        units, not a contractor price.
+      </p>
     </Card>
   );
 }

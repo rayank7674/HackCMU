@@ -122,7 +122,17 @@ export type OptimizationResult = {
 export type OptimizationDiff = {
   addedIds: string[];
   removedIds: string[];
+  /** Same selected id whose rank improved (earlier in the list). */
+  promotedIds: string[];
+  /** Same selected id whose rank worsened (later in the list). */
+  demotedIds: string[];
+  addedTitles: string[];
+  removedTitles: string[];
+  promotedTitles: string[];
+  demotedTitles: string[];
   reordered: boolean;
+  /** True when official/hard id sets match (order ignored). */
+  hardConstraintsUnchanged: boolean;
   beforeIds: string[];
   afterIds: string[];
   constraintChanges: {

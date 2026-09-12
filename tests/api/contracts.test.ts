@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET as getAlerts, POST as postAlerts } from "@/app/api/alerts/route";
 import { GET as getGeocode, POST as postGeocode } from "@/app/api/geocode/route";
-import { fetchAlerts } from "@/lib/stormready-api";
+import { fetchAlerts, fetchStress } from "@/lib/stormready-api";
 import { UNKNOWN } from "@/lib/stormready";
 
 afterEach(() => {
@@ -214,6 +214,30 @@ describe("fetchAlerts client parser", () => {
       // Phase 2 UX: 5xx/timeout is an error (not an all-clear or invented alerts).
       expect(result.reason).toBe("error");
       expect(result.status).toBe(503);
+    }
+  });
+});
+
+describe("fetchStress", () => {
+  it("fails closed on a missing route instead of inventing a forecast", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => "",
+      }),
+    );
+    const result = await fetchStress({
+      home: null,
+      household: null,
+      scenario: "power-12h",
+      action: "simulate",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("unavailable");
+      expect(result.status).toBe(404);
     }
   });
 });
