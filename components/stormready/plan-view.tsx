@@ -40,6 +40,8 @@ import {
   type RecommendationView,
   type ResourceStatus,
 } from "@/lib/stormready-api";
+import { linksForCategory } from "@/lib/help/for-category";
+import type { OfficialLink } from "@/lib/help/content";
 
 const ALERT_UNAVAILABLE =
   "Alert service is not connected yet. StormReady will not invent warnings or mark this area all-clear.";
@@ -524,7 +526,38 @@ function ActionCard({
       {reason ? (
         <p className="mt-3 text-sm leading-relaxed text-muted">{reason}</p>
       ) : null}
+      <ActionOfficialLinks links={linksForCategory(action.category)} />
     </Card>
+  );
+}
+
+function ActionOfficialLinks({ links }: { links: OfficialLink[] }) {
+  const shown = links.slice(0, 2);
+  if (shown.length === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+        Get local help
+      </p>
+      <ul className="mt-1 space-y-1">
+        {shown.map((link) => (
+          <li key={link.id} className="text-sm leading-snug">
+            <a
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-accent-strong underline-offset-2 hover:underline"
+            >
+              {link.title}
+            </a>
+            <span className="ml-1 text-[11px] text-muted">
+              Source: {link.source}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
