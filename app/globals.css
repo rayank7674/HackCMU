@@ -156,6 +156,50 @@ body {
   width: 100%;
 }
 
+.sr-stress-scene {
+  position: relative;
+  height: 15.5rem;
+  min-height: 12rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, #d7e4f4 0%, #eef3f8 100%);
+}
+
+.sr-stress-chips {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0.45rem 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.sr-stress-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  padding: 0.12rem 0.4rem;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--foreground);
+  box-shadow: 0 1px 4px rgba(16, 35, 61, 0.12);
+}
+
+.sr-stress-chips li.is-failed {
+  background: color-mix(in srgb, var(--danger) 16%, white);
+  color: var(--danger);
+}
+
+.sr-stress-chips span {
+  display: inline-block;
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
+}
+
 @media (orientation: landscape) and (max-height: 540px) {
   .sr-page-header {
     padding-top: 0.4rem;
@@ -177,6 +221,11 @@ body {
 
   .sr-map-frame {
     height: min(58dvh, 18rem);
+    min-height: 9rem;
+  }
+
+  .sr-stress-scene {
+    height: 11rem;
     min-height: 9rem;
   }
 }
@@ -278,6 +327,14 @@ body {
 
   html:not([data-demo-viewport="mobile"]) .sr-map-frame {
     height: min(62dvh, 36rem);
+  }
+
+  html:not([data-demo-viewport="mobile"]) .sr-stress-scene {
+    height: 18.5rem;
+  }
+
+  html[data-demo-viewport="mobile"] .sr-stress-scene {
+    height: 13.5rem;
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-page-header {

@@ -7,12 +7,30 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StressCascade } from "@/components/stormready/stress-cascade";
+import { StressScene } from "@/components/stormready/stress-scene";
 import {
   ErrorNote,
   LoadingCard,
   Spinner,
 } from "@/components/stormready/query-state";
 import { UnavailableNote } from "@/components/stormready/unavailable-note";
+import {
+  SIMPLE_POWER_OUTAGE_PRESET_ID,
+  STRESS_ADVANCED_SUMMARY,
+  STRESS_FLOW_COPY,
+  STRESS_HEADLINE,
+  STRESS_MIN_SEARCH_LABEL,
+  STRESS_NEXT_STEPS,
+  STRESS_RUN_POWER_OUTAGE,
+  STRESS_RUN_THIS_SCENARIO,
+  STRESS_SEE_ON_MAP,
+  STRESS_SUGGEST_NEXT,
+  STRESS_UPDATE_PLAN,
+  STRESS_WEAKEST_LINK,
+  STRESS_WORST_SEARCH_LABEL,
+  friendlyDisruptionLabel,
+  friendlyDisruptionSentence,
+} from "@/lib/stress/copy";
 import { STRESS_PRESETS, postStress, type StressRequest } from "@/lib/stress";
 import type {
   DependencyGraph,
@@ -174,17 +192,14 @@ async function runStress(body: StressRequest): Promise<unknown> {
 }
 
 function disruptionLabel(level: DisruptionLevel): string {
-  if (level === "none") return "No modeled disruption";
-  if (level === "constrained") return "Constrained (modeled)";
-  if (level === "major") return "Major (modeled)";
-  return "Critical (modeled)";
+  return friendlyDisruptionLabel(level);
 }
 
 export function StressView() {
   const router = useRouter();
   const { profile, hydrated } = useProfile();
   const presets = STRESS_PRESETS;
-  const [presetId, setPresetId] = useState(presets[0]?.id ?? "power-12h");
+  const [presetId, setPresetId] = useState(SIMPLE_POWER_OUTAGE_PRESET_ID);
   const [simulateStatus, setSimulateStatus] = useState<ResourceStatus>("idle");
   const [simulateError, setSimulateError] = useState<string | null>(null);
   const [simulated, setSimulated] = useState<SimulatePayload | null>(null);
@@ -237,15 +252,24 @@ export function StressView() {
     };
   }, [hydrated, home]);
 
-  async function runSimulate(nextHome: HomeProfile, nextPreset = scenario) {
-    if (!nextPreset) return;
+  async function runSimulate(
+    nextHome: HomeProfile,
+    nextPreset = scenario,
+    nextPresetId?: string,
+  ) {
+    const chosen =
+      (nextPresetId
+        ? presets.find((item) => item.id === nextPresetId)
+        : null) ?? nextPreset;
+    if (!chosen) return;
+    if (nextPresetId) setPresetId(nextPresetId);
     setSimulateStatus("loading");
     setSimulateError(null);
     const payload = await runStress({
       action: "simulate",
       home: nextHome,
       household,
-      scenario: { id: nextPreset.id },
+      scenario: { id: chosen.id },
     });
     const parsed = parseSimulatePayload(payload);
     if (!parsed) {
@@ -350,47 +374,65 @@ export function StressView() {
       <Header title="Stress Test" />
       <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-          Optional modeled mode
+          {STRESS_FLOW_COPY}
         </p>
-        <h2 className="text-lg font-semibold text-foreground">Test my preparedness</h2>
+        <h2 className="text-lg font-semibold text-foreground">{STRESS_HEADLINE}</h2>
         <p className="text-sm leading-relaxed text-muted">{STRESS_MODELED_COPY}</p>
 
-        <Card eyebrow="Scenario presets" title="Pick a simulated stress">
-          <div className="flex flex-wrap gap-2">
-            {presets.map((item) => {
-              const selected = item.id === presetId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setPresetId(item.id)}
-                  className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
-                    selected
-                      ? "border-accent-strong bg-accent-strong text-white"
-                      : "border-border bg-white text-foreground hover:bg-surface-elevated"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+        <Card eyebrow="Simple start" title="Try a power outage">
+          <p className="text-sm leading-relaxed">
+            See how a modeled 12-hour outage can ripple through this home — phones,
+            food, and staying in place. Simulated only.
+          </p>
           {scenario ? (
-            <p className="mt-3 text-xs leading-relaxed text-muted">{scenario.disclaimer}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">{scenario.disclaimer}</p>
           ) : null}
           <div className="mt-3">
             <Button
-              onClick={() => void runSimulate(home)}
+              onClick={() => void runSimulate(home, scenario, SIMPLE_POWER_OUTAGE_PRESET_ID)}
               disabled={simulateStatus === "loading"}
             >
-              {simulateStatus === "loading" ? "Running model…" : "Run modeled scenario"}
+              {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_POWER_OUTAGE}
             </Button>
           </div>
+          <details className="mt-4 rounded-2xl border border-border bg-white px-3 py-2">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">
+              Try a different scenario
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {presets.map((item) => {
+                const selected = item.id === presetId;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setPresetId(item.id)}
+                    className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
+                      selected
+                        ? "border-accent-strong bg-accent-strong text-white"
+                        : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3">
+              <Button
+                variant="secondary"
+                onClick={() => void runSimulate(home)}
+                disabled={simulateStatus === "loading"}
+              >
+                {simulateStatus === "loading" ? "Running model…" : STRESS_RUN_THIS_SCENARIO}
+              </Button>
+            </div>
+          </details>
         </Card>
 
         {simulateStatus === "loading" ? (
-          <LoadingCard title="Modeled cascade" label="Simulating household dependencies…" />
+          <LoadingCard title="What could go wrong?" label="Simulating household dependencies…" />
         ) : null}
         {simulateStatus === "unavailable" || simulateStatus === "error" ? (
           <ErrorNote title="Stress Test unavailable">
@@ -400,10 +442,13 @@ export function StressView() {
 
         {simulateStatus === "ready" && result ? (
           <>
-            <Card eyebrow="First break" title={result.firstBreak?.label ?? "No first break modeled"}>
+            <Card
+              eyebrow={STRESS_WEAKEST_LINK}
+              title={result.firstBreak?.label ?? "No weakest link in this model"}
+            >
               {result.firstBreak ? (
                 <p>
-                  {disruptionLabel(result.firstBreak.level)}. Capacity{" "}
+                  {friendlyDisruptionSentence(result.firstBreak.level)} Capacity{" "}
                   {Math.round(result.firstBreak.capacity)} / 100 under this
                   simulation — not a safety score.
                 </p>
@@ -413,104 +458,48 @@ export function StressView() {
                   official all-clear.
                 </p>
               )}
-            </Card>
-
-            <Card eyebrow="Modeled household access" title={disruptionLabel(result.disruptionLevel)}>
-              <p>
-                Capacity {Math.round(result.householdAccess)} / 100 in this
-                simulation. This is not a forecast and not a safety score.
-              </p>
               <p className="mt-2 text-xs">
-                Cascade path:{" "}
-                {result.cascadePath.length > 0 ? result.cascadePath.join(" → ") : "None modeled"}
+                Whole-home access: {disruptionLabel(result.disruptionLevel)} ·{" "}
+                {Math.round(result.householdAccess)} / 100 in this simulation.
+                This is not a forecast and not a safety score.
               </p>
             </Card>
 
-            <Card eyebrow="2D cascade" title="How stress can propagate">
-              <StressCascade
-                nodes={result.nodes}
-                edges={graph?.edges ?? []}
-                cascadePath={result.cascadePath}
-              />
-              <ul className="mt-3 space-y-1 text-xs">
-                {result.affected.length > 0 ? (
-                  result.affected.map((node) => (
+            <Card eyebrow="Household view" title="How one break can cascade">
+              <StressScene result={result} edges={graph?.edges ?? []} />
+              <p className="mt-3 text-xs">
+                <Link href="/map" className="font-semibold text-accent-strong">
+                  {STRESS_SEE_ON_MAP}
+                </Link>
+                {" — "}
+                optional map overlay. Still modeled, not a utility twin.
+              </p>
+              {result.affected.length > 0 ? (
+                <ul className="mt-3 space-y-1 text-xs">
+                  {result.affected.map((node) => (
                     <li key={node.id}>
                       {node.label}: {disruptionLabel(node.level)}
                     </li>
-                  ))
-                ) : (
-                  <li>No downstream nodes were marked affected in this model.</li>
-                )}
-              </ul>
-            </Card>
-
-            {result.assumptions.length > 0 ? (
-              <Card eyebrow="Assumptions" title="What this model used">
-                <ul className="list-disc space-y-1 pl-4 text-xs">
-                  {result.assumptions.map((line) => (
-                    <li key={line}>{line}</li>
                   ))}
                 </ul>
-              </Card>
-            ) : null}
+              ) : (
+                <p className="mt-3 text-xs">
+                  No downstream systems were marked affected in this model.
+                </p>
+              )}
+            </Card>
           </>
         ) : null}
 
-        <Card eyebrow="Search" title="Minimum breakdown and worst case">
+        <Card eyebrow={STRESS_NEXT_STEPS} title="Fortify the weak spot">
           <p className="mb-3 text-xs leading-relaxed">
-            Bounded searches over modeled power, road, transport, and water
-            stress. Results stay simulated — not a forecast.
+            Suggested actions use official hazard state when it is available.
+            StormReady will not invent an all-clear.
           </p>
-          <div className="flex flex-col gap-2">
-            <Button variant="secondary" onClick={() => void runMin()} disabled={minStatus === "loading"}>
-              {minStatus === "loading" ? "Searching…" : "Find minimum breakdown"}
-            </Button>
-            <Button variant="secondary" onClick={() => void runWorst()} disabled={worstStatus === "loading"}>
-              {worstStatus === "loading" ? "Searching…" : "Find worst case"}
-            </Button>
-          </div>
-          {minStatus === "ready" && minResult ? (
-            <div className="mt-3 text-sm">
-              {minResult.status === "found" ? (
-                <p>
-                  Minimum modeled breakdown: {minResult.scenario.label}. First
-                  break {minResult.result.firstBreak?.label ?? "unspecified"} (
-                  {disruptionLabel(minResult.result.disruptionLevel)}).
-                </p>
-              ) : (
-                <p>
-                  No breakdown was found in the bounded search. That is not an
-                  all-clear and not a safety score.
-                </p>
-              )}
-            </div>
-          ) : null}
-          {minStatus === "unavailable" ? (
-            <p className="mt-3 text-xs text-muted">Minimum breakdown search is unavailable.</p>
-          ) : null}
-          {worstStatus === "ready" && worstResult ? (
-            <p className="mt-3 text-sm">
-              Worst modeled case: {worstResult.scenario.label}. First break{" "}
-              {worstResult.result.firstBreak?.label ?? "unspecified"} (
-              {disruptionLabel(worstResult.result.disruptionLevel)}).
-            </p>
-          ) : null}
-          {worstStatus === "unavailable" ? (
-            <p className="mt-3 text-xs text-muted">Worst-case search is unavailable.</p>
-          ) : null}
-          {minStatus === "loading" || worstStatus === "loading" ? (
-            <div className="mt-3">
-              <Spinner label="Searching modeled scenarios…" />
-            </div>
-          ) : null}
-        </Card>
-
-        <Card eyebrow="Fortify" title="Actions that address modeled breaks">
           {hazardsStatus === "loading" || hazardsStatus === "idle" ? (
             <Spinner label="Checking official hazard state…" />
           ) : hazardsStatus !== "ready" || !hazards ? (
-            <UnavailableNote title="Fortify unavailable">
+            <UnavailableNote title="Next steps unavailable">
               {STRESS_FORTIFY_UNAVAILABLE}
             </UnavailableNote>
           ) : (
@@ -519,19 +508,19 @@ export function StressView() {
                 onClick={() => void runFortify()}
                 disabled={fortifyStatus === "loading"}
               >
-                {fortifyStatus === "loading" ? "Building list…" : "Show fortify list"}
+                {fortifyStatus === "loading" ? "Building list…" : STRESS_SUGGEST_NEXT}
               </Button>
               {fortifyStatus === "unavailable" ? (
                 <div className="mt-3">
-                  <UnavailableNote title="Fortify unavailable">
+                  <UnavailableNote title="Next steps unavailable">
                     {STRESS_FORTIFY_UNAVAILABLE}
                   </UnavailableNote>
                 </div>
               ) : null}
               {fortifyStatus === "error" ? (
                 <div className="mt-3">
-                  <ErrorNote title="Fortify could not run">
-                    The fortify request failed. StormReady will not invent a list
+                  <ErrorNote title="Next steps could not run">
+                    The request failed. StormReady will not invent a list
                     or an all-clear.
                   </ErrorNote>
                 </div>
@@ -540,7 +529,7 @@ export function StressView() {
                 <ul className="mt-3 space-y-2">
                   {fortify.selected.length === 0 ? (
                     <li className="text-sm">
-                      No fortify actions were selected under current constraints.
+                      No next steps were selected under current constraints.
                       This is not an all-clear.
                     </li>
                   ) : (
@@ -564,7 +553,88 @@ export function StressView() {
               ) : null}
             </>
           )}
+          <div className="mt-3">
+            <Button href="/plan" variant="secondary">
+              {STRESS_UPDATE_PLAN}
+            </Button>
+          </div>
         </Card>
+
+        <details className="rounded-3xl border border-border bg-surface p-4 shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
+          <summary className="cursor-pointer text-sm font-semibold text-foreground">
+            {STRESS_ADVANCED_SUMMARY}
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            Bounded searches over modeled power, road, transport, and water
+            stress. Results stay simulated — not a forecast.
+          </p>
+          {simulateStatus === "ready" && result ? (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-foreground">2D diagram</p>
+              <StressCascade
+                nodes={result.nodes}
+                edges={graph?.edges ?? []}
+                cascadePath={result.cascadePath}
+              />
+              <p className="mt-2 text-xs text-muted">
+                Path:{" "}
+                {result.cascadePath.length > 0 ? result.cascadePath.join(" → ") : "None modeled"}
+              </p>
+            </div>
+          ) : null}
+          <div className="mt-3 flex flex-col gap-2">
+            <Button variant="secondary" onClick={() => void runMin()} disabled={minStatus === "loading"}>
+              {minStatus === "loading" ? "Searching…" : STRESS_MIN_SEARCH_LABEL}
+            </Button>
+            <Button variant="secondary" onClick={() => void runWorst()} disabled={worstStatus === "loading"}>
+              {worstStatus === "loading" ? "Searching…" : STRESS_WORST_SEARCH_LABEL}
+            </Button>
+          </div>
+          {minStatus === "ready" && minResult ? (
+            <div className="mt-3 text-sm">
+              {minResult.status === "found" ? (
+                <p>
+                  Smallest modeled break: {minResult.scenario.label}. Weakest
+                  link {minResult.result.firstBreak?.label ?? "unspecified"} (
+                  {disruptionLabel(minResult.result.disruptionLevel)}).
+                </p>
+              ) : (
+                <p>
+                  No breakdown was found in the bounded search. That is not an
+                  all-clear and not a safety score.
+                </p>
+              )}
+            </div>
+          ) : null}
+          {minStatus === "unavailable" ? (
+            <p className="mt-3 text-xs text-muted">Smallest-change search is unavailable.</p>
+          ) : null}
+          {worstStatus === "ready" && worstResult ? (
+            <p className="mt-3 text-sm">
+              Toughest modeled case: {worstResult.scenario.label}. Weakest link{" "}
+              {worstResult.result.firstBreak?.label ?? "unspecified"} (
+              {disruptionLabel(worstResult.result.disruptionLevel)}).
+            </p>
+          ) : null}
+          {worstStatus === "unavailable" ? (
+            <p className="mt-3 text-xs text-muted">Toughest-case search is unavailable.</p>
+          ) : null}
+          {minStatus === "loading" || worstStatus === "loading" ? (
+            <div className="mt-3">
+              <Spinner label="Searching modeled scenarios…" />
+            </div>
+          ) : null}
+          {simulateStatus === "ready" && result && result.assumptions.length > 0 ? (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-foreground">What this model used</p>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-muted">
+                {result.assumptions.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </details>
 
         <p className="text-xs leading-relaxed text-muted">
           Optional mode. Open your{" "}
