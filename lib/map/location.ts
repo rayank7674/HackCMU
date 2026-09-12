@@ -82,6 +82,18 @@ export type MapViewModel = {
   showTampaExamplePins: boolean;
 };
 
+export function pointsForBounds(
+  home: LatLon | null,
+  pins: readonly LatLon[],
+): LatLon[] {
+  const points = pins.map((pin) => ({
+    latitude: pin.latitude,
+    longitude: pin.longitude,
+  }));
+  if (home) points.push(home);
+  return points;
+}
+
 export function resolveMapView(location: GeocodedLocation | null | undefined): MapViewModel {
   const known = knownCoordinates(location);
   if (!known) {

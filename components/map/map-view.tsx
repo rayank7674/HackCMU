@@ -47,7 +47,7 @@ export function MapView() {
         </Card>
       )}
 
-      <div className="relative z-0 h-[260px] overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
+      <div className="relative z-0 h-[300px] overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
         {hydrated ? (
           <StormMap
             center={view.center}

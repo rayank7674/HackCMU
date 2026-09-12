@@ -8,9 +8,10 @@ import {
   TileLayer,
   useMap,
 } from "react-leaflet";
+import { latLngBounds } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MapResourcePin } from "@/lib/map/resources";
-import type { LatLon } from "@/lib/map/location";
+import { pointsForBounds, type LatLon } from "@/lib/map/location";
 import { getMapTileLayer } from "@/lib/map/resources";
 
 const HOME_COLOR = "#1e4f86";
@@ -35,6 +36,25 @@ function Recenter({ center, zoom }: { center: LatLon; zoom: number }) {
   return null;
 }
 
+function FitPins({
+  home,
+  pins,
+}: {
+  home: LatLon | null;
+  pins: MapResourcePin[];
+}) {
+  const map = useMap();
+  useEffect(() => {
+    const points = pointsForBounds(home, pins);
+    if (points.length < 2) return;
+    const bounds = latLngBounds(
+      points.map((point) => [point.latitude, point.longitude] as [number, number]),
+    );
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 12 });
+  }, [home, map, pins]);
+  return null;
+}
+
 export function StormMap({
   center,
   zoom,
@@ -51,7 +71,11 @@ export function StormMap({
       className="h-full w-full"
       attributionControl
     >
-      <Recenter center={center} zoom={zoom} />
+      {pins.length > 0 ? (
+        <FitPins home={approximateHome} pins={pins} />
+      ) : (
+        <Recenter center={center} zoom={zoom} />
+      )}
       <TileLayer
         url={tiles.url}
         attribution={tiles.attribution}
@@ -70,7 +94,7 @@ export function StormMap({
             weight: 2,
           }}
         >
-          <Popup>
+          <Popup maxWidth={220} autoPan>
             <p className="text-sm font-semibold text-foreground">
               Approximate home location
             </p>
@@ -92,7 +116,7 @@ export function StormMap({
             weight: 2,
           }}
         >
-          <Popup>
+          <Popup maxWidth={220} autoPan>
             <p className="text-sm font-semibold text-foreground">{pin.title}</p>
             <p className="mt-1 text-xs text-muted">{pin.description}</p>
             <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">

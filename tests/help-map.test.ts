@@ -17,6 +17,7 @@ import {
   distanceKm,
   isNearTampa,
   knownCoordinates,
+  pointsForBounds,
   resolveMapView,
 } from "@/lib/map/location";
 import {
@@ -115,6 +116,12 @@ describe("Map location and tiles", () => {
     expect(distant.showTampaExamplePins).toBe(false);
     expect(distant.approximateHome).not.toBeNull();
     expect(pinsForView(distant.showTampaExamplePins)).toEqual([]);
+    expect(pointsForBounds(null, TAMPA_RESOURCE_PINS)).toHaveLength(
+      TAMPA_RESOURCE_PINS.length,
+    );
+    expect(pointsForBounds(empty.center, TAMPA_RESOURCE_PINS)).toHaveLength(
+      TAMPA_RESOURCE_PINS.length + 1,
+    );
   });
 
   it("defaults to OpenStreetMap tiles without a Mapbox token", () => {
