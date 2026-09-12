@@ -60,6 +60,12 @@ export type BackupPowerType =
 export type PetType = "dog" | "cat" | "bird" | "fish" | "other";
 
 /**
+ * Household spending capacity for preparedness. Classes only — never invent
+ * dollar amounts. `"unknown"` is not "flexible"; prefer no-cost / low-cost.
+ */
+export type BudgetClass = "zero" | "low" | "moderate" | "flexible";
+
+/**
  * Geocode / NWS location fields written back onto the home profile.
  * All start as `"unknown"` until an adapter fills them. Persist on
  * HomeProfile rather than inventing a second location type.
@@ -108,6 +114,11 @@ export type HomeProfile = {
   backupPowerType: Unknownable<BackupPowerType>;
   hasWellWater: Unknownable<boolean>;
   hasSeptic: Unknownable<boolean>;
+  /**
+   * Age of the current roof in years. `"unknown"` is not "new" or "fine" —
+   * the rules engine must treat an unknown roof as a vulnerability to check.
+   */
+  roofAgeYears: Unknownable<number>;
   notes: Unknownable<string>;
   attributesProvenance: Provenance;
 };
@@ -140,6 +151,8 @@ export type HouseholdProfile = {
   vehicleCount: Unknownable<number>;
   canSelfEvacuate: Unknownable<boolean>;
   preferredLanguage: Unknownable<string>;
+  /** Spending class for ranking. `"unknown"` is not treated as flexible. */
+  budgetClass: Unknownable<BudgetClass>;
   notes: Unknownable<string>;
   provenance: Provenance;
 };
@@ -156,6 +169,7 @@ export type HazardKind =
   | "extreme_cold"
   | "winter_storm"
   | "wind"
+  | "wildfire"
   | "rip_current"
   | "other";
 
@@ -213,11 +227,24 @@ export type RecommendationCategory =
   | "documents"
   | "other";
 
+/**
+ * When the household should act. The Phase 1 engine surfaces
+ * `now` | `before_next_event` | `long_term`. The other values remain
+ * valid for later phases.
+ */
 export type RecommendationTimeframe =
   | "now"
   | "before_event"
+  | "before_next_event"
   | "during_event"
-  | "after_event";
+  | "after_event"
+  | "long_term";
+
+/** Horizons the Phase 1 engine is allowed to surface. */
+export type RecommendationHorizon =
+  | "now"
+  | "before_next_event"
+  | "long_term";
 
 /**
  * Deterministic rule output. Not persisted by the Phase 1 profile store.

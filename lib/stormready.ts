@@ -14,6 +14,7 @@
 export type {
   ActiveHazard,
   BackupPowerType,
+  BudgetClass,
   ConstructionType,
   DwellingType,
   GeocodedLocation,
@@ -27,6 +28,7 @@ export type {
   Provenance,
   Recommendation,
   RecommendationCategory,
+  RecommendationHorizon,
   RecommendationPriority,
   RecommendationTimeframe,
   StormReadySnapshot,
@@ -57,3 +59,33 @@ export {
   saveHouseholdProfile,
   saveProfile,
 } from "./profile-store";
+
+export {
+  recommend,
+  evaluateRules,
+  explainHazardAvailability,
+  RULE_COUNT,
+  actionFitsBudget,
+  budgetLabel,
+  ENGINE_REASONS,
+} from "./recommendations";
+
+export type {
+  EngineResult,
+  EngineStatus,
+  HazardSource,
+  RankedRecommendation,
+  RecommendationInput,
+} from "./recommendations";
+
+export {
+  TAMPA_DEMO_HOME,
+  TAMPA_DEMO_HOUSEHOLD,
+  TAMPA_QUIET_WEATHER,
+  TAMPA_HURRICANE_WATCH,
+  TAMPA_EVACUATION_WARNING,
+  TAMPA_FLOOD_WARNING,
+  hazardFixtureFor,
+  tampaDemoInput,
+} from "./fixtures/tampa-demo";
+export type { DemoScenario } from "./fixtures/tampa-demo";
