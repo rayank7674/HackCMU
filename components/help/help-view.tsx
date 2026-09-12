@@ -10,7 +10,6 @@ import {
   FINANCIAL_ASSISTANCE_INTRO,
   FINANCIAL_LINKS,
   HOW_STORMREADY_WORKS,
-  LOCAL_HELP_EXAMPLE_NOTE,
   LOCAL_HELP_INTRO,
   LOCAL_HELP_LINKS,
   PREPAREDNESS_LINKS,
@@ -27,10 +26,6 @@ export function HelpView() {
   const { profile, hydrated } = useProfile();
   const home = profile.home ?? null;
   const local = resolveLocalHelp(home);
-  const showRegionalNote = local.links.some((link) =>
-    /example/i.test(link.source),
-  );
-
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col">
@@ -68,29 +63,24 @@ export function HelpView() {
           ) : null}
         </section>
 
-        <Card eyebrow="Call or look up" title="Local numbers">
-          <ul className="space-y-3">
-            {local.numbers.map((item) => (
-              <LocalNumberRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </Card>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <HelpSection title="Now" links={PREPAREDNESS_LINKS.slice(0, 3)}>
+            Check current conditions and your household plan.
+          </HelpSection>
+          <Card eyebrow="Emergency" title="Call for immediate danger">
+            <ul className="space-y-3">
+              {local.numbers.slice(0, 2).map((item) => <LocalNumberRow key={item.id} item={item} />)}
+            </ul>
+          </Card>
+          <HelpSection title="After" links={[...LOCAL_HELP_LINKS, ...local.links].slice(0, 4)}>
+            Find local updates, shelter, food, and recovery help.
+          </HelpSection>
+          <HelpSection title="Money" links={FINANCIAL_LINKS}>
+            Find disaster assistance and recovery support.
+          </HelpSection>
+        </div>
 
-        <Card title="Official pages">
-          {showRegionalNote ? (
-            <p className="mb-2 text-xs leading-relaxed">{LOCAL_HELP_EXAMPLE_NOTE}</p>
-          ) : null}
-          <OfficialLinkList
-            links={[...PREPAREDNESS_LINKS, ...LOCAL_HELP_LINKS, ...local.links]}
-          />
-        </Card>
-
-        <Card title="Financial assistance">
-          <p>{FINANCIAL_ASSISTANCE_INTRO}</p>
-          <OfficialLinkList links={FINANCIAL_LINKS} />
-        </Card>
-
-        <details className="rounded-3xl border border-border bg-surface p-4">
+        <details className="rounded-2xl border border-border bg-surface p-4">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
             How StormReady works
           </summary>
@@ -109,6 +99,14 @@ export function HelpView() {
         </ul>
       </div>
     </main>
+  );
+}
+
+function HelpSection({ title, links, children }: { title: string; links: typeof PREPAREDNESS_LINKS; children: string }) {
+  return (
+    <Card eyebrow={title} title={children}>
+      <OfficialLinkList links={links} />
+    </Card>
   );
 }
 

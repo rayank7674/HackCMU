@@ -33,19 +33,19 @@ export default function ProfilePage() {
               <p>{formatDwelling(profile.home?.dwellingType ?? "unknown")}</p>
               <p className="mt-2">{householdSummary(profile.household)}</p>
             </Card>
-            <Button href="/onboarding">Update home details</Button>
-            <SavePlanControl
-              snapshot={{
-                home: profile.home,
-                household: profile.household,
-                hazards: null,
-                recommendations: [],
-              }}
-              returnTo="/profile"
-            />
-            <AuthControls returnTo="/profile" />
-            <Button variant="secondary" onClick={() => setConfirmClear(true)}>
-              Clear this device
+            <div className="flex flex-wrap gap-2">
+              <Button href="/onboarding">Update home details</Button>
+              <SavePlanControl
+                snapshot={{ home: profile.home, household: profile.household, hazards: null, recommendations: [] }}
+                returnTo="/profile"
+              />
+            </div>
+            <details className="rounded-2xl border border-border bg-surface p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground">Account</summary>
+              <div className="mt-3"><AuthControls returnTo="/profile" /></div>
+            </details>
+            <Button variant="secondary" className="border-danger/40 text-danger hover:bg-danger/10" onClick={() => setConfirmClear(true)}>
+              Clear device
             </Button>
           </>
         ) : (
@@ -58,9 +58,7 @@ export default function ProfilePage() {
             <AuthControls returnTo="/profile" />
           </>
         )}
-        <p className="text-xs leading-relaxed text-muted">
-          Onboarding stays anonymous. Log in only to save or restore a plan.
-        </p>
+        <p className="text-xs leading-relaxed text-muted">Your details stay on this device unless you choose to save them.</p>
       </div>
 
       <Modal

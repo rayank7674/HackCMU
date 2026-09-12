@@ -134,31 +134,7 @@ export function MapView() {
 
   return (
     <div className="flex flex-1 flex-col gap-3 px-5 pb-8 pt-4">
-      {!hydrated ? (
-        <Card title="Map">Loading this device…</Card>
-      ) : view.hasHomeLocation ? (
-        <Card eyebrow="Approximate" title="Your saved location">
-          The home marker is offset so the exact address is not shown. Nearby
-          dots are grocery / food / utilities, pharmacy, clinic, and mapped
-          shelter-style points.
-          Green or red means posted hours say the place is open or closed{" "}
-          <span className="font-semibold text-foreground">right now</span>
-          — not a model.
-        </Card>
-      ) : (
-        <Card eyebrow="No home location yet" title="Tampa demo area">
-          Set up your plan to place an approximate marker for this home. Until
-          then, the map is centered on the Tampa demo. Pin color is posted hours
-          for right now, not a model.
-          <div className="mt-3">
-            <Button href="/onboarding" variant="secondary">
-              Set up your plan
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      <div className="sr-map-frame relative z-0 overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_10px_30px_rgba(16,35,61,0.06)]">
+      <div className="sr-map-frame relative z-0 min-h-[28rem] overflow-hidden rounded-2xl border border-border bg-surface">
         {hydrated ? (
           <StormMap
             center={view.center}
@@ -174,6 +150,20 @@ export function MapView() {
           </div>
         )}
       </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted" aria-label="Map legend">
+        <span><i className="mr-1.5 inline-block size-2 rounded-full bg-accent" />Home</span>
+        <span><i className="mr-1.5 inline-block size-2 rounded-full bg-success" />Resources</span>
+        <span><i className="mr-1.5 inline-block size-2 rounded-full bg-warning" />Modeled</span>
+      </div>
+      <p className="text-xs leading-relaxed text-muted">Nearby resources are approximate. Check the linked source before you go.</p>
+
+      {!hydrated ? <Card title="Map">Loading this device…</Card> : !view.hasHomeLocation ? (
+        <Card eyebrow="No home location yet" title="Tampa demo area">
+          Set up your plan to place an approximate marker for this home.
+          <div className="mt-3"><Button href="/onboarding" variant="secondary">Set up your plan</Button></div>
+        </Card>
+      ) : null}
 
       {placesStatus === "loading" ? (
         <LoadingCard
