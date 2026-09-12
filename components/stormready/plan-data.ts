@@ -62,10 +62,14 @@ export function usePlanData(
   const postalCode =
     profile.home && isKnown(profile.home.postalCode) ? profile.home.postalCode : "";
   const city = profile.home && isKnown(profile.home.city) ? profile.home.city : "";
+  const addressLine =
+    profile.home && isKnown(profile.home.addressLine)
+      ? profile.home.addressLine
+      : "";
   const homeId = profile.home?.id ?? "";
   const householdId = profile.household?.id ?? "";
   const updatedAt = profile.updatedAt ?? "";
-  const cacheKey = `${homeId}|${householdId}|${postalCode}|${city}|${updatedAt}`;
+  const cacheKey = `${homeId}|${householdId}|${postalCode}|${city}|${addressLine}|${updatedAt}`;
   const [data, setData] = useState<FetchedPlan | null>(null);
 
   useEffect(() => {
@@ -80,6 +84,7 @@ export function usePlanData(
 
     (async () => {
       const alertsResult = await fetchAlerts({
+        addressLine: isKnown(home.addressLine) ? home.addressLine : undefined,
         postalCode: isKnown(home.postalCode) ? home.postalCode : undefined,
         city: isKnown(home.city) ? home.city : undefined,
         state: isKnown(home.state) ? home.state : undefined,

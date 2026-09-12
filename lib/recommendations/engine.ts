@@ -51,7 +51,8 @@ export function explainHazardAvailability(
   if (!isUsableHazardState(input.hazards)) {
     return ENGINE_REASONS.hazardStateMissing;
   }
-  if (input.hazards.allClear === "unknown") {
+  // Missing / garbage allClear is unconfirmed — only true|false are known.
+  if (input.hazards.allClear !== true && input.hazards.allClear !== false) {
     return ENGINE_REASONS.hazardStateUnconfirmed;
   }
   if (input.hazards.allClear === false && input.hazards.hazards.length === 0) {
