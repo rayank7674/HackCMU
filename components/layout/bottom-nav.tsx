@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useNavCollapse } from "@/components/layout/nav-collapse";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+
 
 export const STRESS_TEST_HREF = "/stress-test";
 
@@ -54,6 +56,7 @@ export function BottomNav() {
     <nav aria-label="Main" className="sr-nav">
       <div className="sr-nav-top">
         <p className="sr-nav-brand">{collapsed ? "SR" : "StormReady"}</p>
+        <ThemeToggle />
         <button
           type="button"
           className="sr-nav-collapse"

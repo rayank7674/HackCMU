@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+
 
 type HeaderProps = {
   title: string;
@@ -9,7 +11,7 @@ type HeaderProps = {
 
 export function Header({ title, backHref, emphatic = false }: HeaderProps) {
   return (
-    <header className="sr-page-header sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-gradient-to-b from-white to-blue-wash/80 px-4 py-3.5 pt-[max(0.85rem,env(safe-area-inset-top))] backdrop-blur">
+    <header className="sr-page-header sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background px-4 py-3.5 pt-[max(0.85rem,env(safe-area-inset-top))]">
       {backHref ? (
         <Link
           href={backHref}
@@ -30,7 +32,7 @@ export function Header({ title, backHref, emphatic = false }: HeaderProps) {
       >
         {title}
       </h1>
-      <span className="h-9 w-9" />
+      <ThemeToggle />
     </header>
   );
 }
