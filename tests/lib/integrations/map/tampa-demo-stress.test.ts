@@ -74,7 +74,7 @@ describe("modeled stress geo overlay", () => {
   });
 
   it("offsets by heading without claiming a utility site", () => {
-    const moved = offsetFromAnchor(TAMPA_DEMO_CENTER, 90, 520);
+    const moved = offsetFromAnchor(TAMPA_DEMO_CENTER, 45, 520);
     expect(moved.latitude).not.toBe(TAMPA_DEMO_CENTER.latitude);
     expect(moved.longitude).not.toBe(TAMPA_DEMO_CENTER.longitude);
   });
