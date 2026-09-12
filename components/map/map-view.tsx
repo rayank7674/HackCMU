@@ -41,7 +41,7 @@ export function MapView({
       ) : view.hasHomeLocation ? (
         <Card eyebrow="Approximate" title="Your saved location">
           The home marker is offset so the exact address is not shown. Resource
-          pins are official offices or demo examples — not a ranking and not
+          pins are official offices or demo examples - not a ranking and not
           live shelter status.
         </Card>
       ) : (

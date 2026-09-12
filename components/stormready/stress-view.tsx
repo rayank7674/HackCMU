@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StressCascade } from "@/components/stormready/stress-cascade";
@@ -58,13 +57,13 @@ import { formatCostClass } from "@/lib/stormready-format";
 import { useProfile } from "@/lib/use-profile";
 
 export const STRESS_MODELED_COPY =
-  "Simulated planning scenario. Modeled under your home details — not a forecast, not official alerts, and not a safety score.";
+  "Simulated planning scenario. Modeled under your home details - not a forecast, not official alerts, and not a safety score.";
 
 export const STRESS_FORTIFY_UNAVAILABLE =
   "Fortify needs an official hazard state. StormReady will not invent alerts or an all-clear.";
 
 export const STRESS_ONBOARDING_COPY =
-  "Stress Test needs a home profile. Finish setup first — StormReady will not invent one.";
+  "Stress Test needs a home profile. Finish setup first - StormReady will not invent one.";
 
 type SimulatePayload = {
   graph: DependencyGraph;
@@ -374,7 +373,6 @@ export function StressView() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col">
-        <Header title="Stress Test" />
         <div className="px-5 py-8">
           <LoadingCard title="Stress Test" label="Loading this device…" lines={2} />
         </div>
@@ -385,7 +383,6 @@ export function StressView() {
   if (!hasProfile || !home) {
     return (
       <main className="flex flex-1 flex-col">
-        <Header title="Stress Test" />
         <div className="flex flex-1 flex-col px-5 pb-8 pt-6">
           <h2 className="text-2xl font-semibold tracking-tight">Home profile needed</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">{STRESS_ONBOARDING_COPY}</p>
@@ -402,7 +399,6 @@ export function StressView() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Stress Test" />
       <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
           {STRESS_FLOW_COPY}
@@ -528,7 +524,7 @@ export function StressView() {
                 <p>
                   {friendlyDisruptionSentence(result.firstBreak.level)} Capacity{" "}
                   {Math.round(result.firstBreak.capacity)} / 100 under this
-                  simulation — not a safety score.
+                  simulation - not a safety score.
                 </p>
               ) : (
                 <p>
@@ -549,7 +545,7 @@ export function StressView() {
                 <Link href="/map" className="font-semibold text-accent-strong">
                   {STRESS_SEE_ON_MAP}
                 </Link>
-                {" — "}
+                {" - "}
                 optional map overlay. Still modeled, not a utility twin.
               </p>
               {result.affected.length > 0 ? (
@@ -644,7 +640,7 @@ export function StressView() {
           </summary>
           <p className="mt-2 text-xs leading-relaxed text-muted">
             Bounded searches over modeled power, road, transport, and water
-            stress. Results stay simulated — not a forecast.
+            stress. Results stay simulated - not a forecast.
           </p>
           {simulateStatus === "ready" && result ? (
             <div className="mt-3">

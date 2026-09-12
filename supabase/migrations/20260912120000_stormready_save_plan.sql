@@ -1,7 +1,7 @@
--- StormReady Phase 2 — Save My Plan schema
+-- StormReady Phase 2 - Save My Plan schema
 --
 -- Apply with `supabase db push` (linked project) or paste this file into the
--- Supabase SQL editor. Postgres / Supabase only — no MongoDB.
+-- Supabase SQL editor. Postgres / Supabase only - no MongoDB.
 --
 -- Unknownable semantics (must match types/domain.ts):
 --   "unknown" means "not confirmed". It is not false, 0, "", [], or null.
@@ -26,7 +26,7 @@ END;
 $$;
 
 -- JWT subject from Auth0 (or Supabase Auth). Used by RLS only.
--- Not SECURITY DEFINER — it only reads the request JWT.
+-- Not SECURITY DEFINER - it only reads the request JWT.
 CREATE OR REPLACE FUNCTION public.request_auth0_sub()
 RETURNS text
 LANGUAGE sql
@@ -59,7 +59,7 @@ COMMENT ON TABLE public.users IS
 COMMENT ON COLUMN public.users.auth0_sub IS
   'Auth0 subject claim (e.g. auth0|abc123). Required identity for save/load.';
 COMMENT ON COLUMN public.users.email IS
-  'Optional Auth0 email. Null until Auth0 provides it — not an Unknownable field.';
+  'Optional Auth0 email. Null until Auth0 provides it - not an Unknownable field.';
 
 CREATE TRIGGER users_set_updated_at
   BEFORE UPDATE ON public.users
@@ -159,7 +159,7 @@ COMMENT ON COLUMN public.household_profiles.pet_count IS
 COMMENT ON COLUMN public.household_profiles.pet_types IS
   'Unknownable<PetType[]>: [] is confirmed none listed; "unknown" is unanswered.';
 COMMENT ON COLUMN public.household_profiles.budget_class IS
-  'Unknownable<BudgetClass>. "unknown" is not flexible — prefer no-cost / low-cost.';
+  'Unknownable<BudgetClass>. "unknown" is not flexible - prefer no-cost / low-cost.';
 
 CREATE TRIGGER household_profiles_set_updated_at
   BEFORE UPDATE ON public.household_profiles
@@ -167,7 +167,7 @@ CREATE TRIGGER household_profiles_set_updated_at
   EXECUTE PROCEDURE public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- GeneratedRecommendation — latest plan snapshot
+-- GeneratedRecommendation - latest plan snapshot
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.generated_recommendations (
   user_id uuid PRIMARY KEY REFERENCES public.users (id) ON DELETE CASCADE,
@@ -181,7 +181,7 @@ CREATE TABLE public.generated_recommendations (
 );
 
 COMMENT ON TABLE public.generated_recommendations IS
-  'Latest recommendation snapshot for a user. hazards null means not persisted — not all-clear.';
+  'Latest recommendation snapshot for a user. hazards null means not persisted - not all-clear.';
 COMMENT ON COLUMN public.generated_recommendations.recommendations IS
   'JSON array of Recommendation objects from types/domain.ts.';
 COMMENT ON COLUMN public.generated_recommendations.hazards IS
@@ -215,7 +215,7 @@ COMMENT ON COLUMN public.audit_logs.source IS
   'Provenance or writer (user_reported, external_source, save_plan, rules_engine).';
 
 -- ---------------------------------------------------------------------------
--- Row Level Security — deny-by-default for anon; own-row for JWT sub
+-- Row Level Security - deny-by-default for anon; own-row for JWT sub
 -- ---------------------------------------------------------------------------
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.home_profiles ENABLE ROW LEVEL SECURITY;

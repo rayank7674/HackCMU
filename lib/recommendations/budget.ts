@@ -14,7 +14,7 @@ const BUDGET_RANK: Record<BudgetClass, number> = {
   flexible: 3,
 };
 
-/** Human label — classes only, never a dollar figure. */
+/** Human label - classes only, never a dollar figure. */
 export function budgetLabel(budgetClass: BudgetClass): string {
   switch (budgetClass) {
     case "zero":

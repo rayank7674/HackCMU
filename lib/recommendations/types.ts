@@ -22,7 +22,7 @@ export type RecommendationInput = {
   hazards: HazardState | null;
   /**
    * Adapters set `unavailable` when the NWS/geocode fetch failed.
-   * The engine then fails closed — it does not invent an all-clear.
+   * The engine then fails closed - it does not invent an all-clear.
    */
   hazardSource?: HazardSource;
   /** Optional knapsack caps from Help Me Prioritize (session-only). */
@@ -36,7 +36,7 @@ export type RankedRecommendation = Recommendation & {
   hardConstraint?: boolean;
   estimatedTimeMinutes?: number;
   estimatedCostRange?: { min: number; max: number };
-  /** Preparedness utility 0–1 — not a safety or survival score. */
+  /** Preparedness utility 0–1 - not a safety or survival score. */
   utilityScore?: number;
   hazardRelevance?: number;
   householdFit?: number;

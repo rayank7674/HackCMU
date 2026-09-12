@@ -1,6 +1,6 @@
 import type { DisruptionLevel } from "./types";
 
-/** Default demo CTA — 12-hour modeled power outage from STRESS_PRESETS. */
+/** Default demo CTA - 12-hour modeled power outage from STRESS_PRESETS. */
 export const SIMPLE_POWER_OUTAGE_PRESET_ID = "power-12h";
 
 export const STRESS_FLOW_COPY = "Prepare → Stress Test → see weakest link → fortify";
@@ -16,7 +16,7 @@ export const STRESS_SEE_ON_MAP = "See on map";
 export const STRESS_SUGGEST_NEXT = "Suggest next steps";
 
 export const STRESS_SCENE_DISCLAIMER =
-  "Modeled household view — a simulated planning scene, not a prediction or official infrastructure twin.";
+  "Modeled household view - a simulated planning scene, not a prediction or official infrastructure twin.";
 
 export const STRESS_WEBGL_FALLBACK =
   "3D view needs WebGL on this device. Showing the 2D dependency diagram instead.";
@@ -53,7 +53,7 @@ export function friendlyDisruptionLabel(level: DisruptionLevel): string {
 }
 
 export function friendlyDisruptionSentence(level: DisruptionLevel): string {
-  return `${LEVEL_COPY[level].sentence} — not a forecast.`;
+  return `${LEVEL_COPY[level].sentence} - not a forecast.`;
 }
 
 export function shortSceneLabel(label: string): string {

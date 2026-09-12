@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -23,7 +22,6 @@ export default function ProfilePage() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Profile" />
       <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         {!hydrated ? (
           <p className="text-sm text-muted">Loading this device…</p>

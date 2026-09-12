@@ -98,7 +98,7 @@ describe("Tampa demo stress overlay", () => {
     expect(demo.overlay.points.length).toBe(result.nodes.length);
 
     const copy = overlayCopy(demo.overlay);
-    expect(copy).toContain("modeled dependencies — not official infrastructure.");
+    expect(copy).toContain("modeled dependencies - not official infrastructure.");
     expect(copy).toContain("simulated");
     expect(copy).toContain("not live nws");
     for (const claim of FORBIDDEN_OVERLAY_CLAIMS) {

@@ -47,7 +47,7 @@ describe("recommend() knapsack integration", () => {
         makeHazard({
           kind: "hurricane",
           severity: "warning",
-          headline: "Hurricane Warning — Evacuation Order Zone A",
+          headline: "Hurricane Warning - Evacuation Order Zone A",
           instruction: "Evacuate now.",
         }),
       ]),
@@ -134,7 +134,7 @@ describe("recommend() knapsack integration", () => {
         makeHazard({
           kind: "wildfire",
           severity: "warning",
-          headline: "Wildfire Warning — Evacuate",
+          headline: "Wildfire Warning - Evacuate",
           instruction: "Evacuate now.",
         }),
       ]),

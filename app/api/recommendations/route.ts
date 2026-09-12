@@ -28,9 +28,9 @@ function parseScenario(value: string | null): DemoScenario {
  *   { home, household?, hazards, hazardSource?, constraints? }
  *
  * `hazardSource: "unavailable"` or a missing/unconfirmed HazardState fails
- * closed with `status: "unavailable"` and an empty list — never an invented
+ * closed with `status: "unavailable"` and an empty list - never an invented
  * official alert. Quiet weather for judging: GET ?fixture=tampa only.
- * A bare GET is unavailable — never a silent Tampa all-clear.
+ * A bare GET is unavailable - never a silent Tampa all-clear.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

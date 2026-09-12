@@ -15,7 +15,7 @@ import {
 
 /**
  * Lazy Auth0 client. Never constructed during `next build` when env is
- * missing — v4 warns (and later request-time throws) without domain/secret.
+ * missing - v4 warns (and later request-time throws) without domain/secret.
  */
 let cached: Auth0Client | undefined;
 

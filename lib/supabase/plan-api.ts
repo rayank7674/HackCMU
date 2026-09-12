@@ -19,7 +19,7 @@ export const AUTH_NOT_CONFIGURED = {
   ok: false as const,
   error: "auth_not_configured",
   message:
-    "No signed-in identity. Set Auth0 env vars and sign in — the session must provide the Auth0 user sub.",
+    "No signed-in identity. Set Auth0 env vars and sign in - the session must provide the Auth0 user sub.",
 };
 
 export const UNAUTHENTICATED = {

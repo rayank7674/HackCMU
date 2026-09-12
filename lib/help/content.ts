@@ -1,6 +1,6 @@
 /**
  * Official Help links and copy. Source labels stay on every outbound
- * resource. Financial wording is may-be-eligible only — never a promise.
+ * resource. Financial wording is may-be-eligible only - never a promise.
  */
 
 export type OfficialLink = {
@@ -13,7 +13,7 @@ export type OfficialLink = {
 
 export const HOW_STORMREADY_WORKS = [
   "You answer a few questions about this home and household. No account is required to finish a plan.",
-  "Official alerts stay fail-closed: if a lookup is down you see unavailable — never an invented warning or all-clear. Optional Save My Plan stores a copy after you sign in.",
+  "Official alerts stay fail-closed: if a lookup is down you see unavailable - never an invented warning or all-clear. Optional Save My Plan stores a copy after you sign in.",
   "The Map tab is an approximate locator with official examples, not a live emergency GIS.",
 ] as const;
 
@@ -61,7 +61,7 @@ export const LOCAL_HELP_LINKS: OfficialLink[] = [
   },
   {
     id: "red-cross",
-    title: "American Red Cross — Get Help",
+    title: "American Red Cross: Get Help",
     href: "https://www.redcross.org/get-help.html",
     source: "American Red Cross",
     description:
@@ -123,7 +123,7 @@ export const FINANCIAL_LINKS: OfficialLink[] = [
     href: "https://www.fema.gov/assistance/individual",
     source: "Federal Emergency Management Agency",
     description:
-      "Explains what Individual Assistance can cover. Review the official page — eligibility is decided by FEMA, not this app.",
+      "Explains what Individual Assistance can cover. Review the official page - eligibility is decided by FEMA, not this app.",
   },
   {
     id: "sba-disaster",

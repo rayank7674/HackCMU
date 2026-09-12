@@ -18,7 +18,7 @@ import {
 } from "@/lib/integrations/geo/stress-overlay";
 
 export const TAMPA_DEMO_OVERLAY_LABEL =
-  "Tampa fixture overlay — simulated, not live NWS.";
+  "Tampa fixture overlay - simulated, not live NWS.";
 
 export type TampaDemoStressOverlay = {
   result: StressResult;
@@ -35,7 +35,7 @@ export function tampaDemoStressScenario() {
   return scenario;
 }
 
-/** Engine call only — does not redefine propagation math. */
+/** Engine call only - does not redefine propagation math. */
 export function simulateTampaDemoStress(): {
   result: StressResult;
   graph: DependencyGraph;

@@ -152,7 +152,7 @@ body {
 
 .sr-nav-list {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .sr-nav-link {
@@ -257,6 +257,57 @@ body {
   border-radius: 999px;
 }
 
+.sr-mode-toggle {
+  position: fixed;
+  left: 0.75rem;
+  bottom: calc(4.9rem + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  padding: 0.3rem 0.6rem 0.3rem 0.75rem;
+  box-shadow: 0 10px 30px rgba(16, 35, 61, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.sr-mode-toggle-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sr-mode-toggle-group,
+.sr-mode-toggle-scenarios {
+  display: flex;
+  gap: 0.15rem;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  padding: 0.15rem;
+}
+
+.sr-mode-toggle button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sr-mode-toggle button[data-active="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+
 @media (orientation: landscape) and (max-height: 540px) {
   .sr-page-header {
     padding-top: 0.4rem;
@@ -318,11 +369,11 @@ body {
     height: 100dvh;
     flex-direction: column;
     gap: 1rem;
-    border-right: 1px solid color-mix(in srgb, white 12%, transparent);
+    border-right: 1px solid color-mix(in srgb, white 18%, transparent);
     border-top: none;
-    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-soft) 100%);
+    background: var(--blue-deep);
     padding: 1.25rem 0.9rem 6.75rem;
-    color: #d7e4f4;
+    color: #e8f1fa;
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-shell.is-nav-collapsed .sr-nav {
@@ -348,7 +399,7 @@ body {
     font-weight: 600;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: #9ec0e4;
+    color: #d6e6f6;
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-shell.is-nav-collapsed .sr-nav-brand {
@@ -389,7 +440,7 @@ body {
     gap: 0.7rem;
     padding: 0.7rem 0.75rem;
     font-size: 0.875rem;
-    color: #b7cce3;
+    color: #e4eef8;
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-shell.is-nav-collapsed .sr-nav-link {
@@ -430,9 +481,9 @@ body {
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-main-inner {
-    max-width: 64rem;
-    margin-inline: auto;
-    padding-inline: 1.5rem;
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-card-grid {
@@ -463,8 +514,12 @@ body {
   }
 
   html:not([data-demo-viewport="mobile"]) .sr-page-header {
-    margin-inline: -1.5rem;
+    margin-inline: 0;
     padding-inline: 1.5rem;
+  }
+
+  html:not([data-demo-viewport="mobile"]) .sr-hero-banner {
+    padding-inline: 1.75rem;
   }
 
   .sr-viewport-toggle {
@@ -568,5 +623,18 @@ body {
     position: relative;
     bottom: 0;
     flex-shrink: 0;
+  }
+
+  html:not([data-demo-viewport="mobile"]) .sr-mode-toggle {
+    left: 16.75rem;
+    bottom: 0.85rem;
+  }
+
+  html:not([data-demo-viewport="mobile"]) .sr-shell.is-nav-collapsed .sr-mode-toggle {
+    left: 5.75rem;
+  }
+
+  html[data-demo-viewport="mobile"] .sr-mode-toggle {
+    bottom: 0.85rem;
   }
 }

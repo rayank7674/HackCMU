@@ -147,7 +147,7 @@ export function mapNwsEventToKind(event: string): HazardKind {
   if (value.includes("tropical storm") || value.includes("tropical depression")) {
     return "tropical_storm";
   }
-  // Official NWS fire-weather products only — do not invent a wildfire alert.
+  // Official NWS fire-weather products only - do not invent a wildfire alert.
   if (
     value.includes("red flag") ||
     value.includes("fire weather") ||
@@ -352,7 +352,7 @@ async function fetchForecast(
     if (!isRecord(item)) continue;
     const name = readString(item.name);
     const detailedForecast = readString(item.detailedForecast);
-    // Official text only — skip a period rather than invent wording.
+    // Official text only - skip a period rather than invent wording.
     if (!name || !detailedForecast) continue;
     periods.push({
       name,

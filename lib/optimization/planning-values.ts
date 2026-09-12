@@ -2,7 +2,7 @@ import { isUnknown, type BudgetClass, type Unknownable } from "@/types";
 import type { RecommendationCategory, RecommendationHorizon } from "@/types";
 
 /**
- * Discrete knapsack cost units from budget class — not contractor prices.
+ * Discrete knapsack cost units from budget class - not contractor prices.
  * zero=0, low=1, moderate=2, flexible=3.
  */
 export const COST_UNITS_BY_CLASS: Record<BudgetClass, number> = {
@@ -20,9 +20,9 @@ export const HOUSEHOLD_COST_UNITS: Record<BudgetClass, number> = {
   flexible: 3,
 };
 
-/** @deprecated alias — cost units, not dollars */
+/** @deprecated alias - cost units, not dollars */
 export const PLANNING_DOLLARS_BY_COST_CLASS = COST_UNITS_BY_CLASS;
-/** @deprecated alias — cost units, not dollars */
+/** @deprecated alias - cost units, not dollars */
 export const HOUSEHOLD_PLANNING_DOLLARS = HOUSEHOLD_COST_UNITS;
 
 export const PLANNING_MINUTES_BEFORE_NEXT_EVENT = 90;
@@ -41,7 +41,7 @@ const NOW_MINUTES_BY_CATEGORY: Record<RecommendationCategory, number> = {
   other: 20,
 };
 
-/** Unit span for the class — not a dollar range. */
+/** Unit span for the class - not a dollar range. */
 export const COST_CLASS_RANGE: Record<BudgetClass, { min: number; max: number }> =
   {
     zero: { min: 0, max: 0 },
@@ -60,7 +60,7 @@ export function planningDollarsForCostClass(costClass: BudgetClass): number {
 }
 
 /**
- * Unknown household budget is not treated as flexible — cap at low (1 unit).
+ * Unknown household budget is not treated as flexible - cap at low (1 unit).
  */
 export function costUnitsForHousehold(
   budgetClass: Unknownable<BudgetClass>,

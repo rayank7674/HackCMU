@@ -33,15 +33,15 @@ npm run build
 
 ## Anonymous path
 
-1. Welcome at `/` — Get Started. **Log In** is enabled only when Auth0 env is present; otherwise it stays disabled. The rest of setup never requires an account.
-2. Onboarding at `/onboarding` — location, housing, home characteristics, assets, household constraints, immediate budget. Each step writes through `saveHomeProfile` / `saveHouseholdProfile`.
-3. Plan at `/plan` — saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges — never dollar prices. **Save My Plan** starts Auth0 login when env is set.
+1. Welcome at `/` - Get Started. **Log In** is enabled only when Auth0 env is present; otherwise it stays disabled. The rest of setup never requires an account.
+2. Onboarding at `/onboarding` - location, housing, home characteristics, assets, household constraints, immediate budget. Each step writes through `saveHomeProfile` / `saveHouseholdProfile`.
+3. Plan at `/plan` - saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges - never dollar prices. **Save My Plan** starts Auth0 login when env is set.
 
 Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. StormReady never fabricates alerts or an all-clear.
 
 Bottom navigation: Home / Plan / Map / Help / Profile.
 
-**Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only — apply on official sites; StormReady never promises eligibility.
+**Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only - apply on official sites; StormReady never promises eligibility.
 
 **Map** is a simple Leaflet view: approximate home marker when geocode coordinates exist, otherwise a Tampa demo center with a setup prompt. A few static Tampa-area example pins (official offices, source-labeled) appear when the view is near the demo. No routing, heatmap, Places API, or “verified / best” contractors. OpenStreetMap tiles are the default so the map works with **no Mapbox token**. Optional `NEXT_PUBLIC_MAPBOX_TOKEN` swaps in Mapbox tiles.
 

@@ -19,7 +19,7 @@ import type {
 
 /**
  * Fail-closed client for routes that may land on parallel branches.
- * A 404/5xx/unparseable body is "unavailable" — never an all-clear or a
+ * A 404/5xx/unparseable body is "unavailable" - never an all-clear or a
  * fabricated recommendation.
  */
 
@@ -237,7 +237,7 @@ export async function fetchRecommendations(
     : posted;
 }
 
-/** Explicit Tampa fixture only — never used as a silent stand-in for live alerts. */
+/** Explicit Tampa fixture only - never used as a silent stand-in for live alerts. */
 export async function fetchTampaDemo(
   scenario: DemoScenario = "quiet",
 ): Promise<ApiResult<RecommendationsPayload>> {

@@ -243,7 +243,7 @@ export function OnboardingFlow() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col">
-        <Header title="Set up your home" backHref="/" />
+        <Header title="Set up your home" backHref="/plan" />
         <div className="px-5 py-8">
           <LoadingCard
             title="Set up your home"
@@ -257,7 +257,7 @@ export function OnboardingFlow() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Set up your home" backHref="/" />
+      <Header title="Set up your home" backHref="/plan" />
       <div className="flex flex-1 flex-col px-5 pb-8 pt-4">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">
           Step {step + 1} of {STEPS.length}

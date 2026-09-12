@@ -57,7 +57,7 @@ export type PreparednessAction = {
   horizon: RecommendationHorizon;
   /** Grounded in an official warning / emergency / evac product. */
   official: boolean;
-  /** Official actions OR evacuate category — always selected when eligible. */
+  /** Official actions OR evacuate category - always selected when eligible. */
   hardConstraint: boolean;
   costClass: BudgetClass;
   /** Discrete cost-class units (0–3), not a price. */
@@ -68,7 +68,7 @@ export type PreparednessAction = {
   estimatedCostRange: { min: number; max: number };
   costEstimateSource: CostEstimateSource;
   costEstimateConfidence: CostEstimateConfidence;
-  /** Preparedness utility in [0, 1] — not a safety or survival score. */
+  /** Preparedness utility in [0, 1] - not a safety or survival score. */
   utility: number;
   urgency: number;
   hazardRelevance: number;

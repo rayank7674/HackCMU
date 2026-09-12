@@ -36,7 +36,7 @@ const TASK_INSTRUCTIONS: Record<ExplainTask, string> = {
   stress_changed:
     "Explain why the stress result changed using only before and after modeled JSON. Never call this a forecast.",
   combination_broke:
-    "Explain why this modeled combination broke using firstBreak, cascadePath, affected, scenario, and assumptions. Modeled only — not a forecast.",
+    "Explain why this modeled combination broke using firstBreak, cascadePath, affected, scenario, and assumptions. Modeled only - not a forecast.",
 };
 
 export function grokUserPrompt(task: ExplainTask, input: unknown): string {

@@ -30,7 +30,7 @@ describe("map page stress overlay wiring", () => {
     const legend = read("components/stormready/map-stress-legend.tsx");
     expect(legend).toContain("MODELED_DEPENDENCIES_DISCLAIMER");
     expect(MODELED_DEPENDENCIES_DISCLAIMER).toBe(
-      "Modeled dependencies — not official infrastructure.",
+      "Modeled dependencies - not official infrastructure.",
     );
     expect(legend.toLowerCase()).not.toContain("utility topology");
   });

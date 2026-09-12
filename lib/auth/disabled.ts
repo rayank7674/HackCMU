@@ -27,7 +27,7 @@ function authDisabledHtml(): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in — StormReady</title>
+  <title>Sign in - StormReady</title>
   <style>
     body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; background: #f4f7fb; color: #1a2a3a; }
     main { max-width: 28rem; margin: 4rem auto; padding: 0 1.25rem; }

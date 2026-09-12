@@ -63,7 +63,7 @@ export type GeocodeResult = GeocodeOk | IntegrationUnavailable;
 
 /**
  * Geocode a US address or ZIP via the Census Bureau (no API key).
- * On failure returns unavailable — never invents coordinates.
+ * On failure returns unavailable - never invents coordinates.
  */
 export async function geocode(input: GeocodeQuery): Promise<GeocodeResult> {
   const query = normalizeQuery(input);
@@ -540,7 +540,7 @@ function extractZip(value: string | null | undefined): string | null {
   const trimmed = value.trim();
   const exact = trimmed.match(ZIP_RE);
   if (exact) return exact[1];
-  // "Tampa, FL 33602" / "Washington, DC 20500" — not a 5-digit run inside garbage.
+  // "Tampa, FL 33602" / "Washington, DC 20500" - not a 5-digit run inside garbage.
   const trailing = trimmed.match(
     /,\s*(?:[A-Za-z.]{2,}\s+)?(\d{5})(?:-\d{4})?\s*$/,
   );

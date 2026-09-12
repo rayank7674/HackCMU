@@ -7,12 +7,11 @@ import { useNavCollapse } from "@/components/layout/nav-collapse";
 export const STRESS_TEST_HREF = "/stress-test";
 
 export const MAIN_NAV_TABS = [
-  { href: "/", label: "Home", icon: HomeIcon, match: (path: string) => path === "/" },
   {
     href: "/plan",
-    label: "Plan",
-    icon: PlanIcon,
-    match: (path: string) => path.startsWith("/plan"),
+    label: "Home",
+    icon: HomeIcon,
+    match: (path: string) => path === "/" || path.startsWith("/plan"),
   },
   {
     href: "/map",
@@ -61,7 +60,7 @@ export function BottomNav() {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={toggleCollapsed}
         >
-          {collapsed ? "»" : "«"}
+          <ChevronIcon pointsRight={collapsed} />
         </button>
       </div>
       <ul className="sr-nav-list">
@@ -91,6 +90,20 @@ export function BottomNav() {
 type IconProps = {
   active: boolean;
 };
+
+function ChevronIcon({ pointsRight }: { pointsRight: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d={pointsRight ? "M9.5 6l6 6-6 6" : "M14.5 6l-6 6 6 6"}
+        stroke="currentColor"
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function HomeIcon({ active }: IconProps) {
   return (

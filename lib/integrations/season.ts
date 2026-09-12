@@ -16,7 +16,7 @@ export type SeasonContext = {
 
 const ATLANTIC_HURRICANE = { startMonth: 6, startDay: 1, endMonth: 11, endDay: 30 };
 
-/** Atlantic/Gulf tropical-coast states. Calendar only — not a forecast. */
+/** Atlantic/Gulf tropical-coast states. Calendar only - not a forecast. */
 export const HURRICANE_SEASON_STATES = new Set([
   "AL",
   "FL",
@@ -201,7 +201,7 @@ export function resolveSeasonContext(input: {
         ? "Atlantic hurricane season is open (calendar)"
         : `About ${window.daysUntilWindow} days until Atlantic hurricane season`,
       sourceNote:
-        "NOAA Atlantic hurricane season is 1 June–30 November. Calendar context only — not a forecast.",
+        "NOAA Atlantic hurricane season is 1 June to 30 November. Calendar context only - not a forecast.",
       modeled: true,
       forecast: false,
     };
@@ -219,7 +219,7 @@ export function resolveSeasonContext(input: {
         ? "Meteorological winter window (calendar)"
         : `About ${window.daysUntilWindow} days until meteorological winter`,
       sourceNote:
-        "Meteorological winter is December–February. Calendar context only — not a blizzard forecast.",
+        "Meteorological winter is December to February. Calendar context only - not a blizzard forecast.",
       modeled: true,
       forecast: false,
     };

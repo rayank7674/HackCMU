@@ -33,14 +33,14 @@ function readUi(relative: string) {
 }
 
 describe("Home now vs Plan sequence", () => {
-  it("keeps Home as now + season with one plan CTA that mirrors Step 1", () => {
+  it("makes the plan the only home surface and keeps the season note on it", () => {
     const home = readUi("components/stormready/home-view.tsx");
-    expect(home).toContain("seasonFromHome");
-    expect(home).toContain("Open your plan");
-    expect(home).toContain('href="/plan"');
-    // Home's top action must come from the same ordering as Plan Step 1.
-    expect(home).toContain("topChecklistAction");
-    expect(home.match(/href="\/plan"/g)?.length).toBe(1);
+    const plan = readUi("components/stormready/plan-view.tsx");
+    expect(home).toContain('router.replace("/plan")');
+    expect(home).toContain("Get Started");
+    expect(plan).toContain("seasonFromHome");
+    expect(plan).toContain("season.sourceNote");
+    expect(plan).toContain("checklistActions as pickChecklistActions");
   });
 
   it("requests device location only after a click", () => {
@@ -56,21 +56,24 @@ describe("Stress Test nav and plan CTA", () => {
   it("adds a Stress Test tab at /stress-test without dropping Help or Profile", () => {
     expect(STRESS_TEST_HREF).toBe("/stress-test");
     const hrefs = MAIN_NAV_TABS.map((tab) => tab.href);
-    expect(hrefs).toContain("/");
+    expect(hrefs).not.toContain("/");
     expect(hrefs).toContain("/plan");
     expect(hrefs).toContain("/map");
     expect(hrefs).toContain("/stress-test");
     expect(hrefs).toContain("/help");
     expect(hrefs).toContain("/profile");
-    expect(hrefs).toHaveLength(6);
+    expect(hrefs).toHaveLength(5);
+    const planTab = MAIN_NAV_TABS.find((tab) => tab.href === "/plan");
+    expect(planTab?.label).toBe("Home");
+    expect(planTab?.match("/")).toBe(true);
   });
 
-  it("keeps six compact tabs so the bar can fit a phone-width shell", () => {
+  it("keeps five compact tabs so the bar can fit a phone-width shell", () => {
     const nav = readUi("components/layout/bottom-nav.tsx");
     const css = readUi("app/globals.css");
     expect(nav).toContain("sr-nav-list");
     expect(nav).toContain("sr-nav-link");
-    expect(css).toContain("repeat(6, minmax(0, 1fr))");
+    expect(css).toContain("repeat(5, minmax(0, 1fr))");
     expect(css).toMatch(/\.sr-nav-link[\s\S]*font-size:\s*10px/);
     expect(nav).toMatch(/aria-label=\{tab\.href === STRESS_TEST_HREF \? "Stress Test"/);
   });

@@ -3,7 +3,7 @@
  *
  * StormReady reads the v3-style names the rest of the team already
  * documented. Auth0 Next.js SDK v4 (Next.js 16 App Router) natively
- * wants AUTH0_DOMAIN + APP_BASE_URL — we map those here so nothing
+ * wants AUTH0_DOMAIN + APP_BASE_URL - we map those here so nothing
  * is hardcoded and the build stays green with no Auth0 env at all.
  */
 
@@ -23,7 +23,7 @@ export type Auth0Env = {
   issuer: string;
   /**
    * Public origin of this app (`AUTH0_BASE_URL` or `APP_BASE_URL`).
-   * Required for a correct OIDC `post_logout_redirect_uri` — Auth0
+   * Required for a correct OIDC `post_logout_redirect_uri` - Auth0
    * rejects a bare relative `/`. SDK infers from the request when omitted.
    */
   appBaseUrl?: string;
@@ -39,7 +39,7 @@ export function readEnv(...keys: string[]): string {
 
 /**
  * True when the four Auth0 secrets + issuer/domain are present.
- * AUTH0_BASE_URL / APP_BASE_URL is recommended but not required —
+ * AUTH0_BASE_URL / APP_BASE_URL is recommended but not required -
  * v4 can infer the app origin from the incoming request.
  */
 export function isAuth0Configured(): boolean {

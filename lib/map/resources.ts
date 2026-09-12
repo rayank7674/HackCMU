@@ -11,7 +11,7 @@ export type MapResourcePin = {
   source: string;
   description: string;
   href: string;
-  /** Tampa demo examples — never labeled verified or best. */
+  /** Tampa demo examples - never labeled verified or best. */
   example: true;
 };
 
@@ -24,7 +24,7 @@ export type MapLocatorLink = {
 };
 
 /**
- * Static Tampa-area example pins. Public offices only — not scraped
+ * Static Tampa-area example pins. Public offices only - not scraped
  * businesses, not “verified” contractors, not ranked shelters.
  */
 export const TAMPA_RESOURCE_PINS: MapResourcePin[] = [
@@ -60,13 +60,13 @@ export const TAMPA_RESOURCE_PINS: MapResourcePin[] = [
     longitude: -82.5028,
     source: "American Red Cross (chapter office example)",
     description:
-      "Chapter office example — not a live shelter list. Use the Red Cross site for current shelters.",
+      "Chapter office example - not a live shelter list. Use the Red Cross site for current shelters.",
     href: "https://www.redcross.org/get-help.html",
     example: true,
   },
 ];
 
-/** Official locators — links, not business rankings. */
+/** Official locators - links, not business rankings. */
 export const MAP_LOCATOR_LINKS: MapLocatorLink[] = [
   {
     id: "find-shelters",

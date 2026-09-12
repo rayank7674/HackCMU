@@ -26,7 +26,7 @@ export const winterStormRules: Rule[] = [
       );
       if (official.length === 0) return null;
       return ruleMatch(this.id, {
-        title: "Stay off the roads — official winter storm or freeze warning",
+        title: "Stay off the roads - official winter storm or freeze warning",
         body: "This is an official cold-weather product. Shelter in place if the home is safe and heated. Check on the household, drip a faucet if pipes are a risk, and do not travel to run errands.",
         priority: "critical",
         category: "shelter",
@@ -72,7 +72,7 @@ export const winterStormRules: Rule[] = [
       const unknownPower = isUnknown(ctx.home.hasBackupPower);
       return ruleMatch(this.id, {
         title: unknownPower
-          ? "Name a warming place — backup heat/power is unconfirmed"
+          ? "Name a warming place - backup heat/power is unconfirmed"
           : "Name a warming place; this home has no backup power",
         body: "If heat fails, go to a pre-chosen library, warming center, or neighbor. Do not run a generator or grill indoors. Unknown backup power is not a generator on site.",
         priority: winter ? "high" : "medium",
@@ -95,7 +95,7 @@ export const winterStormRules: Rule[] = [
         return null;
       }
       return ruleMatch(this.id, {
-        title: "Keep pipes from freezing — open cabinets and drip a faucet",
+        title: "Keep pipes from freezing - open cabinets and drip a faucet",
         body: "Let a thin stream run on an outdoor-wall faucet and open the cabinet doors. If the home is on a well, keep extra stored water before a freeze. This is a no-cost step.",
         priority: winter ? "high" : "low",
         category: "water",

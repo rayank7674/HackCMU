@@ -13,7 +13,7 @@ export const HOUSE_HITS: {
   {
     id: "wind",
     label: "Wind on this house",
-    body: "Modeled wind on roof and openings — not a forecast.",
+    body: "Modeled wind on roof and openings - not a forecast.",
   },
   {
     id: "water",
@@ -28,7 +28,7 @@ export const HOUSE_HITS: {
   {
     id: "power",
     label: "Power outage",
-    body: "Starts at a modeled local supply — not a real utility map.",
+    body: "Starts at a modeled local supply - not a real utility map.",
   },
   {
     id: "tampa",

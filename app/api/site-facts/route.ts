@@ -4,7 +4,7 @@ import { lookupSiteFacts, validateCoordinates } from "@/lib/integrations";
 export const dynamic = "force-dynamic";
 
 /**
- * Optional FEMA flood zone + USGS elevation. Fail closed — never "not in a flood zone".
+ * Optional FEMA flood zone + USGS elevation. Fail closed - never "not in a flood zone".
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

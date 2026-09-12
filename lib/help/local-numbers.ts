@@ -684,13 +684,13 @@ export function resolveLocalHelp(home: HomeProfile | null): LocalHelpResolved {
       "Add an address or ZIP in setup so StormReady can attach state and county numbers. National lines still work.";
   } else if (state && !STATE_HELP[state]) {
     missingNote =
-      "This state is not in the published office table. StormReady will not invent a local number — use 211 or Ready.gov to find your emergency-management office.";
+      "This state is not in the published office table. StormReady will not invent a local number - use 211 or Ready.gov to find your emergency-management office.";
   } else if (state && !county) {
     missingNote =
       "County is unknown for this address. State and national numbers are shown. Unknown is not a nearby county.";
   } else if (state && county && !countyNumber(state, county)) {
     missingNote =
-      `No published county line is stored for ${county} County. Use 211 or the state office — StormReady will not invent one.`;
+      `No published county line is stored for ${county} County. Use 211 or the state office - StormReady will not invent one.`;
   }
 
   return {

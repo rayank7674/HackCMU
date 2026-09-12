@@ -1,6 +1,5 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
 import { OfficialLinkList } from "@/components/help/official-link";
 import { LoadingCard } from "@/components/stormready/query-state";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,6 @@ export function HelpView() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col">
-        <Header title="Help" />
         <div className="px-5 py-8">
           <LoadingCard title="Help" label="Loading this device…" lines={2} />
         </div>
@@ -44,7 +42,6 @@ export function HelpView() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
-      <Header title="Help" />
       <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
         <section>
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">

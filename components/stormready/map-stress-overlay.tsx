@@ -79,7 +79,7 @@ export function MapStressOverlay({
                 Modeled capacity {point.capacity}% ({point.level}).
               </p>
               <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
-                Schematic offset — not a real site
+                Schematic offset - not a real site
               </p>
             </Popup>
           </CircleMarker>

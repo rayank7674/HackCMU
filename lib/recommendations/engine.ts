@@ -57,7 +57,7 @@ export function explainHazardAvailability(
   if (!isUsableHazardState(input.hazards)) {
     return ENGINE_REASONS.hazardStateMissing;
   }
-  // Missing / garbage allClear is unconfirmed — only true|false are known.
+  // Missing / garbage allClear is unconfirmed - only true|false are known.
   if (input.hazards.allClear !== true && input.hazards.allClear !== false) {
     return ENGINE_REASONS.hazardStateUnconfirmed;
   }
@@ -86,7 +86,7 @@ export function evaluateRules(ctx: RuleContext): RuleMatch[] {
 
 /**
  * Deterministic Phase 1 engine. Independent of UI and LLMs.
- * Never invents official alerts — `official` is only set when a warning,
+ * Never invents official alerts - `official` is only set when a warning,
  * emergency, or evacuation product is present on HazardState.
  */
 export function recommend(input: RecommendationInput): EngineResult {

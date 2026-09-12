@@ -14,13 +14,13 @@ import type {
 import type { LatLon } from "@/lib/map/location";
 
 export const MODELED_DEPENDENCIES_DISCLAIMER =
-  "Modeled dependencies — not official infrastructure.";
+  "Modeled dependencies - not official infrastructure.";
 
 export const OVERLAY_SIMULATED_NOTE =
   "Simulated household model. Not live NWS and not a utility map.";
 
 const METERS_PER_DEG_LAT = 111_320;
-/** Schematic ring — far enough to read, not a real service location. */
+/** Schematic ring - far enough to read, not a real service location. */
 const RING_METERS = 520;
 
 export const FORBIDDEN_OVERLAY_CLAIMS = [

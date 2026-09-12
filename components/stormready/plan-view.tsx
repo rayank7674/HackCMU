@@ -1,13 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { ChoiceGroup } from "@/components/stormready/choice-field";
-import { SavePlanControl } from "@/components/stormready/save-plan-control";
 import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
@@ -19,13 +17,11 @@ import {
 import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import {
   SEVERITY_RANK,
-  asBudgetClass,
   formatCostClass,
   formatLocation,
   formatRelativeTime,
   formatSeverity,
   resolvePlanHorizon,
-  shortReason,
 } from "@/lib/stormready-format";
 import {
   checklistActions as pickChecklistActions,
@@ -51,13 +47,16 @@ import {
   type RecommendationView,
   type ResourceStatus,
 } from "@/lib/stormready-api";
-import { linksForCategory } from "@/lib/help/for-category";
-import { PREPAREDNESS_LINKS, type OfficialLink } from "@/lib/help/content";
+import { PREPAREDNESS_LINKS } from "@/lib/help/content";
 import { regionalRisksForHome } from "@/lib/regional-risks";
+import {
+  milesFromHome,
+  reinforcementGuide,
+} from "@/lib/map/reinforcements";
+import { seasonFromHome } from "@/lib/integrations/season";
 import {
   COST_UNITS_BY_CLASS,
   diffOptimizationResults,
-  labelForCostUnits,
   type OptimizationConstraints,
   type OptimizationDiff,
   type OptimizationResult,
@@ -92,9 +91,8 @@ export function PlanView() {
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<Record<string, boolean>>({});
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [prioritizeOpen, setPrioritizeOpen] = useState(false);
-  const [situationOpen, setSituationOpen] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(false);
   const [mode, setMode] = useState<"live" | "demo">("live");
   const [scenario, setScenario] = useState<DemoScenario>("quiet");
   const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
@@ -176,7 +174,6 @@ export function PlanView() {
   if (!hydrated) {
     return (
       <main className="flex flex-1 flex-col bg-background">
-        <Header title="PLAN" emphatic />
         <div className="px-5 py-8">
           <LoadingCard title="Your home" label="Loading your home…" lines={2} />
         </div>
@@ -187,7 +184,6 @@ export function PlanView() {
   if (!profile.home && !profile.household) {
     return (
       <main className="flex flex-1 flex-col bg-background">
-        <Header title="PLAN" emphatic />
         <div className="flex flex-1 flex-col px-5 pb-8 pt-6">
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             No plan on this device yet
@@ -222,6 +218,8 @@ export function PlanView() {
       ? Math.round((checklistDone / checklistActions.length) * 100)
       : 0;
   const regionalRisks = regionalRisksForHome(profile.home);
+  const season = seasonFromHome(profile.home);
+  const supplies = reinforcementGuide(profile.home);
 
   async function applyDemo(nextScenario: DemoScenario) {
     setDemoStatus("loading");
@@ -284,30 +282,37 @@ export function PlanView() {
 
   return (
     <main className="flex min-h-full flex-1 flex-col bg-blue-wash">
-      <Header title="PLAN" emphatic />
-
-      {/* Colorful hero (screenshot 2 energy, StormReady blues) */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-deep via-blue-mid to-navy px-5 pb-16 pt-5 text-white">
-        <div
-          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-blue-sky/30"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 left-6 h-28 w-28 rounded-full bg-blue-pale/20"
-          aria-hidden
-        />
-        <h2 className="text-3xl font-semibold tracking-tight">{homeTitle}</h2>
-        {homeMeta ? (
-          <p className="mt-1 text-sm text-blue-pale/90">{homeMeta}</p>
-        ) : null}
-        <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-pale/85">
-          {recsStatus === "ready" && checklistActions.length > 0
-            ? `Checklist ${checklistPercent}% · ${formatRelativeTime(lastUpdated)}`
-            : `Updated ${formatRelativeTime(lastUpdated)}`}
-        </p>
+      <section className="sr-hero-banner bg-blue-deep px-5 pb-6 pt-6 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-3xl font-semibold tracking-tight">{homeTitle}</h2>
+            {homeMeta ? (
+              <p className="mt-1 text-sm text-blue-pale">{homeMeta}</p>
+            ) : null}
+            {season.applicable ? (
+              <p className="mt-2.5 inline-flex w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                {season.label}
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs leading-relaxed text-blue-pale">
+              {season.sourceNote}
+            </p>
+            <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-pale">
+              {recsStatus === "ready" && checklistActions.length > 0
+                ? `Checklist ${checklistPercent}% · ${formatRelativeTime(lastUpdated)}`
+                : `Updated ${formatRelativeTime(lastUpdated)}`}
+            </p>
+          </div>
+          <Link
+            href="/onboarding"
+            className="shrink-0 rounded-xl bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25"
+          >
+            Update home details
+          </Link>
+        </div>
       </section>
 
-      <div className="relative z-10 -mt-5 flex min-w-0 flex-1 flex-col gap-4 rounded-t-[1.75rem] bg-blue-wash px-5 pb-8 pt-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 bg-blue-wash px-5 pb-8 pt-4">
         {isDemo ? (
           <p
             role="status"
@@ -325,10 +330,8 @@ export function PlanView() {
           allClear={alerts?.allClear ?? "unknown"}
           locationLabel={locationLabel}
           source={alerts?.provenance}
-          home={profile.home}
           isDemo={isDemo}
           liveAlertsStatus={plan.alertsStatus}
-          onOpen={() => setSituationOpen(true)}
         />
 
         {/* Completion bar + checklist (screenshot 1) */}
@@ -348,7 +351,7 @@ export function PlanView() {
                 aria-label="Checklist completion"
               >
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-deep to-blue-sky transition-[width] duration-300 ease-out"
+                  className="h-full rounded-full bg-blue-deep transition-[width] duration-300 ease-out"
                   style={{ width: `${checklistPercent}%` }}
                 />
               </div>
@@ -370,7 +373,7 @@ export function PlanView() {
             <p className="text-sm leading-relaxed text-muted">
               Do these in order. Check each box when you finish. Tap{" "}
               <span className="font-semibold text-foreground">Why?</span> for
-              the reason or official links.
+              the reason.
             </p>
           ) : null}
 
@@ -448,6 +451,27 @@ export function PlanView() {
               ))}
             </ol>
           )}
+
+          {supplies.needs.length > 0 ? (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-blue-sky/70 bg-blue-pale/50">
+              <div className="border-l-4 border-l-blue-deep px-3.5 py-3">
+                <p className="text-sm font-semibold text-blue-deep">
+                  Supplies for this house
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-navy">
+                  {supplies.needs.map((need) => need.label).join(", ")} may be
+                  needed here. These are nearby stores that sell the materials,
+                  not a StormReady ranking or a hired contractor.
+                </p>
+                <Button
+                  className="mt-3 bg-blue-deep text-white hover:bg-blue-mid"
+                  onClick={() => setPlacesOpen(true)}
+                >
+                  Where can I get these
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <FuturePrepSection
@@ -460,6 +484,14 @@ export function PlanView() {
           <Button variant="secondary" onClick={() => setPrioritizeOpen(true)}>
             Adjust for my time &amp; budget
           </Button>
+          <Link
+            href={`/stress-test?hit=${hitFromRecommendation(
+              stepOne && isKnown(stepOne.ruleId) ? stepOne.ruleId : null,
+            )}`}
+            className="block text-sm font-semibold text-accent-strong"
+          >
+            Test this house
+          </Link>
           {planDelta ? (
             <p
               role="status"
@@ -470,84 +502,23 @@ export function PlanView() {
             </p>
           ) : null}
         </section>
-
-        <details className="rounded-3xl border border-border bg-white p-4 shadow-[0_10px_30px_rgba(15,39,68,0.08)]">
-          <summary className="cursor-pointer text-sm font-semibold text-foreground">
-            More options
-          </summary>
-          <div className="mt-4 space-y-4">
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/onboarding"
-                className="text-sm font-semibold text-accent-strong"
-              >
-                Update home details
-              </Link>
-              <Link
-                href={`/stress-test?hit=${hitFromRecommendation(
-                  stepOne && isKnown(stepOne.ruleId) ? stepOne.ruleId : null,
-                )}`}
-                className="text-sm font-semibold text-accent-strong"
-              >
-                Test this house
-              </Link>
-            </div>
-
-            <SavePlanControl
-              snapshot={{
-                home: profile.home,
-                household: profile.household,
-                hazards: alerts ?? null,
-                recommendations,
-              }}
-              returnTo="/plan"
-            />
-
-            <ModeToggle
-              mode={mode}
-              scenario={scenario}
-              onLive={() => {
-                setMode("live");
-                setSessionRecs(null);
-                setSessionOptimization(null);
-                setPlanDelta(null);
-              }}
-              onDemo={async (next) => {
-                setMode("demo");
-                setScenario(next);
-                await applyDemo(next);
-              }}
-            />
-
-            {optimization && recsStatus === "ready" ? (
-              <WhyThisPlan
-                optimization={optimization}
-                onDetails={() => setDetailsOpen(true)}
-              />
-            ) : null}
-
-            {optimization && recsStatus === "ready" ? (
-              <LeftOutActions optimization={optimization} />
-            ) : null}
-          </div>
-        </details>
       </div>
 
-      <Modal
-        open={situationOpen}
-        title="What's happening"
-        onClose={() => setSituationOpen(false)}
-      >
-        <SituationDetails
-          status={alertsStatus}
-          alert={primaryAlert}
-          hazards={alerts?.hazards ?? []}
-          allClear={alerts?.allClear ?? "unknown"}
-          source={alerts?.provenance}
-          observedAt={alerts?.observedAt ?? null}
-          locationLabel={locationLabel}
-        />
-      </Modal>
+      <ModeToggle
+        mode={mode}
+        scenario={scenario}
+        onLive={() => {
+          setMode("live");
+          setSessionRecs(null);
+          setSessionOptimization(null);
+          setPlanDelta(null);
+        }}
+        onDemo={async (next) => {
+          setMode("demo");
+          setScenario(next);
+          await applyDemo(next);
+        }}
+      />
 
       <Modal
         open={why !== null}
@@ -557,62 +528,79 @@ export function PlanView() {
         onClose={() => setWhy(null)}
       >
         {why ? (
-          <WhyActionPanel
-            action={why}
-            budgetClass={householdBudget}
-            dueBy={dueByLabel(why, primaryAlert, alertsStatus)}
-          />
+          <WhyActionPanel action={why} />
         ) : null}
       </Modal>
 
       <Modal
-        open={detailsOpen}
-        title="How steps were chosen"
-        onClose={() => setDetailsOpen(false)}
+        open={placesOpen}
+        title="Where to get these"
+        onClose={() => setPlacesOpen(false)}
       >
-        {optimization ? (
-          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
-            <p>
-              StormReady picks a short list that fits your time, transport, and
-              budget level. Official must-do items stay near the top.
-            </p>
-            <p className="text-xs text-muted">
-              Technical detail for reviewers: not needed for day-to-day use.
-            </p>
-            <p>
-              Selected: {optimization.selectedIds.join(", ") || "none"}
-            </p>
-            <p>
-              Must-do IDs:{" "}
-              {optimization.hardConstraintIds.join(", ") || "none"}
-            </p>
-            <p className="text-xs font-semibold text-foreground">In your list</p>
-            <ul className="space-y-1">
-              {optimization.candidates
-                .filter((candidate) => candidate.selected)
-                .map((candidate) => (
-                  <li key={candidate.id} className="text-xs">
-                    {candidate.title}
-                  </li>
-                ))}
-            </ul>
-            <p className="text-xs font-semibold text-foreground">Not in this list</p>
-            <ul className="space-y-1">
-              {optimization.candidates
-                .filter((candidate) => !candidate.selected)
-                .map((candidate) => (
-                  <li key={candidate.id} className="text-xs">
-                    {candidate.title}
-                    {leftOutReason(optimization, candidate.id)
-                      ? ` · ${leftOutReason(optimization, candidate.id)}`
-                      : ""}
-                  </li>
-                ))}
-            </ul>
-          </div>
+        <p className="text-sm leading-relaxed text-foreground">
+          Public listings with customer ratings. StormReady does not verify
+          shops, prices, or workmanship.
+        </p>
+        {supplies.areaLabel ? (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+            {supplies.areaLabel}
+          </p>
         ) : (
-          <p>No ranking details for this plan.</p>
+          <p className="mt-2 text-sm text-muted">
+            No store list is stored for this city. Use the search link below
+            instead of a made-up shop.
+          </p>
         )}
+        {supplies.places.length > 0 ? (
+          <ul className="mt-3 space-y-3">
+            {supplies.places.map((place) => {
+              const miles = milesFromHome(profile.home, place);
+              return (
+                <li
+                  key={place.id}
+                  className="rounded-2xl border border-blue-pale bg-blue-wash px-3 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-blue-deep">{place.name}</p>
+                      <p className="text-xs text-blue-mid">{place.kind}</p>
+                    </div>
+                    <p className="shrink-0 rounded-full bg-blue-deep px-2.5 py-1 text-sm font-semibold text-white">
+                      {place.rating.toFixed(1)}
+                      <span className="ml-1 text-xs font-medium text-blue-pale">
+                        / 5
+                      </span>
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-foreground">
+                    {place.sells}
+                  </p>
+                  <p className="mt-1 text-xs text-blue-mid">
+                    {place.reviewCount.toLocaleString()} public ratings
+                    {miles !== null ? ` · about ${miles.toFixed(1)} mi` : ""}
+                    {` · ${place.address}`}
+                  </p>
+                  <a
+                    href={place.mapsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex text-sm font-semibold text-accent-strong underline-offset-2 hover:underline"
+                  >
+                    Open in Maps
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        <a
+          href={supplies.searchHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex text-sm font-semibold text-accent-strong underline-offset-2 hover:underline"
+        >
+          Search more stores nearby
+        </a>
       </Modal>
 
       <Modal
@@ -687,10 +675,8 @@ function SituationStrip({
   allClear,
   locationLabel,
   source,
-  home,
   isDemo,
   liveAlertsStatus,
-  onOpen,
 }: {
   status: ResourceStatus;
   alert: ActiveHazard | null;
@@ -698,10 +684,8 @@ function SituationStrip({
   allClear: boolean | "unknown";
   locationLabel: string;
   source: string | undefined;
-  home: HomeProfile | null;
   isDemo: boolean;
   liveAlertsStatus: ResourceStatus;
-  onOpen: () => void;
 }) {
   if (!isDemo && liveAlertsStatus === "loading") {
     return <LoadingCard title="Situation" label="Checking official alerts…" lines={2} />;
@@ -748,7 +732,6 @@ function SituationStrip({
       : "Empty is not the same as safe. We will not guess.";
   const extraCount = Math.max(0, hazards.length - (alert ? 1 : 0));
   const sourceLink = situationSourceLink(alert);
-  const areaNote = alertAreaRelation(home, alert, locationLabel, allClear);
 
   return (
     <section
@@ -766,10 +749,6 @@ function SituationStrip({
             {title}
           </p>
           <p className={`mt-1 text-sm font-medium ${tone.text}`}>{meta}</p>
-          <p className="mt-2 text-sm leading-snug text-navy">
-            <span className="font-semibold text-blue-deep">Alert area: </span>
-            {areaNote}
-          </p>
           {extraCount > 0 ? (
             <p className="mt-2 text-xs text-muted">
               +{extraCount} more alert{extraCount === 1 ? "" : "s"}
@@ -791,13 +770,6 @@ function SituationStrip({
             </span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpen}
-          className="shrink-0 rounded-xl bg-surface-elevated px-3 py-1.5 text-sm font-semibold text-accent-strong"
-        >
-          Details
-        </button>
       </div>
     </section>
   );
@@ -907,20 +879,14 @@ function ModeToggle({
   onDemo: (scenario: DemoScenario) => void;
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-        Live or demo
-      </p>
-      <div className="flex gap-2">
+    <div className="sr-mode-toggle">
+      <p className="sr-mode-toggle-label">Data</p>
+      <div className="sr-mode-toggle-group">
         <button
           type="button"
           aria-pressed={mode === "live"}
           onClick={onLive}
-          className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
-            mode === "live"
-              ? "border-navy bg-navy text-white"
-              : "border-border bg-white text-foreground"
-          }`}
+          data-active={mode === "live"}
         >
           Live
         </button>
@@ -928,161 +894,123 @@ function ModeToggle({
           type="button"
           aria-pressed={mode === "demo"}
           onClick={() => onDemo(scenario)}
-          className={`h-11 flex-1 rounded-2xl border text-sm font-semibold ${
-            mode === "demo"
-              ? "border-navy bg-navy text-white"
-              : "border-border bg-white text-foreground"
-          }`}
+          data-active={mode === "demo"}
         >
           Demo
         </button>
       </div>
       {mode === "demo" ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="sr-mode-toggle-scenarios">
           {DEMO_SCENARIOS.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => onDemo(option.value)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                scenario === option.value
-                  ? "bg-navy text-white"
-                  : "bg-surface-elevated text-foreground"
-              }`}
+              data-active={scenario === option.value}
             >
               {option.label}
             </button>
           ))}
-        </div>
-      ) : (
-        <p className="text-[11px] text-muted">
-          Uses official alerts for your saved location when available.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function WhyActionPanel({
-  action,
-  budgetClass,
-  dueBy,
-}: {
-  action: RecommendationView;
-  budgetClass: Unknownable<BudgetClass>;
-  dueBy: string;
-}) {
-  const cost = asBudgetClass(action.costClass);
-  const reason = friendlyReason(action);
-  const rawDetail =
-    action.body &&
-    isKnown(action.rationale) &&
-    action.body.trim() &&
-    action.body !== action.rationale
-      ? action.body.trim()
-      : null;
-  const detail =
-    rawDetail && !jargonLooksSame(rawDetail, reason) ? rawDetail : null;
-  const links = linksForCategory(action.category);
-  const importance = importanceFromAction(action);
-  const chip = importanceChip(importance);
-
-  return (
-    <div className="-mx-1 space-y-3">
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-deep via-blue-mid to-navy px-4 py-3 text-white shadow-[0_12px_28px_rgba(13,31,60,0.2)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
-          Why this step
-        </p>
-        <h3 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight">
-          {action.title}
-        </h3>
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-              importance === "critical"
-                ? "bg-danger text-white"
-                : importance === "high"
-                  ? "bg-warning text-navy"
-                  : "bg-success text-white"
-            }`}
-          >
-            {chip.label}
-          </span>
-          <span className="inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-pale">
-            {dueBy}
-          </span>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-border bg-white p-3.5 shadow-[0_8px_20px_rgba(13,31,60,0.06)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-mid">
-          In plain words
-        </p>
-        <p className="mt-1.5 text-sm leading-relaxed text-navy">{reason}</p>
-
-        {detail ? (
-          <>
-            <div className="my-3 h-px bg-border" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-deep">
-              More detail
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-foreground">{detail}</p>
-          </>
-        ) : null}
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {typeof action.estimatedTimeMinutes === "number" ? (
-            <span className="inline-flex rounded-full bg-blue-deep/10 px-2.5 py-1 text-[11px] font-semibold text-blue-deep">
-              ~{action.estimatedTimeMinutes} min
-            </span>
-          ) : null}
-          {cost ? (
-            <span className="inline-flex rounded-full bg-blue-pale px-2.5 py-1 text-[11px] font-semibold text-navy">
-              {plainCost(cost)}
-            </span>
-          ) : null}
-          {budgetClass !== "unknown" && cost ? (
-            <span className="inline-flex rounded-full bg-blue-sky/25 px-2.5 py-1 text-[11px] font-semibold text-blue-deep">
-              {fitsBudget(cost, budgetClass)
-                ? "Fits your budget"
-                : "May exceed budget"}
-            </span>
-          ) : null}
-          {action.official ? (
-            <span className="inline-flex rounded-full bg-danger/10 px-2.5 py-1 text-[11px] font-semibold text-danger">
-              Official guidance
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      {links.length > 0 ? (
-        <div className="rounded-3xl border border-border bg-white p-3.5">
-          <ActionOfficialLinks links={links} />
         </div>
       ) : null}
     </div>
   );
 }
 
-function jargonLooksSame(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
+function WhyActionPanel({ action }: { action: RecommendationView }) {
+  const explanation = whyThisStepNeeded(action);
+
+  return (
+    <div className="-mx-1 space-y-3">
+      <div className="overflow-hidden rounded-3xl bg-blue-deep px-4 py-3 text-white shadow-[0_12px_28px_rgba(13,31,60,0.2)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
+          Why this step
+        </p>
+        <h3 className="mt-1.5 text-xl font-semibold leading-snug tracking-tight">
+          {action.title}
+        </h3>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-white p-3.5 shadow-[0_8px_20px_rgba(13,31,60,0.06)]">
+        <p className="text-sm leading-relaxed text-navy">{explanation}</p>
+      </div>
+    </div>
+  );
 }
 
-function friendlyReason(action: RecommendationView): string {
-  const raw = shortReason(action.rationale, action.body);
-  if (!raw) {
-    return "This step fits your home and the latest official guidance we could confirm.";
+/** Plain-language purpose: what this step buys the household. */
+function whyThisStepNeeded(action: RecommendationView): string {
+  const title = action.title.toLowerCase();
+  const rationale = isKnown(action.rationale) ? action.rationale : "";
+  const blob = `${title} ${rationale} ${action.category}`;
+
+  if (/medication|device supplies|grab|go bag/i.test(blob)) {
+    return "A go bag with medications, charging cables, and a written list makes it easy to carry essentials you cannot replace if you have to leave or lose power. Pharmacies and outlets are not a sure thing once the alert turns into a move.";
   }
-  const jargon =
-    /flood-family|non-warning|product\b|knapsack|optimizer|utility score|hard constraint/i;
-  if (jargon.test(raw) && action.body && action.body.trim() && action.body !== raw) {
-    return action.body.trim().split(/(?<=[.!?])\s+/)[0] ?? action.body.trim();
+  if (/basement/i.test(blob)) {
+    return "Floodwater hits below-grade rooms first, and outlets in that water are a shock risk. Getting upstairs, and cutting power only if floors and hands are dry, keeps people out of the water.";
   }
-  if (jargon.test(raw)) {
-    return "This step helps protect your household based on the current alert and your home details.";
+  if (/lowest floor|belongings off/i.test(title)) {
+    return "Even a short flood ruins papers, electronics, and chemicals on the lowest floor. Moving people and those items up now means you are not sorting wreckage later.";
   }
-  return raw;
+  if (/mobility|wheelchair|crutches|elevator/i.test(blob)) {
+    return "A mobility aid or elevator changes how this household leaves. Planning that route now means you are not inventing one in the dark or in rising water.";
+  }
+  if (/shutter|window|glass|plywood/i.test(blob)) {
+    return "Unprotected glass is how wind and rain get inside. Covering windows, or staying away from them, keeps people and rooms safer when the wind picks up.";
+  }
+  if (/manufactured|mobile home/i.test(blob)) {
+    return "A manufactured or mobile home is not a wind shelter. Leaving for a sturdier building is what keeps this household out of a structure that can come apart.";
+  }
+  if (/roof/i.test(blob)) {
+    return "An older or unconfirmed roof is more likely to leak or lose covering in high wind. Checking it on a calm day is cheaper than repairing a wet house after a storm.";
+  }
+  if (/safe interior|interior room/i.test(blob)) {
+    return "An interior room without windows is the part of the house that holds up best in wind. Naming that room now means everyone knows where to go without a debate.";
+  }
+  if (/surge|higher ground/i.test(blob)) {
+    return "Storm surge and floodwater move faster than you can pack. Being on higher ground before the water arrives is what keeps people out of it.";
+  }
+  if (/flood zone/i.test(blob)) {
+    return "If the flood zone is not confirmed, treating the lot as dry is a guess. Knowing the real risk is what tells you whether to move items up or leave.";
+  }
+  if (/pet/i.test(blob)) {
+    return "Pets will not be allowed in every shelter or hotel. Confirming who goes where, and packing their food and carriers, keeps them with you instead of left behind.";
+  }
+  if (/backup power|outage|generator/i.test(blob) && /medical|device/i.test(blob)) {
+    return "A power-dependent medical device fails when the outlet does. A no-power plan, extra batteries, or a place to go is what keeps that device running.";
+  }
+  if (/backup power|outage|generator/i.test(blob)) {
+    return "Food, phones, and medical devices fail when the power does. A simple outage plan, even with no generator, is what keeps the household going through the dark hours.";
+  }
+  if (/pipe|faucet|cabinet/i.test(blob)) {
+    return "Frozen pipes burst and flood the house from the inside. Dripping a faucet and opening cabinets is a no-cost way to keep water moving when it is that cold.";
+  }
+  if (/roads|stay off/i.test(blob)) {
+    return "Ice and wrecks close roads faster than a forecast can update. Staying put until official travel is safe is what keeps this household off those roads.";
+  }
+  if (/warming|heat/i.test(blob)) {
+    return "A cold house becomes a health risk once the heat or power fails. Knowing a warming place in advance is what keeps people from improvising in the dark.";
+  }
+  if (/wildfire|leave now|evac/i.test(blob) && action.category === "evacuate") {
+    return "Wildfire and evacuation orders move faster than a last-minute packing list. Leaving when officials say to is what gets this household out of the burn or surge path.";
+  }
+  if (/document/i.test(blob)) {
+    return "Paper IDs, insurance, and medical lists are what you need after a move, and they are the first things water and fire ruin. A waterproof copy in the bag travels with you.";
+  }
+  if (action.category === "evacuate") {
+    return "Leaving on a known route, with a known place to go, is safer than deciding those things after the official order arrives.";
+  }
+  if (action.category === "medical") {
+    return "A go bag with medications and device supplies makes it easy to carry essentials you cannot replace if you have to leave or lose power.";
+  }
+  if (action.category === "supplies") {
+    return "Water, food, and a few household supplies on hand mean you are not shopping after stores close or roads flood.";
+  }
+  if (action.official) {
+    return "This follows official guidance for the current alert. Acting on that guidance is what keeps the household aligned with the people issuing the warning.";
+  }
+  return "This step reduces a real risk for this home: it is easier to do now than to invent a plan after conditions get worse.";
 }
 
 function FuturePrepSection({
@@ -1099,14 +1027,11 @@ function FuturePrepSection({
 
   return (
     <section className="overflow-hidden rounded-3xl border border-border bg-white shadow-[0_10px_28px_rgba(13,31,60,0.06)]">
-      <div className="bg-gradient-to-r from-navy via-blue-deep to-blue-mid px-4 py-4 text-white">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-pale">
+      <div className="bg-navy px-4 py-4 text-white">
+        <h3 className="text-2xl font-semibold tracking-tight">
           Future preparedness
-        </p>
-        <h3 className="mt-1 text-lg font-semibold tracking-tight">
-          Even when it is quiet now
         </h3>
-        <p className="mt-1 text-sm text-blue-pale/95">
+        <p className="mt-1.5 text-sm text-blue-pale">
           Your area is still prone to these risks. Work these on a calm week so
           you are ready before the next event.
         </p>
@@ -1140,7 +1065,7 @@ function FuturePrepSection({
                 </div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-pale">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-deep to-blue-sky transition-[width] duration-300"
+                    className="h-full rounded-full bg-blue-deep transition-[width] duration-300"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -1212,44 +1137,6 @@ function FuturePrepSection({
   );
 }
 
-function WhyThisPlan({
-  optimization,
-  onDetails,
-}: {
-  optimization: OptimizationView;
-  onDetails: () => void;
-}) {
-  const used = optimization.constraintsUsed;
-  const units = used.budgetUnits ?? used.budgetDollars ?? null;
-  return (
-    <div className="rounded-2xl border border-border bg-surface-elevated p-3">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-        How this list was built
-      </p>
-      <p className="mt-2 text-sm leading-relaxed text-foreground">
-        Budget level: {labelForCostUnits(units)}
-        {" · "}
-        Time:{" "}
-        {used.availableTimeMinutes === null
-          ? "open"
-          : `${used.availableTimeMinutes} min`}
-        {" · "}
-        Transport: {used.transport}
-      </p>
-      {optimization.shortfall ? (
-        <p className="mt-2 text-xs text-foreground">{optimization.shortfall}</p>
-      ) : null}
-      <button
-        type="button"
-        onClick={onDetails}
-        className="mt-3 text-sm font-semibold text-accent-strong"
-      >
-        See more detail
-      </button>
-    </div>
-  );
-}
-
 function overlayConstraints(
   budgetPreset: BudgetPreset,
   timePreset: TimePreset,
@@ -1264,53 +1151,6 @@ function overlayConstraints(
       timePreset === "unconstrained" ? null : Number(timePreset),
     transport,
   };
-}
-
-function leftOutReason(optimization: OptimizationView, id: string): string | null {
-  const rejected = optimization.rejected.find((item) => item.id === id);
-  if (!rejected || rejected.reasons.length === 0) return "Did not fit this short list";
-  return rejected.reasons.map(humanRejection).join("; ");
-}
-
-function humanRejection(reason: string): string {
-  switch (reason) {
-    case "over_budget":
-      return "Above your budget level";
-    case "over_time":
-      return "Needs more time than you have";
-    case "excluded_transport":
-      return "Needs a car";
-    case "skipped_backup_power":
-      return "You already have backup power on your profile";
-    case "over_surface_limit":
-      return "List already has enough steps";
-    default:
-      return "Did not fit this short list";
-  }
-}
-
-function LeftOutActions({ optimization }: { optimization: OptimizationView }) {
-  const leftOut = optimization.candidates.filter((candidate) => !candidate.selected);
-  if (leftOut.length === 0) return null;
-  return (
-    <Card eyebrow="Not selected this round" title="Other matched ideas">
-      <p className="mb-2 text-xs">
-        These matched your home but did not fit this short list (time, budget,
-        transport, or the step limit).
-      </p>
-      <ul className="space-y-2">
-        {leftOut.map((candidate) => (
-          <li key={candidate.id} className="text-sm leading-snug text-foreground">
-            {candidate.title}
-            <span className="block text-xs text-muted">
-              {leftOutReason(optimization, candidate.id)}
-            </span>
-            <ActionOfficialLinks links={linksForCategory(candidate.category)} />
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
 }
 
 function optimizationAsResult(
@@ -1430,7 +1270,7 @@ function ActionCard({
                 </span>
                 {typeof action.estimatedTimeMinutes === "number" ? (
                   <span className="text-xs text-muted">
-                    About {action.estimatedTimeMinutes} min to do
+                    About {action.estimatedTimeMinutes} min
                   </span>
                 ) : null}
               </div>
@@ -1446,36 +1286,6 @@ function ActionCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function ActionOfficialLinks({ links }: { links: OfficialLink[] }) {
-  const shown = links.slice(0, 2);
-  if (shown.length === 0) return null;
-
-  return (
-    <div className="mt-1">
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
-        Get local help
-      </p>
-      <ul className="mt-1 space-y-1">
-        {shown.map((link) => (
-          <li key={link.id} className="text-sm leading-snug">
-            <a
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-accent-strong underline-offset-2 hover:underline"
-            >
-              {link.title}
-            </a>
-            <span className="ml-1 text-[11px] text-muted">
-              Source: {link.source}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

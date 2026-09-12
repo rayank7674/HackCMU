@@ -141,7 +141,7 @@ function lowestFloorCapacity(home: HomeProfile): {
     return {
       capacity: 40,
       source: "external",
-      note: "Basement plus a FEMA A/V flood zone — lowest floor is modeled as flood-sensitive.",
+      note: "Basement plus a FEMA A/V flood zone - lowest floor is modeled as flood-sensitive.",
     };
   }
   if (home.hasBasement === true && isUnknown(home.floodZone)) {
@@ -155,7 +155,7 @@ function lowestFloorCapacity(home: HomeProfile): {
     return {
       capacity: 60,
       source: "external",
-      note: "FEMA A/V flood zone — lowest floor is modeled as flood-sensitive.",
+      note: "FEMA A/V flood zone - lowest floor is modeled as flood-sensitive.",
     };
   }
   return {
@@ -351,7 +351,7 @@ export function buildHouseholdGraph(
 
   if (options.includeLocalFeeder) {
     assumptions.push(
-      "Modeled local supply — not a real utility map or a found faulty line.",
+      "Modeled local supply - not a real utility map or a found faulty line.",
     );
     nodes.push(
       node(
@@ -367,7 +367,7 @@ export function buildHouseholdGraph(
         "local_feeder",
         "power",
         1,
-        "Modeled local supply — not a real utility map or a found faulty line.",
+        "Modeled local supply - not a real utility map or a found faulty line.",
       ),
     );
   }

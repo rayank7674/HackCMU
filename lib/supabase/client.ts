@@ -42,7 +42,7 @@ export function createBrowserSupabaseClient(options?: {
   return browserClient;
 }
 
-/** @deprecated Use createBrowserSupabaseClient — kept for the unused Phase 1 stub name. */
+/** @deprecated Use createBrowserSupabaseClient - kept for the unused Phase 1 stub name. */
 export function createSupabaseClient(): BrowserSupabaseClient | null {
   return createBrowserSupabaseClient();
 }

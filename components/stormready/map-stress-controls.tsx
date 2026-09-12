@@ -15,7 +15,7 @@ export function MapStressControls({
     <Card eyebrow="Optional" title="Modeled stress overlay">
       <p>
         Show a schematic overlay from the Tampa household fixture. It is
-        simulated with the planning engine — not live NWS and not official
+        simulated with the planning engine - not live NWS and not official
         infrastructure.
       </p>
       <div className="mt-3">

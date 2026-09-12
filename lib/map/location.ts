@@ -1,6 +1,6 @@
 import { isKnown, type GeocodedLocation } from "@/lib/stormready";
 
-/** Downtown Tampa — default demo center when no home coordinates exist. */
+/** Downtown Tampa - default demo center when no home coordinates exist. */
 export const TAMPA_DEMO_CENTER = {
   latitude: 27.9506,
   longitude: -82.4572,

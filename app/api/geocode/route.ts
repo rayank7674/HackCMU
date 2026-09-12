@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /**
  * Anonymous Census geocode. GET or POST.
  * Success: lat/lon + normalized address (provenance external_source).
- * Failure: unavailable payload — never invents coordinates.
+ * Failure: unavailable payload - never invents coordinates.
  */
 export async function GET(request: Request) {
   return respond(queryFromSearchParams(new URL(request.url).searchParams));

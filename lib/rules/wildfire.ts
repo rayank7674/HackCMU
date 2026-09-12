@@ -20,7 +20,7 @@ export const wildfireRules: Rule[] = [
       );
       if (official.length === 0) return null;
       return ruleMatch(this.id, {
-        title: "Leave now — official wildfire warning or evacuation",
+        title: "Leave now - official wildfire warning or evacuation",
         body: "This is an official fire product. Go to your pre-planned place. Close windows as you leave if you have seconds, but do not stay to wet the roof or pack extras. Official fire orders outrank property prep.",
         priority: "critical",
         category: "evacuate",
@@ -65,7 +65,7 @@ export const wildfireRules: Rule[] = [
         priority: "high",
         category: "documents",
         hazardKinds: ["wildfire"],
-        rationale: "Active wildfire product — documents travel with the household.",
+        rationale: "Active wildfire product - documents travel with the household.",
         horizon: "now",
         official: false,
         costClass: "zero",

@@ -110,32 +110,29 @@ describe("linksForCategory", () => {
   });
 });
 
-describe("plan ActionCard composes knapsack UI with Help links", () => {
-  it("keeps Get local help / linksForCategory under Why, not on step cards", async () => {
+describe("plan keeps Why short and leaves official links to Help", () => {
+  it("shows one plain-language reason per step and no per-step link lists", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(
       resolve(process.cwd(), "components/stormready/plan-view.tsx"),
       "utf8",
     );
-    expect(source).toContain('import { linksForCategory } from "@/lib/help/for-category"');
-    expect(source).toContain("Get local help");
-    expect(source).toContain("ActionOfficialLinks");
-    expect(source).toContain("linksForCategory(action.category)");
-    expect(source).toContain("LeftOutActions");
-    expect(source).toContain("Not selected this round");
-    expect(source).toContain("linksForCategory(candidate.category)");
     const whyPanel = source.indexOf("function WhyActionPanel");
-    const helpInWhy = source.indexOf("linksForCategory(action.category)", whyPanel);
-    const actionCard = source.indexOf("function ActionCard");
-    const actionCardEnd = source.indexOf("\nfunction ", actionCard + 1);
-    const leftOut = source.indexOf("function LeftOutActions");
     expect(whyPanel).toBeGreaterThan(-1);
-    expect(helpInWhy).toBeGreaterThan(whyPanel);
-    expect(actionCard).toBeGreaterThan(-1);
-    expect(leftOut).toBeGreaterThan(-1);
-    const actionCardBlock = source.slice(actionCard, actionCardEnd);
-    expect(actionCardBlock).not.toContain("ActionOfficialLinks");
-    expect(actionCardBlock).not.toContain("Get local help");
+    const whyEnd = source.indexOf("\nfunction ", whyPanel + 1);
+    const whyBlock = source.slice(whyPanel, whyEnd);
+    expect(whyBlock).toContain("whyThisStepNeeded(action)");
+    expect(whyBlock).not.toContain("In plain words");
+    expect(whyBlock).not.toContain("More detail");
+    expect(source).not.toContain("Get local help");
+    expect(source).not.toContain("ActionOfficialLinks");
+    expect(source).not.toContain("linksForCategory");
+    expect(source).toContain("situationSourceLink");
+    const help = readFileSync(
+      resolve(process.cwd(), "components/help/help-view.tsx"),
+      "utf8",
+    );
+    expect(help).toContain("OfficialLinkList");
   });
 });

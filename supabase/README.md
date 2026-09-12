@@ -4,13 +4,13 @@ Phase 2 schema for **Save My Plan**. Auth0 is not required to apply this SQL.
 
 ## Apply the schema
 
-### Option A — Supabase SQL editor
+### Option A: Supabase SQL editor
 
 1. Open the Supabase project → **SQL Editor**.
 2. Paste [`migrations/20260912120000_stormready_save_plan.sql`](./migrations/20260912120000_stormready_save_plan.sql).
 3. Run it.
 
-### Option B — CLI (`supabase db push`)
+### Option B: CLI (`supabase db push`)
 
 ```bash
 npx supabase login

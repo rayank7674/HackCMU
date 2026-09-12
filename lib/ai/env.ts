@@ -15,7 +15,7 @@ export function getXaiApiKey(): string | null {
 }
 
 /**
- * K2 is env-configured only. Missing base URL or model is fail-closed —
+ * K2 is env-configured only. Missing base URL or model is fail-closed -
  * this client will not invent a host or model name.
  */
 export function isK2Configured(): boolean {
