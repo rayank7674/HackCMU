@@ -6,6 +6,8 @@ Phase 1 is a mobile-first Next.js app. You can finish a home setup and open a pl
 
 Phase 2 adds optional **Auth0** login and **Save My Plan**. Anonymous onboarding and plan browse still work with no login.
 
+Phase 3 fills **Help** (official FEMA / Ready.gov / NWS links with source labels) and a simple **Map** (Leaflet + OpenStreetMap by default).
+
 ## Local setup
 
 1. Install Node.js 20+ and npm.
@@ -37,7 +39,11 @@ npm run build
 
 Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. StormReady never fabricates alerts or an all-clear.
 
-Bottom navigation: Home / Plan / Map / Help / Profile. Map is a placeholder only (no Mapbox).
+Bottom navigation: Home / Plan / Map / Help / Profile.
+
+**Help** lists official preparedness, local-help, and financial-assistance pages. Financial copy is **may-be-eligible** only — apply on official sites; StormReady never promises eligibility.
+
+**Map** is a simple Leaflet view: approximate home marker when geocode coordinates exist, otherwise a Tampa demo center with a setup prompt. A few static Tampa-area example pins (official offices, source-labeled) appear when the view is near the demo. No routing, heatmap, Places API, or “verified / best” contractors. OpenStreetMap tiles are the default so the map works with **no Mapbox token**. Optional `NEXT_PUBLIC_MAPBOX_TOKEN` swaps in Mapbox tiles.
 
 `/dashboard` redirects to `/`. The old rooms lobby is isolated under `components/layout/` and is not on the user path.
 
