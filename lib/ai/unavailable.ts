@@ -1,5 +1,7 @@
 import type { AiService, AiUnavailable, AiUnavailableReason } from "./types";
 
+export type { AiUnavailable, AiUnavailableReason, AiService };
+
 export function aiUnavailable(
   service: AiService,
   reason: AiUnavailableReason,

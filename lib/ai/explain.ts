@@ -6,6 +6,7 @@ import { grokUserPrompt, readExplanationPayload } from "./prompts";
 import {
   EXPLAIN_TASKS,
   EXPLANATION_DISCLAIMER,
+  type AiUnavailable,
   type ExplainTask,
   type ExplanationResult,
 } from "./types";
@@ -47,10 +48,16 @@ function requiredPayload(task: ExplainTask, input: Record<string, unknown>): boo
   }
 }
 
+export type ValidExplainRequest = {
+  ok: true;
+  task: ExplainTask;
+  input: Record<string, unknown>;
+};
+
 export function validateExplainRequest(options: {
   task: unknown;
   input: unknown;
-}): ExplanationResult | { ok: true; task: ExplainTask; input: Record<string, unknown> } {
+}): ValidExplainRequest | AiUnavailable {
   if (!isExplainTask(options.task)) {
     return aiUnavailable(
       "grok",

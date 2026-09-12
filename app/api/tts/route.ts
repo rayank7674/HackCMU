@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: httpStatusForAi(result) });
   }
 
-  return new NextResponse(result.audio, {
+  return new NextResponse(Buffer.from(result.audio), {
     status: 200,
     headers: {
       "Content-Type": result.contentType,

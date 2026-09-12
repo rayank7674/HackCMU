@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!isRecord(body)) {
     const result = await explainPlanOrStress({ task: null, input: null });
-    return NextResponse.json(result, { status: httpStatusForAi(result) });
+    if (!result.ok) {
+      return NextResponse.json(result, { status: httpStatusForAi(result) });
+    }
+    return NextResponse.json(result);
   }
 
   const task = body.task;
