@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isAuth0Configured } from "@/lib/auth/identity";
 
 const MESSAGE =
-  "Auth0 login is not wired yet. A later change should serve the Auth0 SDK handler at this path and put the user sub on the session.";
+  "Sign-in is not available yet. Your plan stays on this device. A later change will serve Auth0 at this path and put the user sub on the session.";
 
 /**
  * Placeholder for @auth0/nextjs-auth0's /api/auth/login.
