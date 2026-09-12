@@ -62,6 +62,7 @@ export {
   loadProfile,
   normalizeHomeProfile,
   normalizeHouseholdProfile,
+  restoreProfile,
   saveHomeProfile,
   saveHouseholdProfile,
   saveProfile,

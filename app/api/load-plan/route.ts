@@ -6,7 +6,7 @@ import { loadStormReadySnapshot } from "@/lib/supabase/persist";
  * GET /api/load-plan
  *
  * 503 if Supabase env is missing.
- * 401 if Auth0 identity is not available yet (dev bypass is development-only).
+ * 401 if Auth0 identity is not available (dev bypass is development-only).
  */
 export async function GET(request: Request) {
   const context = await requirePlanRouteContext(request);

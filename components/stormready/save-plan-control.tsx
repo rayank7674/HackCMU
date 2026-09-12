@@ -3,27 +3,59 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { canSavePlan, useAuthSession } from "@/lib/auth/session";
+import { loginHref } from "@/lib/auth/identity";
+import { buildLocalSnapshot, markPendingSave } from "@/lib/plan-cache";
 import { postSavePlan } from "@/lib/stormready-cloud";
 import type { StormReadySnapshot } from "@/lib/stormready";
 
 type SavePlanControlProps = {
-  snapshot: StormReadySnapshot;
+  snapshot?: StormReadySnapshot;
+  returnTo?: string;
 };
 
-export function SavePlanControl({ snapshot }: SavePlanControlProps) {
-  const session = useAuthSession();
+export function SavePlanControl({
+  snapshot,
+  returnTo = "/plan",
+}: SavePlanControlProps) {
+  const session = useAuthSession(returnTo);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+  if (session.status === "loading") {
+    return (
+      <p className="text-xs leading-relaxed text-muted">Checking sign-in…</p>
+    );
+  }
+
   if (!canSavePlan(session)) {
+    if (!session.authConfigured) {
+      return (
+        <section>
+          <Button disabled variant="secondary">
+            Save My Plan
+          </Button>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            Sign-in is not connected on this deployment. Your plan stays on
+            this device.
+          </p>
+        </section>
+      );
+    }
+
     return (
       <section>
-        <Button href={session.loginHref} variant="secondary">
-          Sign in to save
+        <Button
+          variant="secondary"
+          onClick={() => {
+            markPendingSave();
+            window.location.assign(loginHref(returnTo));
+          }}
+        >
+          Save My Plan
         </Button>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          Your plan stays on this device until you sign in. Cloud save will use
-          your account once Auth0 is connected.
+          You&apos;ll sign in, then StormReady will save this household plan
+          to your account.
         </p>
       </section>
     );
@@ -37,13 +69,15 @@ export function SavePlanControl({ snapshot }: SavePlanControlProps) {
         onClick={async () => {
           setBusy(true);
           setNotice(null);
-          const result = await postSavePlan(snapshot);
+          const payload = snapshot ?? buildLocalSnapshot();
+          if (!payload.home && !payload.household) {
+            setBusy(false);
+            setNotice("Nothing on this device to save yet.");
+            return;
+          }
+          const result = await postSavePlan(payload);
           setBusy(false);
-          setNotice(
-            result.ok
-              ? "Plan saved."
-              : result.message,
-          );
+          setNotice(result.ok ? "Plan saved." : result.message);
         }}
       >
         {busy ? "Saving…" : "Save My Plan"}

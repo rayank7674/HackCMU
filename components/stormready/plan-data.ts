@@ -8,6 +8,7 @@ import {
   type RecommendationView,
   type ResourceStatus,
 } from "@/lib/stormready-api";
+import { cachePlanExtras } from "@/lib/plan-cache";
 import { isKnown, type HazardState, type PersistedProfile } from "@/lib/stormready";
 
 export type PlanQuery = {
@@ -111,11 +112,17 @@ export function usePlanData(
 
       if (cancelled) return;
 
+      const recommendations = recsResult.ok ? recsResult.data.slice(0, 5) : [];
+      cachePlanExtras({
+        hazards,
+        recommendations,
+      });
+
       setData({
         key,
         alerts: hazards,
         alertsStatus: statusFromResult(alertsResult),
-        recommendations: recsResult.ok ? recsResult.data.slice(0, 5) : [],
+        recommendations,
         recommendationsStatus: statusFromResult(recsResult),
       });
     })();

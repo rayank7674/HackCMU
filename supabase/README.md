@@ -27,12 +27,12 @@ npx supabase start
 npx supabase db reset
 ```
 
-## What Auth0 must pass later
+## Auth0 identity
 
 Save/load identify a household by the Auth0 user **`sub`** (and optionally `email`).
 
-1. After login, the session must expose `user.sub` (e.g. `auth0|abc123`).
-2. `/api/save-plan` and `/api/load-plan` will read that `sub` from the Auth0 session (hook: `resolveAuthIdentity` in `lib/auth/identity.ts`).
+1. After login, the session exposes `user.sub` (e.g. `auth0|abc123`).
+2. `/api/save-plan` and `/api/load-plan` read that `sub` via `resolveAuthIdentity` in `lib/auth/identity.ts`.
 3. Rows land in `public.users.auth0_sub`. Profiles and the latest recommendation snapshot hang off `users.id`.
 
 If you later pass the Auth0 **ID token** to the Supabase client (third-party auth):
