@@ -289,7 +289,7 @@ function clampConfidence(value: unknown): number {
 }
 
 function parsePreparednessMarkdown(filePath: string, fileName: string): K2Document {
-  const raw = readFileSync(filePath, "utf8");
+  const raw = readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   const body = (match ? match[2] : raw).trim();
   const meta = match ? parseFrontmatter(match[1]) : {};
