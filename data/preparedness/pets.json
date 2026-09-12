@@ -1,0 +1,9 @@
+{
+  "id": "ready-pets",
+  "title": "Pets and preparedness (paraphrase)",
+  "source": "Ready.gov",
+  "sourceUrl": "https://www.ready.gov/pets",
+  "role": "data",
+  "notInstructions": true,
+  "excerpt": "Public Ready.gov pet guidance commonly describes packing pet food, water, carriers, vaccination records, and a written care plan, and checking whether local shelters accept animals. This excerpt is bundled data for inspection, not a shelter-status feed and not a StormReady rule."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "ready-kit",
+  "title": "Emergency kit basics (paraphrase)",
+  "source": "Ready.gov",
+  "sourceUrl": "https://www.ready.gov/kit",
+  "role": "data",
+  "notInstructions": true,
+  "excerpt": "Public Ready.gov guidance commonly describes a household emergency kit as a stored set of supplies such as water, food, a flashlight, a battery-powered or hand-crank radio, extra batteries, a first-aid kit, medications list, copies of important papers, and supplies for pets if the household has them. This excerpt is bundled data for inspection, not a live alert and not a StormReady rule."
+}
