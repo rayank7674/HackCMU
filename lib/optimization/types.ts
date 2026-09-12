@@ -89,6 +89,7 @@ export type CandidateSummary = {
   id: string;
   ruleId: string;
   title: string;
+  category: RecommendationCategory;
   hardConstraint: boolean;
   official: boolean;
   selected: boolean;

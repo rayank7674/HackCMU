@@ -616,6 +616,7 @@ function parseOptimization(value: unknown): OptimizationView | null {
               id: item.id,
               ruleId: typeof item.ruleId === "string" ? item.ruleId : item.id,
               title: typeof item.title === "string" ? item.title : item.id,
+              category: readCategory(item.category),
               hardConstraint: item.hardConstraint === true,
               official: item.official === true,
               selected: item.selected === true,

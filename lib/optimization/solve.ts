@@ -368,6 +368,7 @@ export function optimizePreparednessPlan(
         id: action.id,
         ruleId: action.ruleId,
         title: action.title,
+        category: action.category,
         hardConstraint: action.hardConstraint,
         official: action.official,
         selected: pickedIds.has(action.id),

@@ -782,6 +782,7 @@ function LeftOutActions({ optimization }: { optimization: OptimizationView }) {
             <span className="block text-xs text-muted">
               {candidate.ruleId} · {leftOutReason(optimization, candidate.id)}
             </span>
+            <ActionOfficialLinks links={linksForCategory(candidate.category)} />
           </li>
         ))}
       </ul>

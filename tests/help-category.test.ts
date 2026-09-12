@@ -109,3 +109,29 @@ describe("linksForCategory", () => {
     }
   });
 });
+
+describe("plan ActionCard composes knapsack UI with Help links", () => {
+  it("keeps Get local help / linksForCategory on ActionCards next to left-out knapsack UI", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(
+      resolve(process.cwd(), "components/stormready/plan-view.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('import { linksForCategory } from "@/lib/help/for-category"');
+    expect(source).toContain("Get local help");
+    expect(source).toContain("ActionOfficialLinks");
+    expect(source).toContain("linksForCategory(action.category)");
+    expect(source).toContain("LeftOutActions");
+    expect(source).toContain("Not selected this round");
+    expect(source).toContain("linksForCategory(candidate.category)");
+    const actionCard = source.indexOf("function ActionCard");
+    const helpOnCard = source.indexOf(
+      "ActionOfficialLinks links={linksForCategory(action.category)}",
+    );
+    const leftOut = source.indexOf("function LeftOutActions");
+    expect(actionCard).toBeGreaterThan(-1);
+    expect(helpOnCard).toBeGreaterThan(actionCard);
+    expect(leftOut).toBeGreaterThan(-1);
+  });
+});
