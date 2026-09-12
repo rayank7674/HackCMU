@@ -147,6 +147,16 @@ export function mapNwsEventToKind(event: string): HazardKind {
   if (value.includes("tropical storm") || value.includes("tropical depression")) {
     return "tropical_storm";
   }
+  // Official NWS fire-weather products only — do not invent a wildfire alert.
+  if (
+    value.includes("red flag") ||
+    value.includes("fire weather") ||
+    value.includes("wildfire") ||
+    value.includes("extreme fire danger") ||
+    value.includes("fire warning")
+  ) {
+    return "wildfire";
+  }
   if (value.includes("thunderstorm")) return "severe_thunderstorm";
   if (value.includes("heat")) return "extreme_heat";
   if (

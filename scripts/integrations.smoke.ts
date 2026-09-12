@@ -29,7 +29,10 @@ assert.equal(mapNwsEventToKind("Excessive Heat Warning"), "extreme_heat");
 assert.equal(mapNwsEventToKind("Wind Chill Advisory"), "extreme_cold");
 assert.equal(mapNwsEventToKind("Winter Storm Warning"), "winter_storm");
 assert.equal(mapNwsEventToKind("Rip Current Statement"), "rip_current");
-assert.equal(mapNwsEventToKind("Red Flag Warning"), "other");
+assert.equal(mapNwsEventToKind("Red Flag Warning"), "wildfire");
+assert.equal(mapNwsEventToKind("Fire Weather Watch"), "wildfire");
+assert.equal(mapNwsEventToKind("Extreme Fire Danger"), "wildfire");
+assert.equal(mapNwsEventToKind("Dense Smoke Advisory"), "other");
 
 assert.equal(mapNwsSeverity("Tornado Emergency", "Extreme"), "emergency");
 assert.equal(mapNwsSeverity("Tornado Warning", "Severe"), "warning");
@@ -93,6 +96,7 @@ assert.equal(applied.location.nwsForecastOffice, UNKNOWN);
 assert.equal(applied.location.provenance, "external_source");
 assert.equal(applied.addressProvenance, "external_source");
 assert.equal(applied.addressLine, "100 N ASHLEY DR");
+assert.equal(applied.roofAgeYears, UNKNOWN);
 
 const withZones = applyNwsLocationToHomeProfile(applied, {
   county: UNKNOWN,

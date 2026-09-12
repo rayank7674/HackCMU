@@ -2,6 +2,7 @@ import {
   UNKNOWN,
   emptyGeocodedLocation,
   type BackupPowerType,
+  type BudgetClass,
   type ConstructionType,
   type DwellingType,
   type GeocodedLocation,
@@ -70,6 +71,7 @@ export function createEmptyHomeProfile(
     backupPowerType: UNKNOWN,
     hasWellWater: UNKNOWN,
     hasSeptic: UNKNOWN,
+    roofAgeYears: UNKNOWN,
     notes: UNKNOWN,
     attributesProvenance: "user_reported",
     ...overrides,
@@ -99,6 +101,7 @@ export function createEmptyHouseholdProfile(
     vehicleCount: UNKNOWN,
     canSelfEvacuate: UNKNOWN,
     preferredLanguage: UNKNOWN,
+    budgetClass: UNKNOWN,
     notes: UNKNOWN,
     provenance: "user_reported",
     ...overrides,
@@ -264,6 +267,7 @@ function normalizeHomeProfile(value: Record<string, unknown> | HomeProfile): Hom
     backupPowerType: readLiteral(value.backupPowerType, BACKUP_POWER_TYPES),
     hasWellWater: readUnknownableBoolean(value.hasWellWater),
     hasSeptic: readUnknownableBoolean(value.hasSeptic),
+    roofAgeYears: readUnknownableNumber(value.roofAgeYears),
     notes: readUnknownableString(value.notes),
     attributesProvenance: readProvenance(value.attributesProvenance),
   };
@@ -298,6 +302,7 @@ function normalizeHouseholdProfile(
     vehicleCount: readUnknownableNumber(value.vehicleCount),
     canSelfEvacuate: readUnknownableBoolean(value.canSelfEvacuate),
     preferredLanguage: readUnknownableString(value.preferredLanguage),
+    budgetClass: readLiteral(value.budgetClass, BUDGET_CLASSES),
     notes: readUnknownableString(value.notes),
     provenance: readProvenance(value.provenance),
   };
@@ -347,6 +352,13 @@ const PET_TYPES = [
   "fish",
   "other",
 ] as const satisfies readonly PetType[];
+
+const BUDGET_CLASSES = [
+  "zero",
+  "low",
+  "moderate",
+  "flexible",
+] as const satisfies readonly BudgetClass[];
 
 const PROVENANCE_VALUES = [
   "user_reported",
