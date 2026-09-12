@@ -5,7 +5,7 @@ import {
   isAuth0HandledPath,
   isProtectedPlanApiPath,
 } from "@/lib/auth/paths";
-import { getAuth0Client } from "@/lib/auth0";
+import { getAuth0Client, withAbsoluteLogoutReturnTo } from "@/lib/auth0";
 
 /**
  * Auth0 v4 mounts login/logout/callback via this Next.js 16 proxy.
@@ -30,7 +30,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const authResponse = await client.middleware(request);
+  const authResponse = await client.middleware(
+    withAbsoluteLogoutReturnTo(request),
+  );
   if (authRoute) return authResponse;
 
   if (planApi) {

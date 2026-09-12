@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { authDisabledResponse } from "@/lib/auth/disabled";
-import { getAuth0Client } from "@/lib/auth0";
+import { handleAuth0Middleware } from "@/lib/auth0";
 
 /**
  * App Router catch-all for `/api/auth/:auth0`.
@@ -11,9 +11,9 @@ import { getAuth0Client } from "@/lib/auth0";
  * disabled response when env is missing.
  */
 async function handle(request: NextRequest) {
-  const client = getAuth0Client();
-  if (!client) return authDisabledResponse(request);
-  return client.middleware(request);
+  const response = await handleAuth0Middleware(request);
+  if (!response) return authDisabledResponse(request);
+  return response;
 }
 
 export async function GET(request: NextRequest) {

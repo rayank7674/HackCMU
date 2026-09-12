@@ -21,7 +21,11 @@ export type Auth0Env = {
   domain: string;
   /** Full issuer URL, e.g. `https://tenant.us.auth0.com`. */
   issuer: string;
-  /** Optional. SDK infers from the request when omitted. */
+  /**
+   * Public origin of this app (`AUTH0_BASE_URL` or `APP_BASE_URL`).
+   * Required for a correct OIDC `post_logout_redirect_uri` — Auth0
+   * rejects a bare relative `/`. SDK infers from the request when omitted.
+   */
   appBaseUrl?: string;
 };
 
@@ -47,8 +51,6 @@ export function getAuth0Env(): Auth0Env | null {
   const clientId = readEnv("AUTH0_CLIENT_ID");
   const clientSecret = readEnv("AUTH0_CLIENT_SECRET");
   const issuerOrDomain = readEnv("AUTH0_ISSUER_BASE_URL", "AUTH0_DOMAIN");
-  const appBaseUrl = readEnv("AUTH0_BASE_URL", "APP_BASE_URL");
-
   if (!secret || !clientId || !clientSecret || !issuerOrDomain) {
     return null;
   }
@@ -62,8 +64,23 @@ export function getAuth0Env(): Auth0Env | null {
     clientSecret,
     domain,
     issuer: toAuth0Issuer(issuerOrDomain),
-    appBaseUrl: appBaseUrl || undefined,
+    appBaseUrl: readAppBaseUrl(),
   };
+}
+
+/** `AUTH0_BASE_URL` (v3) or `APP_BASE_URL` (v4). Empty when unset. */
+export function readAppBaseUrl(): string | undefined {
+  const value = readEnv("AUTH0_BASE_URL", "APP_BASE_URL");
+  return value || undefined;
+}
+
+export function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function toAuth0Domain(value: string): string {
@@ -99,12 +116,52 @@ export function safeReturnTo(
   return value;
 }
 
+/**
+ * Resolve a safe in-app path to an absolute URL under `appBaseUrl`.
+ * Origin-only `/` is returned without a trailing slash so it matches
+ * typical Auth0 Allowed Logout URLs (`https://app.example`).
+ * When no base URL is configured, the relative path is returned unchanged.
+ */
+export function toAbsoluteReturnTo(
+  returnTo: string | null | undefined,
+  appBaseUrl?: string,
+  fallback = "/",
+): string {
+  const path = safeReturnTo(returnTo, fallback);
+  const rawBase = (appBaseUrl ?? readAppBaseUrl())?.trim();
+  if (!rawBase || rawBase.includes(",")) return path;
+
+  try {
+    const base = new URL(rawBase);
+    if (base.protocol !== "http:" && base.protocol !== "https:") {
+      return path;
+    }
+    const absolute = new URL(path, base);
+    if (absolute.origin !== base.origin) {
+      return base.origin;
+    }
+    if (absolute.pathname === "/" && !absolute.search && !absolute.hash) {
+      return absolute.origin;
+    }
+    return absolute.toString();
+  } catch {
+    return path;
+  }
+}
+
 export function loginHref(returnTo = "/plan"): string {
   const params = new URLSearchParams({ returnTo: safeReturnTo(returnTo) });
   return `${AUTH0_LOGIN_PATH}?${params.toString()}`;
 }
 
+/**
+ * Logout start URL. `returnTo` stays a relative in-app path in the
+ * href when no base URL is configured (client bundles cannot see
+ * `AUTH0_BASE_URL`). When `AUTH0_BASE_URL` / `APP_BASE_URL` is
+ * present, the query is already absolute so Auth0 never receives `/`.
+ */
 export function logoutHref(returnTo = "/"): string {
-  const params = new URLSearchParams({ returnTo: safeReturnTo(returnTo, "/") });
+  const dest = toAbsoluteReturnTo(returnTo, undefined, "/");
+  const params = new URLSearchParams({ returnTo: dest });
   return `${AUTH0_LOGOUT_PATH}?${params.toString()}`;
 }
