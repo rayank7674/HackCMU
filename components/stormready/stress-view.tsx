@@ -507,7 +507,7 @@ export function StressView() {
         ) : null}
 
         {simulateStatus === "ready" && result ? (
-          <>
+          <div className="sr-stagger">
             <Card
               eyebrow={STRESS_WEAKEST_LINK}
               title={result.firstBreak?.label ?? "No weakest link in this model"}
@@ -532,17 +532,17 @@ export function StressView() {
             </Card>
 
             <Card eyebrow="Cascade" title="How the disruption can spread">
-              <StressCascade nodes={result.nodes} edges={graph?.edges ?? []} cascadePath={result.cascadePath} />
+              <StressCascade nodes={result.nodes} edges={graph?.edges ?? []} cascadePath={result.cascadePath} weakestId={result.firstBreak?.id} />
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted" aria-label="Diagram legend">
                 <span><i className="mr-1 inline-block size-2 rounded-full bg-accent" />Modeled path</span>
                 <span><i className="mr-1 inline-block size-2 rounded-full bg-danger" />Major impact</span>
                 <span><i className="mr-1 inline-block size-2 rounded-full border border-border" />Other link</span>
               </div>
             </Card>
-          </>
+          </div>
         ) : null}
 
-        <Card eyebrow="3 · What to do next" title="Fortify the weak spot" className="sticky bottom-2 z-10 border-accent/30 shadow-lg">
+        <Card eyebrow="3 · What to do next" title="Fortify the weak spot" className="sr-card-motion sticky bottom-2 z-10 border-accent/30 shadow-lg">
           <p className="mb-3 text-xs leading-relaxed">
             Suggested actions use official hazard state when it is available.
             StormReady will not invent an all-clear.

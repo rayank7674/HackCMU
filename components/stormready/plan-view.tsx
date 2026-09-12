@@ -13,6 +13,8 @@ import { usePlanData } from "@/components/stormready/plan-data";
 import {
   ErrorNote,
   LoadingCard,
+
+
   QueryState,
   Spinner,
 } from "@/components/stormready/query-state";
@@ -324,7 +326,7 @@ export function PlanView() {
         />
 
         {/* Completion bar + checklist (screenshot 1) */}
-        <section className="rounded-2xl border border-border bg-surface p-4">
+        <section className="sr-card-motion rounded-2xl border border-border bg-surface p-4">
           {recsStatus === "ready" && checklistActions.length > 0 ? (
             <div className="mb-4">
               <div className="flex items-end justify-between gap-3">
@@ -400,10 +402,7 @@ export function PlanView() {
             </div>
           ) : recsStatus === "loading" ? (
             <div className="mt-3">
-              <LoadingCard
-                title="Your checklist"
-                label={isDemo ? "Loading Tampa demo…" : "Building your steps…"}
-              />
+              <div className="sr-skeleton h-28 rounded-2xl" aria-label="Loading checklist" />
             </div>
           ) : recsStatus === "error" || recsStatus === "unavailable" ? (
             <div className="mt-3">
@@ -424,7 +423,7 @@ export function PlanView() {
               Nothing came back for this checklist. That is not a made-up plan.
             </Card>
           ) : (
-            <ol className="mt-4 space-y-3">
+            <ol className="sr-stagger mt-4 space-y-3">
               {checklistActions.map((action, index) => (
                 <li key={action.id}>
                   <ActionCard

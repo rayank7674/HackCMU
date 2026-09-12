@@ -9,7 +9,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className="sr-theme-toggle"
+      className="sr-theme-toggle sr-motion-button"
       aria-label={`${label}. Switch theme`}
       title={label}
       onClick={() => setTheme(nextTheme(theme))}

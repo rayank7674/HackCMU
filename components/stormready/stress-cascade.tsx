@@ -147,10 +147,12 @@ export function StressCascade({
   nodes,
   edges,
   cascadePath,
+  weakestId,
 }: {
   nodes: NodeState[];
   edges: Pick<DependencyEdge, "from" | "to">[];
   cascadePath: string[];
+  weakestId?: string;
 }) {
   const layout = layoutStressCascade(nodes, edges, cascadePath);
 
@@ -178,12 +180,13 @@ export function StressCascade({
             y1={edge.y1}
             x2={edge.x2}
             y2={edge.y2}
+            className={edge.inCascade ? "sr-cascade-edge" : undefined}
             stroke={edge.inCascade ? "var(--accent-strong)" : "var(--border)"}
             strokeWidth={edge.inCascade ? 2.2 : 1.2}
           />
         ))}
         {layout.nodes.map((node) => (
-          <g key={node.id} transform={`translate(${node.x} ${node.y})`}>
+          <g key={node.id} className={`sr-cascade-node${node.id === weakestId ? " is-weakest" : ""}`} transform={`translate(${node.x} ${node.y})`}>
             <rect
               width={node.width}
               height={node.height}

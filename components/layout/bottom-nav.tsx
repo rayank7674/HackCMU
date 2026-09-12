@@ -59,7 +59,7 @@ export function BottomNav() {
         <ThemeToggle />
         <button
           type="button"
-          className="sr-nav-collapse"
+          className="sr-nav-collapse sr-motion-button"
           aria-pressed={collapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           onClick={toggleCollapsed}
