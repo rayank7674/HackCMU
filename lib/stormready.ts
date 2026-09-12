@@ -132,6 +132,22 @@ export type {
 } from "./optimization";
 
 export {
+  buildHouseholdGraph,
+  simulate,
+  findMinimumBreakdown,
+  findWorstCase,
+  fortifyFromStress,
+  STRESS_PRESETS,
+  BASELINE_SCENARIO,
+} from "./stress";
+export type {
+  StressResult,
+  StressScenario,
+  DependencyGraph,
+  DisruptionLevel,
+} from "./stress";
+
+export {
   TAMPA_DEMO_HOME,
   TAMPA_DEMO_HOUSEHOLD,
   TAMPA_QUIET_WEATHER,
