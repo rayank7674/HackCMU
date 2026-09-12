@@ -45,3 +45,5 @@ export {
   counterfactualBackupPower,
   fortifyFromStress,
 } from "./fortify";
+export { STRESS_PATH, postStress } from "./client";
+export type { StressAction, StressRequest } from "./client";
