@@ -7,6 +7,7 @@ import {
   LOCAL_HELP_EXAMPLE_NOTE,
   LOCAL_HELP_LINKS,
   PREPAREDNESS_LINKS,
+  REGIONAL_EXAMPLE_LINKS,
   SAFETY_DISCLAIMER,
 } from "@/lib/help/content";
 import { emptyGeocodedLocation } from "@/lib/stormready";
@@ -29,7 +30,12 @@ import {
 } from "@/lib/map/resources";
 
 function allHelpLinks() {
-  return [...PREPAREDNESS_LINKS, ...LOCAL_HELP_LINKS, ...FINANCIAL_LINKS];
+  return [
+    ...PREPAREDNESS_LINKS,
+    ...LOCAL_HELP_LINKS,
+    ...REGIONAL_EXAMPLE_LINKS,
+    ...FINANCIAL_LINKS,
+  ];
 }
 
 describe("Help official resources", () => {
@@ -64,13 +70,26 @@ describe("Help official resources", () => {
 
   it("labels Tampa / Florida local links as examples", () => {
     expect(LOCAL_HELP_EXAMPLE_NOTE.toLowerCase()).toContain("example");
-    const tampa = LOCAL_HELP_LINKS.filter((link) =>
+    const tampa = REGIONAL_EXAMPLE_LINKS.filter((link) =>
       /florida|hillsborough|tampa/i.test(`${link.title} ${link.source}`),
     );
     expect(tampa.length).toBeGreaterThan(0);
     for (const link of tampa) {
       expect(link.source.toLowerCase()).toMatch(/example/);
     }
+  });
+
+  it("binds Help to the saved address instead of a static Tampa list", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const view = readFileSync(
+      resolve(process.cwd(), "components/help/help-view.tsx"),
+      "utf8",
+    );
+    expect(view).toContain("resolveLocalHelp");
+    expect(view).toContain("Local numbers");
+    expect(view).toContain("formatLocation");
+    expect(view).not.toContain("Hillsborough County Emergency Management");
   });
 
   it("says StormReady is not a substitute for official orders", () => {
