@@ -17,13 +17,16 @@ export type FetchJsonResult = FetchJsonOk | FetchJsonErr;
 
 export async function fetchJson(
   url: string,
-  init: RequestInit = {},
+  init: RequestInit & { timeoutMs?: number } = {},
 ): Promise<FetchJsonResult> {
+  const { timeoutMs, ...requestInit } = init;
   try {
     const response = await fetch(url, {
-      ...init,
+      ...requestInit,
       cache: "no-store",
-      signal: init.signal ?? AbortSignal.timeout(INTEGRATION_TIMEOUT_MS),
+      signal:
+        requestInit.signal ??
+        AbortSignal.timeout(timeoutMs ?? INTEGRATION_TIMEOUT_MS),
     });
 
     if (!response.ok) {

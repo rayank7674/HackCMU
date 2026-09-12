@@ -45,6 +45,12 @@ export {
 } from "./nws";
 
 export {
+  fetchOsmPlaces,
+  type OsmPlacesOk,
+  type OsmPlacesResult,
+} from "./osm";
+
+export {
   httpStatusForUnavailable,
   unavailable,
   unknownHazardState,
