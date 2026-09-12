@@ -1,4 +1,6 @@
 import { shortSceneLabel } from "./copy";
+import { isKnown } from "@/types";
+import type { HomeProfile } from "@/types";
 import type {
   DependencyEdge,
   DependencyNodeType,
@@ -21,6 +23,11 @@ export const SCENE_NODE_LAYOUT: Record<string, readonly [number, number, number]
   shelter: [0.1, 0.95, -2.05],
   elevator: [-0.95, 1.7, -0.15],
   charging: [-2.1, 0.88, 0.4],
+  roof: [0, 1.55, 0],
+  openings: [0.55, 0.72, 0.85],
+  lowest_floor: [0, 0.18, 0],
+  pipes: [-0.85, 0.22, 0.55],
+  local_feeder: [-3.15, 1.35, -0.35],
 };
 
 export const SCENE_LEVEL_COLOR: Record<DisruptionLevel, string> = {
@@ -52,6 +59,14 @@ export type StressSceneEdge = {
   inCascade: boolean;
 };
 
+export type HousePartId = "roof" | "openings" | "lowest_floor" | "pipes";
+
+export type HousePartTint = {
+  id: HousePartId;
+  level: DisruptionLevel;
+  why: string;
+};
+
 export type StressSceneModel = {
   modeled: true;
   forecast: false;
@@ -60,7 +75,31 @@ export type StressSceneModel = {
   firstBreakId: string | null;
   cascadePath: string[];
   houseLevel: DisruptionLevel;
+  houseParts: HousePartTint[];
+  dwellingType: string;
+  stories: number;
 };
+
+export function housePartWhy(id: HousePartId, level: DisruptionLevel): string {
+  if (id === "roof") {
+    return level === "none"
+      ? "Roof is holding in this model. Not an inspection."
+      : "Roof is more exposed in this model (age unknown or older class, or wind stress). Not an inspection.";
+  }
+  if (id === "openings") {
+    return level === "none"
+      ? "Openings are holding in this model. Not an inspection."
+      : "Windows and openings are a modeled wind/rain path. Not an inspection.";
+  }
+  if (id === "lowest_floor") {
+    return level === "none"
+      ? "Lowest floor is holding in this model. Not a flood determination."
+      : "Lowest floor is flood-sensitive in this model. Unknown flood zone is not 'outside a flood zone'.";
+  }
+  return level === "none"
+    ? "Pipes are holding in this model. Not a plumbing inspection."
+    : "Pipes are freeze-sensitive in this model. Not a plumbing inspection.";
+}
 
 export function isFailedLevel(level: DisruptionLevel): boolean {
   return level === "major" || level === "critical";
@@ -85,7 +124,9 @@ export function buildStressScene(
     "nodes" | "cascadePath" | "firstBreak" | "modeled" | "forecast"
   >,
   graph: { edges: Pick<DependencyEdge, "from" | "to">[] },
+  home?: Pick<HomeProfile, "dwellingType" | "stories"> | null,
 ): StressSceneModel {
+  const profile = home;
   const cascade = new Set(result.cascadePath);
   const firstBreakId = result.firstBreak?.id ?? null;
   const nodes: StressSceneNode[] = result.nodes.map((node, index) => {
@@ -120,7 +161,13 @@ export function buildStressScene(
     });
   }
 
-  const home = nodes.find((node) => node.id === "home");
+  const homeNode = nodes.find((node) => node.id === "home");
+  const partIds: HousePartId[] = ["roof", "openings", "lowest_floor", "pipes"];
+  const houseParts = partIds.map((id) => {
+    const node = nodes.find((item) => item.id === id);
+    const level = node?.level ?? "none";
+    return { id, level, why: housePartWhy(id, level) };
+  });
   return {
     modeled: true,
     forecast: false,
@@ -128,7 +175,14 @@ export function buildStressScene(
     edges,
     firstBreakId,
     cascadePath: result.cascadePath.filter((id) => typeof id === "string"),
-    houseLevel: home?.level ?? "none",
+    houseLevel: homeNode?.level ?? "none",
+    houseParts,
+    dwellingType:
+      profile && isKnown(profile.dwellingType)
+        ? profile.dwellingType
+        : "single_family",
+    stories:
+      profile && isKnown(profile.stories) ? Math.min(profile.stories, 4) : 1,
   };
 }
 
@@ -137,6 +191,7 @@ export function sceneNodesFromStates(
   edges: Pick<DependencyEdge, "from" | "to">[],
   cascadePath: string[],
   firstBreakId: string | null,
+  home?: Pick<HomeProfile, "dwellingType" | "stories"> | null,
 ): StressSceneModel {
   return buildStressScene(
     {
@@ -149,6 +204,7 @@ export function sceneNodesFromStates(
         : null,
     },
     { edges },
+    home,
   );
 }
 

@@ -19,7 +19,12 @@ export type DependencyNodeType =
   | "home"
   | "elevator"
   | "charging"
-  | "road";
+  | "road"
+  | "roof"
+  | "openings"
+  | "lowest_floor"
+  | "pipes"
+  | "local_feeder";
 
 export type DisruptionLevel = "none" | "constrained" | "major" | "critical";
 

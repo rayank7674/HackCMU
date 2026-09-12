@@ -79,7 +79,12 @@ export function simulate(
   scenario: StressScenario,
 ): StressResult {
   const own = new Map(graph.nodes.map((node) => [node.id, node.ownCapacity]));
-  own.set("power", scenario.powerAvailability);
+  const hasFeeder = graph.nodes.some((node) => node.id === "local_feeder");
+  if (hasFeeder) {
+    own.set("local_feeder", scenario.powerAvailability);
+  } else {
+    own.set("power", scenario.powerAvailability);
+  }
   own.set("road", scenario.roadAccessibility);
   own.set("water", scenario.waterAvailability);
   const transport = graph.nodes.find((node) => node.id === "transport");
@@ -95,9 +100,21 @@ export function simulate(
   }
   if (scenario.hazardBoost === "flood") {
     own.set("road", clamp((own.get("road") ?? 100) * 0.8));
+    if (own.has("lowest_floor")) {
+      own.set("lowest_floor", clamp((own.get("lowest_floor") ?? 100) * 0.5));
+    }
   }
-  if (scenario.hazardBoost === "winter" && own.get("charging") !== undefined) {
-    own.set("charging", clamp((own.get("charging") ?? 100) * 0.85));
+  if (scenario.hazardBoost === "wind") {
+    if (own.has("roof")) own.set("roof", clamp((own.get("roof") ?? 100) * 0.55));
+    if (own.has("openings")) {
+      own.set("openings", clamp((own.get("openings") ?? 100) * 0.7));
+    }
+  }
+  if (scenario.hazardBoost === "winter") {
+    if (own.get("charging") !== undefined) {
+      own.set("charging", clamp((own.get("charging") ?? 100) * 0.85));
+    }
+    if (own.has("pipes")) own.set("pipes", clamp((own.get("pipes") ?? 100) * 0.5));
   }
 
   const effective = new Map<string, number>();

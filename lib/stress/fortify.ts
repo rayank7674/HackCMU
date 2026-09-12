@@ -7,7 +7,7 @@ import {
   toPreparednessActions,
 } from "@/lib/optimization";
 import type { OptimizationConstraints, OptimizationResult } from "@/lib/optimization";
-import { buildHouseholdGraph } from "./graph";
+import { buildHouseholdGraph, scenarioIncludesLocalFeeder } from "./graph";
 import { simulate } from "./propagate";
 import type { DisruptionLevel, NodeState, StressResult, StressScenario } from "./types";
 
@@ -23,6 +23,11 @@ const NODE_CATEGORIES: Record<string, RecommendationCategory[]> = {
   water: ["water", "supplies"],
   healthcare: ["medical"],
   shelter: ["shelter"],
+  roof: ["shelter"],
+  openings: ["shelter"],
+  lowest_floor: ["shelter"],
+  pipes: ["water"],
+  local_feeder: ["power"],
 };
 
 function categoriesFor(affected: NodeState[]): Set<RecommendationCategory> {
@@ -79,14 +84,16 @@ export function compareCounterfactual(input: {
   disruptionWithout: DisruptionLevel;
   disruptionWith: DisruptionLevel;
 } {
+  const feeder = { includeLocalFeeder: scenarioIncludesLocalFeeder(input.scenario) };
   const without = simulate(
-    buildHouseholdGraph(input.home, input.household),
+    buildHouseholdGraph(input.home, input.household, feeder),
     input.scenario,
   );
   const withChange = simulate(
     buildHouseholdGraph(
       input.variantHome ?? input.home,
       input.variantHousehold ?? input.household,
+      feeder,
     ),
     input.scenario,
   );

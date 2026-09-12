@@ -32,6 +32,25 @@ function readUi(relative: string) {
   return readFileSync(path.join(root, relative), "utf8");
 }
 
+describe("Home now vs Plan sequence", () => {
+  it("keeps Home as now + season + one plan CTA", () => {
+    const home = readUi("components/stormready/home-view.tsx");
+    expect(home).toContain("seasonFromHome");
+    expect(home).toContain("See what to do");
+    expect(home).toContain('href="/plan"');
+    expect(home).not.toContain("Top action");
+    expect(home).not.toContain("Open your plan");
+  });
+
+  it("requests device location only after a click", () => {
+    const onboarding = readUi("components/stormready/onboarding-flow.tsx");
+    expect(onboarding).toContain('shouldRequestGeolocation("user_click")');
+    expect(onboarding).toContain("Use this device’s location (optional)");
+    expect(onboarding).toContain("Confirm this place");
+    expect(onboarding).not.toMatch(/getCurrentPosition\([\s\S]*useEffect/);
+  });
+});
+
 describe("Stress Test nav and plan CTA", () => {
   it("adds a Stress Test tab at /stress-test without dropping Help or Profile", () => {
     expect(STRESS_TEST_HREF).toBe("/stress-test");
@@ -55,11 +74,12 @@ describe("Stress Test nav and plan CTA", () => {
     expect(nav).toMatch(/aria-label=\{tab\.href === STRESS_TEST_HREF \? "Stress Test"/);
   });
 
-  it("links Plan to Stress Test with the required CTA copy", () => {
+  it("links Plan to Stress Test with a house-hit deep link", () => {
     const plan = readUi("components/stormready/plan-view.tsx");
-    expect(plan).toContain('href="/stress-test"');
-    expect(plan).toContain("Test my preparedness");
-    expect(plan.match(/Test my preparedness/g)?.length).toBe(1);
+    expect(plan).toContain("/stress-test?hit=");
+    expect(plan).toContain("hitFromRecommendation");
+    expect(plan).toContain("Test this house");
+    expect(plan.match(/Test this house/g)?.length).toBe(1);
   });
 });
 
@@ -99,6 +119,12 @@ describe("Stress Test copy", () => {
     expect(STRESS_UPDATE_PLAN).toBe("Update your plan");
     expect(view).toContain("SIMPLE_POWER_OUTAGE_PRESET_ID");
     expect(SIMPLE_POWER_OUTAGE_PRESET_ID).toBe("power-12h");
+    expect(view).toContain("What hits this house");
+    expect(view).toContain("parseHouseHit");
+    expect(view).toContain("visibleHits");
+    const wizard = view.indexOf("Pick a modeled impact");
+    expect(wizard).toBeGreaterThan(-1);
+    expect(view.indexOf("<StressScene", wizard)).toBeGreaterThan(wizard);
     expect(view).toContain("StressScene");
     expect(view.toLowerCase()).not.toContain("counterfactual");
     expect(view).not.toContain("fortifyFromStress");

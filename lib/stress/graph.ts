@@ -6,6 +6,7 @@ import type {
   DependencyNode,
   DependencyNodeType,
   StressProvenance,
+  StressScenario,
 } from "./types";
 
 function node(
@@ -73,9 +74,116 @@ function usesElevator(home: HomeProfile): boolean {
  * fact itself is user-reported. Unknown backup power does not add a
  * "no generator" charging failure path.
  */
+export type GraphBuildOptions = {
+  includeLocalFeeder?: boolean;
+};
+
+export function scenarioIncludesLocalFeeder(scenario: StressScenario): boolean {
+  return scenario.powerAvailability < 100 || scenario.outageHours !== null;
+}
+
+function roofCapacity(home: HomeProfile): { capacity: number; source: StressProvenance; note: string } {
+  if (isUnknown(home.roofAgeYears)) {
+    return {
+      capacity: 65,
+      source: "modeled",
+      note: "Roof age is unknown. Unknown is not treated as a new roof.",
+    };
+  }
+  if (isKnown(home.roofAgeYears) && home.roofAgeYears >= 15) {
+    return {
+      capacity: 55,
+      source: "user_reported",
+      note: `User-reported roof age ${home.roofAgeYears} years is in the older-roof class.`,
+    };
+  }
+  return {
+    capacity: 90,
+    source: "user_reported",
+    note: "User-reported roof age is not in the older-roof class.",
+  };
+}
+
+function openingsCapacity(home: HomeProfile): {
+  capacity: number;
+  source: StressProvenance;
+  note: string;
+} {
+  if (home.hasHurricaneShutters === false) {
+    return {
+      capacity: 60,
+      source: "user_reported",
+      note: "User reported no hurricane shutters. Openings are modeled as a wind weak point.",
+    };
+  }
+  if (home.hasHurricaneShutters === true) {
+    return {
+      capacity: 90,
+      source: "user_reported",
+      note: "User reported hurricane shutters.",
+    };
+  }
+  return {
+    capacity: 75,
+    source: "modeled",
+    note: "Shutter status is unknown. Unknown is not treated as protected openings.",
+  };
+}
+
+function lowestFloorCapacity(home: HomeProfile): {
+  capacity: number;
+  source: StressProvenance;
+  note: string;
+} {
+  const zone = isKnown(home.floodZone) ? home.floodZone.toUpperCase() : null;
+  const floodLetter = zone && /^[AV]/.test(zone);
+  if (home.hasBasement === true && floodLetter) {
+    return {
+      capacity: 40,
+      source: "external",
+      note: "Basement plus a FEMA A/V flood zone — lowest floor is modeled as flood-sensitive.",
+    };
+  }
+  if (home.hasBasement === true && isUnknown(home.floodZone)) {
+    return {
+      capacity: 55,
+      source: "modeled",
+      note: "Basement present and flood zone unknown. Unknown is not 'outside a flood zone'.",
+    };
+  }
+  if (floodLetter) {
+    return {
+      capacity: 60,
+      source: "external",
+      note: "FEMA A/V flood zone — lowest floor is modeled as flood-sensitive.",
+    };
+  }
+  return {
+    capacity: 85,
+    source: isUnknown(home.floodZone) ? "modeled" : "user_reported",
+    note: "Lowest floor starts at baseline. This is not an all-clear for flooding.",
+  };
+}
+
+function pipesCapacity(home: HomeProfile): { capacity: number; source: StressProvenance; note: string } {
+  if (home.hasWellWater === true || home.hasSeptic === true) {
+    return {
+      capacity: 70,
+      source: "user_reported",
+      note: "Well or septic is modeled as more freeze-sensitive than municipal service.",
+    };
+  }
+  return {
+    capacity: 90,
+    source: "modeled",
+    note: "Pipes are modeled as a freeze path. This is not a plumbing inspection.",
+  };
+}
+
 export function buildHouseholdGraph(
   home: HomeProfile,
   household: HouseholdProfile,
+  options: GraphBuildOptions = {},
 ): DependencyGraph {
   const assumptions: string[] = [
     "This graph is a household planning model, not official infrastructure topology.",
@@ -225,6 +333,41 @@ export function buildHouseholdGraph(
         "healthcare",
         1,
         "User-reported power-dependent medical device.",
+      ),
+    );
+  }
+
+  const roof = roofCapacity(home);
+  const openings = openingsCapacity(home);
+  const lowest = lowestFloorCapacity(home);
+  const pipes = pipesCapacity(home);
+  assumptions.push(roof.note, openings.note, lowest.note, pipes.note);
+  nodes.push(
+    node("roof", "roof", "Roof", roof.source, roof.capacity),
+    node("openings", "openings", "Windows and openings", openings.source, openings.capacity),
+    node("lowest_floor", "lowest_floor", "Lowest floor", lowest.source, lowest.capacity),
+    node("pipes", "pipes", "Pipes", pipes.source, pipes.capacity),
+  );
+
+  if (options.includeLocalFeeder) {
+    assumptions.push(
+      "Modeled local supply — not a real utility map or a found faulty line.",
+    );
+    nodes.push(
+      node(
+        "local_feeder",
+        "local_feeder",
+        "Modeled local supply",
+        "modeled",
+        100,
+      ),
+    );
+    edges.push(
+      edge(
+        "local_feeder",
+        "power",
+        1,
+        "Modeled local supply — not a real utility map or a found faulty line.",
       ),
     );
   }

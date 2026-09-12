@@ -70,6 +70,11 @@ export function shortSceneLabel(label: string): string {
     "Staying in place": "Shelter",
     "Device charging": "Charging",
     "Building elevator": "Elevator",
+    Roof: "Roof",
+    "Windows and openings": "Openings",
+    "Lowest floor": "Floor",
+    Pipes: "Pipes",
+    "Modeled local supply": "Supply",
   };
   if (known[label]) return known[label];
   return label.length <= 12 ? label : `${label.slice(0, 10)}…`;

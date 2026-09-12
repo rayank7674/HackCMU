@@ -25,6 +25,11 @@ const TIGERWEB_ZCTA_QUERY =
 
 const ZIP_RE = /^(\d{5})(?:-\d{4})?$/;
 
+export type ReverseGeocodeQuery = {
+  latitude: number;
+  longitude: number;
+};
+
 export type GeocodeQuery = {
   /** Single-line address, e.g. "100 N Ashley Dr, Tampa, FL 33602". */
   address?: string;
@@ -123,6 +128,96 @@ export async function geocode(input: GeocodeQuery): Promise<GeocodeResult> {
  * Copy geocode success onto a home profile. Known fields from Census win;
  * still-unknown adapter fields leave existing profile values untouched.
  */
+export function validateCoordinates(
+  latitude: unknown,
+  longitude: unknown,
+): ReverseGeocodeQuery | null {
+  const lat = typeof latitude === "number" ? latitude : Number(latitude);
+  const lon = typeof longitude === "number" ? longitude : Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { latitude: lat, longitude: lon };
+}
+
+/**
+ * Reverse-geocode a coordinate via Census. Never invents a street when
+ * Census only returns geographies (treated as a ZCTA-class match).
+ */
+export async function reverseGeocode(
+  input: ReverseGeocodeQuery,
+): Promise<GeocodeResult> {
+  const coords = validateCoordinates(input.latitude, input.longitude);
+  if (!coords) {
+    return unavailable(
+      "geocode",
+      "invalid_input",
+      "Latitude and longitude must be finite numbers. No coordinates were stored.",
+    );
+  }
+
+  const params = new URLSearchParams({
+    x: String(coords.longitude),
+    y: String(coords.latitude),
+    benchmark: CENSUS_BENCHMARK,
+    format: "json",
+  });
+  const fetched = await fetchJson(
+    `${CENSUS_GEOCODER_BASE}/locations/coordinates?${params.toString()}`,
+  );
+  if (!fetched.ok) {
+    return mapFetchFailure("geocode", fetched);
+  }
+
+  const fromAddress = parseAddressMatches(fetched.data, {}, "address");
+  if (fromAddress) {
+    return {
+      ...fromAddress,
+      location: {
+        ...fromAddress.location,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      },
+    };
+  }
+
+  const county = await lookupCounty(coords.longitude, coords.latitude);
+  return {
+    ok: true,
+    status: "ok",
+    matchKind: "zcta",
+    query: {},
+    normalizedAddress: emptyNormalizedAddress(),
+    location: {
+      ...emptyGeocodedLocation(),
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      county,
+      provenance: "external_source",
+    },
+  };
+}
+
+/**
+ * Confirmed device location: Census fields may fill the form, but the
+ * household accepted the pin so address provenance stays user_reported.
+ */
+export function applyConfirmedLocation(
+  home: HomeProfile,
+  result: GeocodeOk,
+): HomeProfile {
+  const next = applyGeocodeToHomeProfile(home, result);
+  return {
+    ...next,
+    addressProvenance: "user_reported",
+    location: {
+      ...next.location,
+      latitude: result.location.latitude,
+      longitude: result.location.longitude,
+      provenance: "external_source",
+    },
+  };
+}
+
 export function applyGeocodeToHomeProfile(
   home: HomeProfile,
   result: GeocodeOk,
