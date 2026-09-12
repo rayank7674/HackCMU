@@ -1,5 +1,5 @@
 import { authDisabledResponse } from "@/lib/auth/disabled";
-import { getAuth0Client } from "@/lib/auth0";
+import { handleAuth0Middleware } from "@/lib/auth0";
 
 /**
  * `/api/auth/login` — Auth0 v4 login start.
@@ -7,7 +7,7 @@ import { getAuth0Client } from "@/lib/auth0";
  * When env is present, proxy.ts usually handles this first.
  */
 export async function GET(request: Request) {
-  const client = getAuth0Client();
-  if (!client) return authDisabledResponse(request);
-  return client.middleware(request);
+  const response = await handleAuth0Middleware(request);
+  if (!response) return authDisabledResponse(request);
+  return response;
 }
