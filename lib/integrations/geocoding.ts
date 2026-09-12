@@ -442,8 +442,14 @@ function clean(value: string | undefined): string | null {
 
 function extractZip(value: string | null | undefined): string | null {
   if (!value) return null;
-  const match = value.match(/\b(\d{5})(?:-\d{4})?\b/);
-  return match ? match[1] : null;
+  const trimmed = value.trim();
+  const exact = trimmed.match(ZIP_RE);
+  if (exact) return exact[1];
+  // "Tampa, FL 33602" / "Washington, DC 20500" — not a 5-digit run inside garbage.
+  const trailing = trimmed.match(
+    /,\s*(?:[A-Za-z.]{2,}\s+)?(\d{5})(?:-\d{4})?\s*$/,
+  );
+  return trailing ? trailing[1] : null;
 }
 
 export function emptyNormalizedAddress(): NormalizedAddress {

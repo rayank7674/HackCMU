@@ -57,9 +57,27 @@ async function respond(input: AlertsInput) {
     Number.isFinite(longitude);
 
   if (!hasCoords) {
+    if (!hasGeocodeInput(input.geocodeQuery)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          status: "unavailable",
+          reason: "invalid_input",
+          message:
+            "Provide latitude and longitude, or an address / ZIP to geocode first.",
+          service: "nws",
+          hazards: unknownHazardState(),
+        },
+        { status: 400 },
+      );
+    }
+
     const geo = await geocode(input.geocodeQuery);
     if (!geo.ok) {
-      return NextResponse.json(geo, { status: httpStatusForUnavailable(geo) });
+      return NextResponse.json(
+        { ...geo, hazards: unknownHazardState() },
+        { status: httpStatusForUnavailable(geo) },
+      );
     }
     if (!isKnown(geo.location.latitude) || !isKnown(geo.location.longitude)) {
       return NextResponse.json(
@@ -156,4 +174,14 @@ function asNumber(value: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
+}
+
+function hasGeocodeInput(query: GeocodeQuery): boolean {
+  return Boolean(
+    query.address ||
+      query.addressLine ||
+      query.city ||
+      query.state ||
+      query.postalCode,
+  );
 }
