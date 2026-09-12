@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StressCascade } from "@/components/stormready/stress-cascade";
-import { StressScene } from "@/components/stormready/stress-scene";
+
 import {
   ErrorNote,
   LoadingCard,
@@ -17,13 +17,13 @@ import { UnavailableNote } from "@/components/stormready/unavailable-note";
 import {
   SIMPLE_POWER_OUTAGE_PRESET_ID,
   STRESS_ADVANCED_SUMMARY,
-  STRESS_FLOW_COPY,
+
   STRESS_HEADLINE,
   STRESS_MIN_SEARCH_LABEL,
-  STRESS_NEXT_STEPS,
+
   STRESS_RUN_POWER_OUTAGE,
   STRESS_RUN_THIS_SCENARIO,
-  STRESS_SEE_ON_MAP,
+
   STRESS_SUGGEST_NEXT,
   STRESS_UPDATE_PLAN,
   STRESS_WEAKEST_LINK,
@@ -403,22 +403,15 @@ export function StressView() {
   return (
     <main className="flex min-h-full flex-1 flex-col">
       <Header title="Stress Test" />
-      <div className="flex flex-1 flex-col gap-4 px-5 pb-8 pt-4">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-          {STRESS_FLOW_COPY}
-        </p>
-        <h2 className="text-lg font-semibold text-foreground">{STRESS_HEADLINE}</h2>
-        <p className="text-sm leading-relaxed text-muted">{STRESS_MODELED_COPY}</p>
+      <div className="flex flex-1 flex-col gap-4 px-5 pb-28 pt-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Stress test</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{STRESS_HEADLINE}</h2>
+          <p className="mt-1 text-xs text-muted">Choose a scenario to see where one disruption could spread.</p>
+        </div>
 
-        <Card eyebrow="What hits this house" title="Pick a modeled impact">
-          <p className="text-sm leading-relaxed">
-            Start with how this dwelling is stressed. Season filters hide
-            off-season hits unless you show all. Simulated planning only.
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-muted">
-            {season.label}. {season.sourceNote}
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
+        <Card eyebrow="1 · Scenario" title="What could hit your home?">
+          <div className="flex flex-wrap gap-2">
             {HOUSE_HITS.filter((item) => availableHits.includes(item.id)).map((item) => {
               const selected = hit === item.id;
               return (
@@ -432,20 +425,15 @@ export function StressView() {
                     setSimulateStatus("idle");
                     setPresetOverride(null);
                   }}
-                  className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-sm font-medium transition ${
-                    selected
-                      ? "border-accent-strong bg-accent-strong text-white"
-                      : "border-border bg-white text-foreground hover:bg-surface-elevated"
-                  }`}
+                  className={`min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition ${selected ? "border-accent-strong bg-accent-strong text-white" : "border-border bg-surface text-foreground hover:bg-surface-elevated"}`}
                 >
-                  <span className="block">{item.label}</span>
-                  <span className={`mt-0.5 block text-xs font-normal ${selected ? "text-white/80" : "text-muted"}`}>
-                    {item.body}
-                  </span>
+                  {item.label}
                 </button>
               );
             })}
           </div>
+          <p className="mt-3 text-xs text-muted">{season.label}. {STRESS_MODELED_COPY}</p>
+
           {!showAllHits && HOUSE_HITS.some((item) => !hitIsInSeason(item.id, season)) ? (
             <button
               type="button"
@@ -471,7 +459,7 @@ export function StressView() {
                         className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-xs font-medium transition ${
                           selected
                             ? "border-accent-strong bg-accent-strong text-white"
-                            : "border-border bg-white text-foreground hover:bg-surface-elevated"
+                            : "border-border bg-surface text-foreground hover:bg-surface-elevated"
                         }`}
                       >
                         {item.label}
@@ -543,33 +531,18 @@ export function StressView() {
               </p>
             </Card>
 
-            <Card eyebrow="Household view" title="How one break can cascade">
-              <StressScene result={result} edges={graph?.edges ?? []} home={home} />
-              <p className="mt-3 text-xs">
-                <Link href="/map" className="font-semibold text-accent-strong">
-                  {STRESS_SEE_ON_MAP}
-                </Link>
-                {" — "}
-                optional map overlay. Still modeled, not a utility twin.
-              </p>
-              {result.affected.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-xs">
-                  {result.affected.map((node) => (
-                    <li key={node.id}>
-                      {node.label}: {disruptionLabel(node.level)}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-3 text-xs">
-                  No downstream systems were marked affected in this model.
-                </p>
-              )}
+            <Card eyebrow="Cascade" title="How the disruption can spread">
+              <StressCascade nodes={result.nodes} edges={graph?.edges ?? []} cascadePath={result.cascadePath} />
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted" aria-label="Diagram legend">
+                <span><i className="mr-1 inline-block size-2 rounded-full bg-accent" />Modeled path</span>
+                <span><i className="mr-1 inline-block size-2 rounded-full bg-danger" />Major impact</span>
+                <span><i className="mr-1 inline-block size-2 rounded-full border border-border" />Other link</span>
+              </div>
             </Card>
           </>
         ) : null}
 
-        <Card eyebrow={STRESS_NEXT_STEPS} title="Fortify the weak spot">
+        <Card eyebrow="3 · What to do next" title="Fortify the weak spot" className="sticky bottom-2 z-10 border-accent/30 shadow-lg">
           <p className="mb-3 text-xs leading-relaxed">
             Suggested actions use official hazard state when it is available.
             StormReady will not invent an all-clear.
@@ -715,11 +688,7 @@ export function StressView() {
         </details>
 
         <p className="text-xs leading-relaxed text-muted">
-          Optional mode. Open your{" "}
-          <Link href="/plan" className="font-semibold text-accent-strong">
-            plan
-          </Link>{" "}
-          for live official alerts. Stress Test never replaces them.
+          Modeled planning only — check your plan and local alerts for current guidance.
         </p>
       </div>
     </main>

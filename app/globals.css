@@ -430,13 +430,6 @@ body {
     height: min(62dvh, 36rem);
   }
 
-  .sr-stress-scene {
-    height: 18.5rem;
-  }
-
-  html[data-removed-demo="mobile"] .sr-stress-scene {
-    height: 13.5rem;
-  }
 
   .sr-page-header {
     margin-inline: -1.5rem;
