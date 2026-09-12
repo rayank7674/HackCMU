@@ -10,13 +10,16 @@ import {
   formatLocation,
   householdSummary,
 } from "@/lib/stormready-format";
-import { clearOnboardingStep } from "@/lib/onboarding-progress";
+import { AuthControls } from "@/components/stormready/auth-controls";
 import { SavePlanControl } from "@/components/stormready/save-plan-control";
+import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
+import { clearOnboardingStep } from "@/lib/onboarding-progress";
 import { useProfile } from "@/lib/use-profile";
 
 export default function ProfilePage() {
   const { profile, hydrated, reset } = useProfile();
   const [confirmClear, setConfirmClear] = useState(false);
+  useCloudPlanSync();
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
@@ -38,7 +41,9 @@ export default function ProfilePage() {
                 hazards: null,
                 recommendations: [],
               }}
+              returnTo="/profile"
             />
+            <AuthControls returnTo="/profile" />
             <Button variant="secondary" onClick={() => setConfirmClear(true)}>
               Clear this device
             </Button>
@@ -47,22 +52,14 @@ export default function ProfilePage() {
           <>
             <Card title="Nothing saved here">
               You can set up a home without creating an account. Details stay in
-              this browser.
+              this browser until you save a plan.
             </Card>
             <Button href="/onboarding">Get Started</Button>
-            <SavePlanControl
-              snapshot={{
-                home: null,
-                household: null,
-                hazards: null,
-                recommendations: [],
-              }}
-            />
+            <AuthControls returnTo="/profile" />
           </>
         )}
         <p className="text-xs leading-relaxed text-muted">
-          This device keeps an anonymous copy. Sign in to save a cloud copy once
-          an account is connected.
+          Onboarding stays anonymous. Log in only to save or restore a plan.
         </p>
       </div>
 

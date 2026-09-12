@@ -19,14 +19,13 @@ export const AUTH_NOT_CONFIGURED = {
   ok: false as const,
   error: "auth_not_configured",
   message:
-    "No signed-in identity. Auth0 wiring is next — the session must provide the Auth0 user sub.",
+    "No signed-in identity. Set Auth0 env vars and sign in — the session must provide the Auth0 user sub.",
 };
 
 export const UNAUTHENTICATED = {
   ok: false as const,
   error: "unauthenticated",
-  message:
-    "Sign in required. Auth0 session did not provide a user sub.",
+  message: "Sign in required. Auth0 session did not provide a user sub.",
 };
 
 export type PlanRouteContext =

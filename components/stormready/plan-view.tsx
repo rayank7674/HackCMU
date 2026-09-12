@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { SavePlanControl } from "@/components/stormready/save-plan-control";
+import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import { usePlanData } from "@/components/stormready/plan-data";
 import {
   ErrorNote,
@@ -51,6 +52,7 @@ const ACTION_ERROR =
 
 export function PlanView() {
   const { profile, hydrated } = useProfile();
+  useCloudPlanSync();
   const plan = usePlanData(profile, hydrated);
   const [why, setWhy] = useState<RecommendationView | null>(null);
   const [demoRecs, setDemoRecs] = useState<RecommendationView[] | null>(null);
@@ -141,6 +143,7 @@ export function PlanView() {
             hazards: plan.alerts,
             recommendations: plan.recommendations,
           }}
+          returnTo="/plan"
         />
 
         <QueryState

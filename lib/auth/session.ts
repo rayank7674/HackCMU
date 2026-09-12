@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   AUTH0_LOGIN_PATH,
   AUTH0_LOGOUT_PATH,
+  AUTH0_SESSION_PATH,
+  loginHref,
+  logoutHref,
   type AuthIdentity,
 } from "./identity";
 
@@ -11,35 +15,80 @@ export type AuthSessionStatus = "loading" | "unauthenticated" | "authenticated";
 export type AuthSession = {
   status: AuthSessionStatus;
   identity: AuthIdentity | null;
-  /**
-   * False until Auth0 env + SDK are wired. The Save My Plan control uses
-   * this to show "Sign in to save". Replace `useAuthSession` internals
-   * with Auth0 `useUser()` (or middleware-provided session) later.
-   */
   authConfigured: boolean;
-  loginHref: typeof AUTH0_LOGIN_PATH;
-  logoutHref: typeof AUTH0_LOGOUT_PATH;
+  loginHref: string;
+  logoutHref: string;
 };
 
-/**
- * Client hook for Save My Plan / sign-in CTA.
- *
- * Today Auth0 is not installed, so this always returns unauthenticated.
- * Later:
- *
- *   const { user, isLoading } = useUser();
- *   if (isLoading) return { status: "loading", ... };
- *   if (!user?.sub) return { status: "unauthenticated", ... };
- *   return { status: "authenticated", identity: { sub: user.sub, email: user.email }, ... };
- */
-export function useAuthSession(): AuthSession {
-  return {
-    status: "unauthenticated",
-    identity: null,
-    authConfigured: false,
-    loginHref: AUTH0_LOGIN_PATH,
-    logoutHref: AUTH0_LOGOUT_PATH,
-  };
+export type AuthSessionResponse = {
+  configured: boolean;
+  user: { sub: string; email?: string | null } | null;
+};
+
+const idle: AuthSession = {
+  status: "loading",
+  identity: null,
+  authConfigured: false,
+  loginHref: AUTH0_LOGIN_PATH,
+  logoutHref: AUTH0_LOGOUT_PATH,
+};
+
+export function useAuthSession(returnTo = "/plan"): AuthSession {
+  const [session, setSession] = useState<AuthSession>({
+    ...idle,
+    loginHref: loginHref(returnTo),
+    logoutHref: logoutHref("/"),
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch(AUTH0_SESSION_PATH, { cache: "no-store" });
+        const body = (await response.json().catch(() => null)) as
+          | AuthSessionResponse
+          | null;
+        if (cancelled) return;
+
+        const configured = Boolean(body?.configured);
+        const sub = body?.user?.sub?.trim() ?? "";
+        if (sub) {
+          setSession({
+            status: "authenticated",
+            identity: { sub, email: body?.user?.email ?? null },
+            authConfigured: configured,
+            loginHref: loginHref(returnTo),
+            logoutHref: logoutHref("/"),
+          });
+          return;
+        }
+
+        setSession({
+          status: "unauthenticated",
+          identity: null,
+          authConfigured: configured,
+          loginHref: loginHref(returnTo),
+          logoutHref: logoutHref("/"),
+        });
+      } catch {
+        if (cancelled) return;
+        setSession({
+          status: "unauthenticated",
+          identity: null,
+          authConfigured: false,
+          loginHref: loginHref(returnTo),
+          logoutHref: logoutHref("/"),
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [returnTo]);
+
+  return session;
 }
 
 export function canSavePlan(session: AuthSession): boolean {

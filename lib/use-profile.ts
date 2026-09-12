@@ -7,6 +7,7 @@ import {
   clearProfile,
   emptyPersistedProfile,
   loadProfile,
+  restoreProfile,
   saveHomeProfile,
   saveHouseholdProfile,
   type HomeProfile,
@@ -43,8 +44,9 @@ function subscribe(onChange: () => void) {
   };
 }
 
-function notifyProfileChanged() {
+export function notifyProfileChanged() {
   snapshotReady = false;
+  if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(PROFILE_EVENT));
 }
 
@@ -78,5 +80,18 @@ export function useProfile() {
     return next;
   }, []);
 
-  return { profile, hydrated, updateHome, updateHousehold, reset };
+  const restore = useCallback(
+    (input: {
+      home?: HomeProfile | null;
+      household?: HouseholdProfile | null;
+      updatedAt?: string | null;
+    }) => {
+      const next = restoreProfile(input);
+      notifyProfileChanged();
+      return next;
+    },
+    [],
+  );
+
+  return { profile, hydrated, updateHome, updateHousehold, reset, restore };
 }

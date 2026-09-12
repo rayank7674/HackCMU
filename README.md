@@ -4,10 +4,12 @@ Anonymous household preparedness: **Your home. Your risk. Your plan.**
 
 Phase 1 is a mobile-first Next.js app. You can finish a home setup and open a plan without creating an account. Home and household details stay in this browser via the existing `@/lib/stormready` profile store.
 
+Phase 2 adds optional **Auth0** login and **Save My Plan**. Anonymous onboarding and plan browse still work with no login.
+
 ## Local setup
 
 1. Install Node.js 20+ and npm.
-2. Optional: copy environment notes (no secrets are required):
+2. Optional: copy environment notes (no secrets are required to build or use the anonymous path):
 
 ```bash
 cp .env.example .env.local
@@ -29,15 +31,73 @@ npm run build
 
 ## Anonymous path
 
-1. Welcome at `/` — Get Started (Log In is a disabled placeholder).
+1. Welcome at `/` — Get Started. **Log In** is enabled only when Auth0 env is present; otherwise it stays disabled. The rest of setup never requires an account.
 2. Onboarding at `/onboarding` — location, housing, home characteristics, assets, household constraints, immediate budget. Each step writes through `saveHomeProfile` / `saveHouseholdProfile`.
-3. Plan at `/plan` — saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges — never dollar prices. **Sign in to save** is a calm CTA until Auth0 is wired.
+3. Plan at `/plan` — saved location, official alert card, compact conditions, and 3–5 actions grouped by time horizon (`now` / `before the next event` / `long term`). Actions are ranked by budget class (no-cost first) with cost-class badges — never dollar prices. **Save My Plan** starts Auth0 login when env is set.
 
 Loading, error, and fail-closed unavailable states are shown for geocode, alerts, and recommendations. StormReady never fabricates alerts or an all-clear.
 
 Bottom navigation: Home / Plan / Map / Help / Profile. Map is a placeholder only (no Mapbox).
 
 `/dashboard` redirects to `/`. The old rooms lobby is isolated under `components/layout/` and is not on the user path.
+
+## Auth0 + Save My Plan
+
+The app builds and the anonymous path runs with **no Auth0 or Supabase env**. When those variables are set, login routes work and Save My Plan can persist.
+
+### Exact environment variable names
+
+| Name | Required to enable login | Notes |
+| --- | --- | --- |
+| `AUTH0_SECRET` | yes | 32-byte hex secret (`openssl rand -hex 32`) |
+| `AUTH0_ISSUER_BASE_URL` | yes | `https://YOUR_DOMAIN` (tenant host). `AUTH0_DOMAIN` is also accepted |
+| `AUTH0_CLIENT_ID` | yes | Regular Web Application |
+| `AUTH0_CLIENT_SECRET` | yes | Server only |
+| `AUTH0_BASE_URL` | recommended | `http://localhost:3000` locally; your Vercel URL in prod. `APP_BASE_URL` is also accepted |
+| `NEXT_PUBLIC_SUPABASE_URL` | for persist | Save/load returns 503 without this |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | for persist | Public anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | recommended for persist | Server-only, after Auth0 verifies `sub`. Never expose to the browser |
+
+Do not commit `.env` / `.env.local`.
+
+### Auth0 application URLs to verify
+
+This app uses the documented `/api/auth/*` paths (not v4's default `/auth/*`).
+
+**Allowed Callback URLs**
+
+```
+http://localhost:3000/api/auth/callback
+https://YOUR_VERCEL_DOMAIN/api/auth/callback
+```
+
+**Allowed Logout URLs**
+
+```
+http://localhost:3000
+https://YOUR_VERCEL_DOMAIN
+```
+
+**Allowed Web Origins**
+
+```
+http://localhost:3000
+https://YOUR_VERCEL_DOMAIN
+```
+
+Login: `/api/auth/login?returnTo=/plan` (or `/profile`). Logout: `/api/auth/logout?returnTo=/`. Session probe: `/api/auth/session` (does not require login).
+
+SDK: `@auth0/nextjs-auth0` v4 (Next.js 16 App Router). `proxy.ts` mounts Auth0's login/callback/logout and protects **only** `/api/save-plan` and `/api/load-plan`. Onboarding and plan browse stay anonymous.
+
+### Save My Plan flow
+
+1. Unauthenticated **Save My Plan** starts Auth0 login (`returnTo` `/plan` or `/profile`).
+2. After login, localStorage profile plus the latest cached recommendations (when available) upsert to Supabase. The Auth0 `sub` (and email if present) is the User key (`users.auth0_sub`).
+3. On authenticated return, a newer or missing local profile is restored from Supabase.
+
+Apply `supabase/migrations/20260912120000_stormready_save_plan.sql` (see `supabase/README.md`). Tables: `users`, `home_profiles`, `household_profiles`, `generated_recommendations`, `audit_logs`. Helpers: `saveStormReadySnapshot` / `loadStormReadySnapshot`.
+
+Dev-only: `ALLOW_SAVE_PLAN_DEV_BYPASS=1` plus header `x-stormready-dev-sub` (ignored in production).
 
 ## API routes the UI will use
 
@@ -51,72 +111,13 @@ The UI calls these when present and fails closed if they 404 or return an unusab
 | `GET` `/api/recommendations?fixture=tampa` | Explicit Tampa quiet demo (`&scenario=quiet\|watch\|warning\|evac\|flood`) |
 | `POST` `/api/save-plan` | Cloud upsert of the local snapshot. 503 without Supabase; 401 without Auth0 `sub` |
 | `GET` `/api/load-plan` | Restore the latest saved snapshot for the Auth0 `sub` |
-| `GET` `/api/auth/login` | Auth0 placeholder (501 until the SDK is installed) |
+| `GET` `/api/auth/login` | Start Auth0 login (501 when Auth0 env is missing) |
 
 If `recommend()` is exported from `@/lib/stormready` (rules-engine branch), the plan screen can use it when the route is missing. A 404 still shows unavailable copy and never invents live alerts.
 
 `GET`/`POST` `/api/core-logic` is leftover skeleton and is not on the StormReady user path.
 
-## Save My Plan (Supabase, Auth0 later)
-
-The anonymous local store is unchanged. Cloud save/restore is **opt-in** and
-gated:
-
-| Condition | `/api/save-plan` and `/api/load-plan` |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` missing | **503** `supabase_not_configured` |
-| Supabase set, but no Auth0 user `sub` on the request | **401** `auth_not_configured` (Auth0 wiring is next) |
-
-The app **builds and runs without these env vars**. Plan and Profile show a calm
-**Sign in to save** control that points at `/api/auth/login` (placeholder until
-the Auth0 SDK is installed).
-
-### Apply the schema
-
-See [`supabase/README.md`](./supabase/README.md). Short version:
-
-1. SQL editor: run `supabase/migrations/20260912120000_stormready_save_plan.sql`
-2. Or CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`
-
-Tables: `users`, `home_profiles`, `household_profiles`,
-`generated_recommendations`, `audit_logs`. Unknownable fields use the
-`'unknown'` sentinel (text) or jsonb `"unknown"` — unknown is never stored as
-`false` / `0` / `[]`.
-
-### What Auth0 must pass later
-
-1. After login, expose **`user.sub`** (Auth0 subject, e.g. `auth0|abc123`) and
-   optionally `email`.
-2. Fill `getAuth0Identity()` in [`lib/auth/identity.ts`](./lib/auth/identity.ts)
-   (typically `@auth0/nextjs-auth0` `getSession()`). Replace the placeholder at
-   `/api/auth/login`.
-3. Server routes then upsert `public.users.auth0_sub` and the latest profiles.
-   Prefer `SUPABASE_SERVICE_ROLE_KEY` on the server after the session is
-   verified (never ship that key to the browser).
-4. Optional: pass the Auth0 **ID token** to the Supabase client (third-party
-   auth) with `role: "authenticated"` on the ID token. RLS already matches
-   `auth.jwt()->>'sub'` to `users.auth0_sub`.
-
-Local-only testing of the API (never production):
-
-```bash
-# .env.local — development only
-ALLOW_SAVE_PLAN_DEV_BYPASS=1
-```
-
-```http
-x-stormready-dev-sub: auth0|dev-user
-```
-
-The bypass is ignored when `NODE_ENV=production`.
-
-Helpers: `saveStormReadySnapshot` / `loadStormReadySnapshot` in
-`@/lib/stormready` (or `@/lib/supabase/persist`).
-
-## Later / optional services
-
-Mapbox/Places remain out of scope. Auth0 SDK install is a later PR — this repo
-only leaves the identity hook and `/api/auth/login` placeholder.
+Cloud save/restore is opt-in and gated: **503** `supabase_not_configured` when public Supabase env is missing; **401** `auth_not_configured` / `unauthenticated` when Auth0 `sub` is missing. See [`supabase/README.md`](./supabase/README.md).
 
 ## Domain contract
 
@@ -126,4 +127,5 @@ Import types and the anonymous store from `@/lib/stormready`. Do not declare par
 
 1. Push this repository to GitHub.
 2. In [Vercel](https://vercel.com/new), import the repo. Framework preset: **Next.js**.
-3. Deploy. No environment variables are required for the anonymous Phase 1 path.
+3. Mirror the Auth0 / Supabase variables from `.env.example` if you want login and cloud save. The anonymous path deploys with no environment variables.
+4. Confirm the Auth0 callback URLs above include the Vercel domain.

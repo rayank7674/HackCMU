@@ -2,8 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AuthControls } from "@/components/stormready/auth-controls";
 import { usePlanData } from "@/components/stormready/plan-data";
 import { LoadingCard } from "@/components/stormready/query-state";
+import { useCloudPlanSync } from "@/lib/auth/cloud-sync";
 import {
   SEVERITY_RANK,
   arrangePlanActions,
@@ -14,6 +16,7 @@ import { useProfile } from "@/lib/use-profile";
 
 export function HomeView() {
   const { profile, hydrated } = useProfile();
+  useCloudPlanSync();
   const hasProfile = Boolean(profile.home || profile.household);
   const plan = usePlanData(profile, hydrated && hasProfile);
 
@@ -107,14 +110,13 @@ export function Welcome() {
 
       <div className="mt-8 flex flex-col gap-3">
         <Button href="/onboarding">Get Started</Button>
-        <Button disabled variant="secondary" title="Sign-in arrives in a later release">
-          Log In
-        </Button>
+        <AuthControls returnTo="/" />
       </div>
 
       <div className="mt-10 grid gap-3">
         <Card title="No account required">
-          Phase 1 is fully anonymous. Login and cloud save are optional later.
+          You can finish setup without signing in. Log in only when you want
+          to save a plan across devices.
         </Card>
         <Card title="Official sources only">
           Alerts come from connected services. If those routes are down,

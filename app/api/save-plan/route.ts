@@ -14,7 +14,7 @@ import { hydrateHomeProfile, hydrateHouseholdProfile } from "@/lib/profile-store
  * Body: StormReadySnapshot { home, household, hazards?, recommendations? }
  *
  * 503 if Supabase env is missing.
- * 401 if Auth0 identity is not available yet (dev bypass is development-only).
+ * 401 if Auth0 identity is not available (dev bypass is development-only).
  */
 export async function POST(request: Request) {
   const context = await requirePlanRouteContext(request);

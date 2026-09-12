@@ -199,6 +199,22 @@ export function hasStoredProfile(): boolean {
   return profile.home !== null || profile.household !== null;
 }
 
+/** Restore a cloud snapshot without treating it as a fresh local edit. */
+export function restoreProfile(input: {
+  home?: HomeProfile | null;
+  household?: HouseholdProfile | null;
+  updatedAt?: string | null;
+}): PersistedProfile {
+  return persist({
+    version: PROFILE_STORE_VERSION,
+    home: input.home ? normalizeHomeProfile(input.home) : null,
+    household: input.household
+      ? normalizeHouseholdProfile(input.household)
+      : null,
+    updatedAt: input.updatedAt ?? nowIso(),
+  });
+}
+
 function persist(profile: PersistedProfile): PersistedProfile {
   const normalized: PersistedProfile = {
     version: PROFILE_STORE_VERSION,
