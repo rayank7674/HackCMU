@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 
 /**
- * Rooms / lobby CTAs are removed from the user path.
- * The leftover skeleton still compiles under components/layout/lobby-view.tsx.
+ * Old rooms / lobby URL. StormReady lives at `/`.
  */
 export default function DashboardPage() {
   redirect("/");

@@ -1,7 +1,5 @@
 /**
  * Public StormReady types. Import from `@/types` or `@/lib/stormready`.
- * Legacy rooms/sessions types live in `components/layout/legacy-rooms.ts`
- * and are not part of this contract.
  */
 export type {
   ActiveHazard,
